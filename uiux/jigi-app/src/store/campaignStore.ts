@@ -26,7 +26,7 @@ export interface CampaignBrief {
 
 export interface Campaign {
   id: string
-  brand_id: string
+  brand_id: string | null
   created_by: string
   name: string
   brief: CampaignBrief
