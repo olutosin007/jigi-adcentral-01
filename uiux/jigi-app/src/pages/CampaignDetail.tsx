@@ -83,7 +83,7 @@ export function CampaignDetail() {
   const [isArchiving, setIsArchiving] = useState(false)
 
   const { data: campaign, isLoading: campaignLoading } = useCampaign(id || '')
-  const { data: brand } = useBrand(campaign?.brand_id)
+  const { data: brand } = useBrand(campaign?.brand_id ?? undefined)
   const { data: allAssets = [] } = useCampaignAssets(id || '')
   const deleteAsset = useDeleteAsset()
   const submitAsset = useSubmitAsset()
