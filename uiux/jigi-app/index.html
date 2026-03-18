@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0D9488" />
+    <title>Jigi - From Idea to Approved Creative in One Workflow</title>
+    <meta name="description" content="Generate on-brand creative, streamline reviews, and ship approved assets faster. Jigi helps agency and brand teams go from idea to approved creative without workflow chaos." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <script>
+      (function(){
+        var t;
+        try {
+          var raw = localStorage.getItem('jigi-theme');
+          var p = raw ? JSON.parse(raw) : null;
+          if (p && p.state && (p.state.theme === 'dark' || p.state.theme === 'light')) t = p.state.theme;
+        } catch (e) {}
+        if (t !== 'dark' && t !== 'light')
+          t = 'dark'; /* default to dark to match landing; user can change in Settings */
+        document.documentElement.classList.toggle('dark', t === 'dark');
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

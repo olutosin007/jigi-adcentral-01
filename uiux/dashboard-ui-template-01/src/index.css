@@ -1,0 +1,83 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap");
+
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  :root {
+    --background: #FEFDFB;
+    --foreground: #1C1917;
+    --muted: #F5F4F0;
+    --muted-foreground: #78716C;
+    --popover: #FFFFFF;
+    --popover-foreground: #1C1917;
+    --border: #E8E5DF;
+    --input: #E8E5DF;
+    --card: #FFFFFF;
+    --card-foreground: #1C1917;
+    --primary: #0D9488;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F5F4F0;
+    --secondary-foreground: #1C1917;
+    --accent: #F0FDFA;
+    --accent-foreground: #0D9488;
+    --destructive: #DC2626;
+    --destructive-foreground: #FFFFFF;
+    --ring: #0D9488;
+    --radius: 0.5rem;
+    --success: #16A34A;
+    --warning: #D97706;
+    --error: #DC2626;
+    --sidebar-width: 240px;
+    --header-height: 60px;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-weight: 600;
+  }
+}
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #E8E5DF transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #E8E5DF;
+    border-radius: 2px;
+  }
+  .skeleton {
+    @apply animate-pulse bg-muted rounded-lg;
+  }
+  .nav-item-active {
+    background-color: #0D9488;
+    color: #FFFFFF;
+  }
+  .nav-item-inactive {
+    color: #78716C;
+  }
+  .nav-item-inactive:hover {
+    background-color: #F0FDFA;
+    color: #0D9488;
+  }
+}

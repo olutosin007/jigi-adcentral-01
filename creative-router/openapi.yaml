@@ -1,0 +1,312 @@
+openapi: 3.1.0
+info:
+  title: Creative Router API
+  version: 0.1.0
+  description: >
+    HTTP API for the Creative Router microservice used by the Jigi app.
+    Sprint 1 exposes contracts for creative generation, regeneration, review,
+    and job status.
+servers:
+  - url: http://localhost:4000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /generate-creatives:
+    post:
+      summary: Create a job to generate new creatives for a campaign
+      operationId: generateCreatives
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateCreativesRequest'
+      responses:
+        '202':
+          description: Generation job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /regenerate-creatives:
+    post:
+      summary: Create a job to regenerate underperforming creatives
+      operationId: regenerateCreatives
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegenerateCreativesRequest'
+      responses:
+        '202':
+          description: Regeneration job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /send-for-review:
+    post:
+      summary: Create a job to send creatives for human review
+      operationId: sendForReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendForReviewRequest'
+      responses:
+        '202':
+          description: Review job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /jobs/{id}:
+    get:
+      summary: Get status for a creative job
+      operationId: getJobStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  responses:
+    BadRequest:
+      description: Invalid request payload
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    GenerateCreativesRequest:
+      type: object
+      required:
+        - campaignId
+        - channel
+        - placements
+        - phase
+        - costProfile
+        - brandProfileId
+        - copy
+      properties:
+        campaignId:
+          type: string
+          description: Jigi campaign identifier
+        channel:
+          type: string
+          enum: [meta]
+        placements:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlacementSpec'
+        phase:
+          type: string
+          enum: [test_and_learn, scale]
+        costProfile:
+          type: string
+          enum: [template_only, balanced, premium]
+        brandProfileId:
+          type: string
+          description: Identifier of the brand profile stored in Jigi
+        brandOverrides:
+          type: object
+          additionalProperties: true
+          description: Optional per-campaign overrides to the base brand profile
+        copy:
+          $ref: '#/components/schemas/CopyBundle'
+        experimentConfig:
+          $ref: '#/components/schemas/ExperimentConfig'
+    RegenerateCreativesRequest:
+      type: object
+      required:
+        - campaignId
+        - originalCreativeId
+        - performance
+        - regenerationIntent
+      properties:
+        campaignId:
+          type: string
+        originalCreativeId:
+          type: string
+        performance:
+          $ref: '#/components/schemas/PerformanceSummary'
+        regenerationIntent:
+          type: string
+          enum: [optimize_within_concept]
+        constraints:
+          type: object
+          additionalProperties: true
+          description: Optional constraints for regeneration (e.g. new copy only)
+    SendForReviewRequest:
+      type: object
+      required:
+        - campaignId
+        - creativeIds
+        - review
+      properties:
+        campaignId:
+          type: string
+        creativeIds:
+          type: array
+          items:
+            type: string
+        review:
+          $ref: '#/components/schemas/ReviewConfig'
+    PlacementSpec:
+      type: object
+      required:
+        - placement
+        - aspectRatio
+      properties:
+        placement:
+          type: string
+          description: Logical placement name (e.g. meta_feed)
+          example: meta_feed
+        aspectRatio:
+          type: string
+          description: Aspect ratio for the creative (e.g. 1:1, 4:5)
+          example: "1:1"
+    CopyBundle:
+      type: object
+      required:
+        - headlines
+        - bodies
+        - ctas
+      properties:
+        headlines:
+          type: array
+          items:
+            type: string
+        bodies:
+          type: array
+          items:
+            type: string
+        ctas:
+          type: array
+          items:
+            type: string
+    ExperimentConfig:
+      type: object
+      properties:
+        maxVariants:
+          type: integer
+          minimum: 1
+          description: Soft cap on number of variants to generate
+    PerformanceSummary:
+      type: object
+      properties:
+        impressions:
+          type: integer
+          minimum: 0
+        ctr:
+          type: number
+          format: float
+          minimum: 0
+        cpc:
+          type: number
+          format: float
+          minimum: 0
+        cpa:
+          type: number
+          format: float
+          minimum: 0
+        summary:
+          type: string
+          description: Optional human-readable performance note
+    ReviewConfig:
+      type: object
+      properties:
+        slackChannel:
+          type: string
+          description: Slack channel name or ID for review
+        notionDatabaseId:
+          type: string
+          description: Notion database ID for logging reviews
+        instructions:
+          type: string
+          description: Free-text review instructions to include in Slack/Notion
+        dueDateIso:
+          type: string
+          format: date-time
+          description: Optional ISO timestamp for requested review completion
+    JobAcceptedResponse:
+      type: object
+      required:
+        - jobId
+        - status
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [accepted]
+    JobStatusResponse:
+      type: object
+      required:
+        - jobId
+        - type
+        - status
+      properties:
+        jobId:
+          type: string
+        type:
+          type: string
+          enum: [generate, regenerate, review]
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        error:
+          $ref: '#/components/schemas/ErrorResponse'
+        resultSummary:
+          type: object
+          additionalProperties: true
+          description: Optional, high-level summary of the job result
+    ErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - message
+      properties:
+        errorCode:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+

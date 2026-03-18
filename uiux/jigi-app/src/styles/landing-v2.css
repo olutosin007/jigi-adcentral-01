@@ -1,0 +1,67 @@
+/**
+ * Landing V2 theme — scoped dark theme with gold accent.
+ * Imported only when LandingV2 page is rendered.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* Scoped theme overrides for landing-v2 */
+.landing-v2-theme {
+  --background: #030303;
+  --color-background: #030303;
+  --color-surface: #0a0a0a;
+  --color-surface-hover: #141414;
+  --font-serif: 'Playfair Display', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+}
+
+.landing-v2-theme {
+  background-color: #030303;
+  color: white;
+}
+
+.landing-v2-theme {
+  selection: rgba(212, 175, 55, 0.3);
+}
+
+/* Filled buttons: white bg with dark text - override parent text-white */
+.landing-v2-theme .btn-filled,
+.landing-v2-theme .btn-filled * {
+  color: #030303 !important;
+}
+.landing-v2-theme .btn-filled {
+  background-color: white;
+}
+
+/* Hero overlay: dark gradient for text readability (match original design) */
+.landing-v2-theme .hero-overlay {
+  background: linear-gradient(
+      to top,
+      rgba(3, 3, 3, 0.5) 0%,
+      rgba(3, 3, 3, 0.2) 50%,
+      rgba(3, 3, 3, 0.4) 100%
+    ),
+    rgba(3, 3, 3, 0.4);
+}
+
+/* Custom utilities for landing-v2 */
+.landing-v2-theme .glass-panel {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.landing-v2-theme .text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to bottom, white, rgba(255, 255, 255, 0.5));
+}
+
+.landing-v2-theme .text-gradient-accent {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, #d4af37, #f3e5ab);
+}

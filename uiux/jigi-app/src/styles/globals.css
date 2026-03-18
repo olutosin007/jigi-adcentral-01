@@ -1,0 +1,215 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Jigi Brand: warm off-white bg, dark stone text, teal accent */
+  --background: #FEFDFB;
+  --foreground: #1C1917;
+  --card: #FFFFFF;
+  --card-foreground: #1C1917;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1917;
+  --primary: #0D9488;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5F0EB;
+  --secondary-foreground: #1C1917;
+  --muted: #F5F0EB;
+  --muted-foreground: #78716C;
+  --accent: #0D9488;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #E7E0D9;
+  --input: #E7E0D9;
+  --ring: #0D9488;
+  --chart-1: #0D9488;
+  --chart-2: #14B8A6;
+  --chart-3: #5EEAD4;
+  --chart-4: #78716C;
+  --chart-5: #A8A29E;
+  --radius: 0.625rem;
+  --sidebar: #FEFDFB;
+  --sidebar-foreground: #1C1917;
+  --sidebar-primary: #0D9488;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F5F0EB;
+  --sidebar-accent-foreground: #1C1917;
+  --sidebar-border: #E7E0D9;
+  --sidebar-ring: #0D9488;
+  --sidebar-width: 240px;
+  --header-height: 60px;
+  
+  /* Status colors */
+  --success: #16A34A;
+  --success-bg: #F0FDF4;
+  --warning: #D97706;
+  --warning-bg: #FFFBEB;
+  --error: #DC2626;
+  --error-bg: #FEF2F2;
+}
+
+.dark {
+  --background: #1C1917;
+  --foreground: #F5F0EB;
+  --card: #292524;
+  --card-foreground: #F5F0EB;
+  --popover: #292524;
+  --popover-foreground: #F5F0EB;
+  --secondary: #292524;
+  --secondary-foreground: #F5F0EB;
+  --muted: #44403C;
+  --muted-foreground: #A8A29E;
+  --border: #44403C;
+  --input: #44403C;
+  --sidebar: #1C1917;
+  --sidebar-foreground: #F5F0EB;
+  --sidebar-accent: #292524;
+  --sidebar-accent-foreground: #F5F0EB;
+  --sidebar-border: #44403C;
+  --success-bg: #14532D;
+  --warning-bg: #422006;
+  --error-bg: #450A0A;
+}
+
+@theme inline {
+  --font-sans: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Jigi brand colors */
+  --color-jigi-teal: #0D9488;
+  --color-jigi-teal-light: #F0FDFA;
+  --color-jigi-teal-mid: #CCFBF1;
+  --color-jigi-charcoal: #1C1917;
+  --color-jigi-stone: #78716C;
+  --color-jigi-cream: #FEFDFB;
+  --color-jigi-muted: #F5F4F0;
+  --color-jigi-border: #E8E5DF;
+  --color-jigi-success: #16A34A;
+  --color-jigi-success-bg: #F0FDF4;
+  --color-jigi-warning: #D97706;
+  --color-jigi-warning-bg: #FFFBEB;
+  --color-jigi-error: #DC2626;
+  --color-jigi-error-bg: #FEF2F2;
+  
+  /* Shadows */
+  --shadow-card: 0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 4px 12px 0 rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04);
+  --shadow-sidebar: 1px 0 0 0 var(--border);
+  --shadow-header: 0 1px 0 0 var(--border);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply min-w-0 overflow-x-hidden bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-weight: 600;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 2px;
+  }
+  .skeleton {
+    @apply animate-pulse bg-muted rounded-lg motion-reduce:animate-none;
+  }
+  .nav-item-active {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+  .nav-item-inactive {
+    color: var(--muted-foreground);
+  }
+  .nav-item-inactive:hover {
+    background-color: color-mix(in srgb, var(--primary) 5%, transparent);
+    color: var(--primary);
+  }
+}
+
+/* Smooth scroll for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reduced motion: respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Focus ring utility for interactive elements without built-in focus */
+.focus-ring {
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+
+/* Transition utilities for interactive elements */
+.transition-interactive {
+  @apply transition-colors duration-200;
+}
+.transition-shadow-interactive {
+  @apply transition-shadow duration-200;
+}
