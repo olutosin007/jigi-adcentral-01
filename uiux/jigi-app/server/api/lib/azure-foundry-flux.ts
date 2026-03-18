@@ -75,3 +75,4 @@ export async function generateImageWithFoundryFlux(
     model: 'flux-2-flex',
   }
 }
+

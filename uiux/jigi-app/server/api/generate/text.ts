@@ -218,21 +218,21 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
 
     const usePromptAsSystem =
       body.use_prompt_as_system === true && (body.type === 'concept' || body.type === 'copy')
-  const userPrompt =
+    const userPrompt =
       body.type === 'concept'
         ? 'Generate 2 concepts per the instructions above. Return valid JSON.'
         : body.type === 'copy'
         ? 'Generate 2 copy variants per the instructions above. Return valid JSON with a "variations" array.'
         : ''
-  const messages: ChatMessage[] = usePromptAsSystem
-    ? [
-        { role: 'system', content: body.prompt },
-        { role: 'user', content: userPrompt || 'Generate per the instructions above. Return valid JSON.' },
-      ]
-    : [
-        { role: 'system', content: SYSTEM_PROMPTS[body.type] },
-        { role: 'user', content: buildUserPrompt(body) },
-      ]
+    const messages: ChatMessage[] = usePromptAsSystem
+      ? [
+          { role: 'system', content: body.prompt },
+          { role: 'user', content: userPrompt || 'Generate per the instructions above. Return valid JSON.' },
+        ]
+      : [
+          { role: 'system', content: SYSTEM_PROMPTS[body.type] },
+          { role: 'user', content: buildUserPrompt(body) },
+        ]
 
     const { content, usage } = await createChatCompletion({
       messages,
@@ -301,3 +301,4 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
     })
   }
 }
+

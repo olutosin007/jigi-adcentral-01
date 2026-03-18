@@ -106,3 +106,4 @@ export default async function handler(
     variants: data.variants ?? [],
   })
 }
+

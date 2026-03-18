@@ -37,6 +37,12 @@ interface GenerateImageRequest {
       logo_url?: string
     }
   }
+  lineage?: {
+    cco_version?: number
+    bio_version?: number
+    generation_timestamp?: string
+  }
+  prompt_hash?: string
 }
 
 interface ProviderExecutionResult {
@@ -518,3 +524,4 @@ export default async function handler(
     })
   }
 }
+

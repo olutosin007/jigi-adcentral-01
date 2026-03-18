@@ -119,3 +119,4 @@ export async function generateImageWithGoogleImagen(
     revisedPrompt: result.revisedPrompt,
   }
 }
+

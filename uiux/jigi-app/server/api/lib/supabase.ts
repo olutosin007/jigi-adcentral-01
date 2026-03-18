@@ -33,3 +33,4 @@ export async function getAuthenticatedUser(authHeader: string | undefined) {
 
   return { user, error: null }
 }
+

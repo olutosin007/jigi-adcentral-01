@@ -35,7 +35,7 @@ function loadLocalEnvOnce() {
   if (localEnvLoaded) return
 
   const currentFile = fileURLToPath(import.meta.url)
-  const projectRoot = path.resolve(path.dirname(currentFile), '..', '..')
+  const projectRoot = path.resolve(path.dirname(currentFile), '..', '..', '..')
   const cwdRoot = process.cwd()
   const candidates = [
     path.join(projectRoot, '.env.local'),
@@ -102,3 +102,4 @@ export function getNumberEnv(
 
   return parsed
 }
+

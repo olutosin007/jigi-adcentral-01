@@ -54,3 +54,4 @@ export async function generateImageWithFluxDev(
     output_quality: options.output_quality || 90,
   })
 }
+

@@ -90,3 +90,4 @@ export async function generateImageWithAzure(
     model: deployment,
   }
 }
+

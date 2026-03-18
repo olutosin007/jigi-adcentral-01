@@ -76,3 +76,4 @@ export async function ensureDatabaseContract(supabaseAdmin: SupabaseClient): Pro
 
   return contractCheckPromise
 }
+
