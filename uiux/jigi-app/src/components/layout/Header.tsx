@@ -9,6 +9,7 @@ import {
   LogOutIcon,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { isReviewerRole } from '@/lib/roles'
 import { UserAvatar } from '@/components/layout/UserAvatar'
 import { NotificationBell } from '@/components/notifications'
 import {
@@ -21,6 +22,7 @@ import {
 
 interface HeaderProps {
   title: string
+  hideTitle?: boolean
   showCTAs?: boolean
   isMobile?: boolean
   onMenuClick?: () => void
@@ -29,6 +31,7 @@ interface HeaderProps {
 
 export function Header({
   title,
+  hideTitle = false,
   showCTAs = false,
   isMobile = false,
   onMenuClick,
@@ -65,7 +68,9 @@ export function Header({
       )}
       {/* Page Title */}
       <div className="flex-1 min-w-0">
-        <h1 className="text-base font-semibold text-foreground">{title}</h1>
+        {!hideTitle && title ? (
+          <h1 className="text-base font-semibold text-foreground">{title}</h1>
+        ) : null}
       </div>
 
       {/* Search */}
@@ -85,13 +90,15 @@ export function Header({
       {/* CTAs */}
       {showCTAs && (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/app/review')}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent hover:border-accent transition-all duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <ClipboardCheckIcon className="w-3.5 h-3.5" />
-            Review Queue
-          </button>
+          {isReviewerRole(profile?.role) && (
+            <button
+              onClick={() => navigate('/app/review')}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent hover:border-accent transition-all duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <ClipboardCheckIcon className="w-3.5 h-3.5" />
+              Review Queue
+            </button>
+          )}
           <button
             onClick={() => navigate('/app/campaigns/new')}
             className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-all duration-200 active:scale-[0.98] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

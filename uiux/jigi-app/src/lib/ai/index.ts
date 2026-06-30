@@ -1,6 +1,12 @@
 export { aiOrchestrator, AIOrchestrator } from './orchestrator'
 export { AzureGPT4oMini, AzureDALLE3 } from './adapters/azure-openai'
-export { buildConceptPrompt, buildCopyPrompt, buildCompliancePrompt, buildImagePrompt } from './prompts'
+export {
+  buildConceptPrompt,
+  buildCopyPrompt,
+  buildCompliancePrompt,
+  buildImagePrompt,
+  buildCopyAnchorPromptBlock,
+} from './prompts'
 export type {
   BrandConstraints,
   BrandIncludeFlags,
@@ -10,6 +16,7 @@ export type {
   GenerationResult,
   ConceptResult,
   CopyResult,
+  CopyImageAnchor,
   ImageResult,
   ComplianceResult,
   ComplianceCheck,

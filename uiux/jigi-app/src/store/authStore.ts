@@ -2,6 +2,15 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseSessionSingleFlight } from '@/lib/supabase-session'
+
+/**
+ * React Strict Mode mounts effects twice; without this, `initialize()` runs twice and registers
+ * duplicate `onAuthStateChange` listeners and overlapping `getSession()` calls — gotrue then logs
+ * lock timeout warnings and generation can fail to attach Bearer tokens reliably.
+ */
+let authStateSubscription: { unsubscribe: () => void } | null = null
+let initializeInFlight: Promise<void> | null = null
 
 export interface UserProfile {
   id: string
@@ -43,37 +52,49 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       initialize: async () => {
-        try {
-          set({ isLoading: true })
+        if (get().isInitialized) return
+        if (initializeInFlight) return initializeInFlight
 
-          const { data: { session }, error } = await supabase.auth.getSession()
-          
-          if (error) {
-            console.error('Error getting session:', error)
-            set({ isLoading: false, isInitialized: true })
-            return
-          }
+        initializeInFlight = (async () => {
+          try {
+            set({ isLoading: true })
 
-          if (session) {
-            set({ session, user: session.user, isLoading: false, isInitialized: true })
-            get().fetchProfile().catch((err) => console.error('Background profile fetch:', err))
-          } else {
-            set({ isLoading: false, isInitialized: true })
-          }
+            const { session, error } = await getSupabaseSessionSingleFlight()
 
-          supabase.auth.onAuthStateChange(async (event, session) => {
-            set({ session, user: session?.user ?? null })
-            
-            if (event === 'SIGNED_IN' && session) {
-              await get().fetchProfile()
-            } else if (event === 'SIGNED_OUT') {
-              set({ profile: null })
+            if (error) {
+              console.error('Error getting session:', error)
+              set({ isLoading: false, isInitialized: true })
+              return
             }
-          })
-        } catch (error) {
-          console.error('Auth initialization error:', error)
-          set({ isLoading: false, isInitialized: true })
-        }
+
+            if (session) {
+              set({ session, user: session.user, isLoading: false, isInitialized: true })
+              get().fetchProfile().catch((err) => console.error('Background profile fetch:', err))
+            } else {
+              set({ isLoading: false, isInitialized: true })
+            }
+
+            if (!authStateSubscription) {
+              const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+                set({ session, user: session?.user ?? null })
+
+                if (event === 'SIGNED_IN' && session) {
+                  void get().fetchProfile()
+                } else if (event === 'SIGNED_OUT') {
+                  set({ profile: null })
+                }
+              })
+              authStateSubscription = subscription
+            }
+          } catch (error) {
+            console.error('Auth initialization error:', error)
+            set({ isLoading: false, isInitialized: true })
+          } finally {
+            initializeInFlight = null
+          }
+        })()
+
+        return initializeInFlight
       },
 
       signUp: async (email, password, name) => {

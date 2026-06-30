@@ -23,6 +23,29 @@ const mockCampaign: Campaign = {
   updated_at: '2024-01-01',
 }
 
+const mockDraftConceptAsset = {
+  id: 'concept-1',
+  campaign_id: 'camp-1',
+  created_by: 'user-1',
+  type: 'concept' as const,
+  generation_mode: 'brand_grounded' as const,
+  content: {
+    theme: 'Summer Launch',
+    headlines: ['Headline A'],
+    visual_direction: 'Bright',
+    rationale: 'Test',
+  },
+  version: 1,
+  status: 'draft' as const,
+  compliance_check: {},
+  created_at: '2024-01-01',
+  updated_at: '2024-01-01',
+}
+
+const { mockCampaignAssetsData } = vi.hoisted(() => ({
+  mockCampaignAssetsData: { current: [] as typeof mockDraftConceptAsset[] },
+}))
+
 vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useCampaignQueries')>()
   return {
@@ -45,8 +68,9 @@ vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
       isError: false,
       reset: vi.fn(),
     }),
-    useCampaignAssets: () => ({ data: [] }),
+    useCampaignAssets: () => ({ data: mockCampaignAssetsData.current }),
     useDeleteAsset: () => ({ mutateAsync: vi.fn() }),
+    useBrand: () => ({ data: undefined }),
   }
 })
 
@@ -73,6 +97,7 @@ describe('GenerationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    mockCampaignAssetsData.current = []
   })
 
   it('renders Concepts, Copy, Images tabs', () => {
@@ -99,7 +124,26 @@ describe('GenerationPanel', () => {
       <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
       { wrapper: createWrapper() }
     )
-    expect(screen.getByRole('button', { name: /generate concepts/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Generate Concepts' })).toBeInTheDocument()
+  })
+
+  it('calls onSubmitAsset when Submit for Review is clicked on a draft concept', async () => {
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+    const onSubmitAsset = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <GenerationPanel
+        campaign={mockCampaign}
+        brandId="brand-1"
+        userId="user-1"
+        onSubmitAsset={onSubmitAsset}
+      />,
+      { wrapper: createWrapper() }
+    )
+
+    await user.click(screen.getByRole('button', { name: /submit for review/i }))
+    expect(onSubmitAsset).toHaveBeenCalledWith('concept-1')
   })
 
   it('shows Images tab content when Images tab is selected', async () => {

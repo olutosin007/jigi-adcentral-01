@@ -127,7 +127,7 @@ async function fetchPendingReviews(): Promise<PendingReviewItem[]> {
       campaigns!inner(id, name, brand_id, brands(id, name))
     `)
     .in('status', ['submitted', 'brand_review'])
-    .order('created_at', { ascending: true })
+    .order('updated_at', { ascending: true })
 
   if (error) throw error
 
@@ -143,7 +143,7 @@ async function fetchPendingReviews(): Promise<PendingReviewItem[]> {
         campaignName: campaign.name,
         brandName: campaign.brands?.name,
         assetCount: 0,
-        oldestPendingAt: asset.created_at,
+        oldestPendingAt: asset.updated_at ?? asset.created_at,
         assets: [],
       }
     }
@@ -151,8 +151,8 @@ async function fetchPendingReviews(): Promise<PendingReviewItem[]> {
     grouped[campaignId].assetCount++
     grouped[campaignId].assets.push(asset as unknown as CreativeAsset)
 
-    if (new Date(asset.created_at) < new Date(grouped[campaignId].oldestPendingAt)) {
-      grouped[campaignId].oldestPendingAt = asset.created_at
+    if (new Date(asset.updated_at ?? asset.created_at) < new Date(grouped[campaignId].oldestPendingAt)) {
+      grouped[campaignId].oldestPendingAt = asset.updated_at ?? asset.created_at
     }
   }
 

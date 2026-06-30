@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboardIcon,
@@ -14,6 +15,7 @@ import {
 import type { ComponentType } from 'react'
 import { useRecentCampaigns, useDashboardStats } from '@/hooks/useDashboardQueries'
 import { useAuthStore } from '@/store/authStore'
+import { isReviewerRole } from '@/lib/roles'
 import { useAppStore } from '@/store'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -94,6 +96,14 @@ function SidebarContent({ collapsed = false, onNavigate, onToggle }: SidebarCont
   const displayName =
     profile?.name ?? user?.user_metadata?.full_name ?? (user?.email?.split('@')[0] || 'User')
   const roleLabel = getRoleLabel(profile?.role)
+
+  const visibleNavSections = useMemo(
+    () =>
+      navSections.filter(
+        (section) => section.title !== 'Review' || isReviewerRole(profile?.role)
+      ),
+    [profile?.role]
+  )
 
   const isActive = (href: string) => {
     if (href === '/app/dashboard') {
@@ -194,7 +204,7 @@ function SidebarContent({ collapsed = false, onNavigate, onToggle }: SidebarCont
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
         <TooltipProvider delayDuration={0}>
-          {navSections.map((section, sectionIdx) => (
+          {visibleNavSections.map((section, sectionIdx) => (
             <div
               key={section.title}
               className={sectionIdx > 0 ? 'mt-4 pt-4 border-t border-border dark:border-sidebar-border' : ''}

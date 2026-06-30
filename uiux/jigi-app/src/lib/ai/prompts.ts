@@ -231,6 +231,27 @@ Return valid JSON:
 }`
 }
 
+/**
+ * Inserts copy-variant messaging before the visual direction so image models align with the line.
+ */
+export function buildCopyAnchorPromptBlock(anchor: {
+  headline?: string
+  key_message?: string
+  body_snippet?: string
+}): string {
+  const h = anchor.headline?.trim()
+  const k = anchor.key_message?.trim()
+  const b = anchor.body_snippet?.trim()
+  if (!h && !k && !b) return ''
+  const lines = [
+    'MESSAGING ANCHOR (embody the mood, story, and promise of this copy in the scene; do not render long readable ad typography in-frame unless the user asks for visible text):',
+  ]
+  if (h) lines.push(`- Headline / hook: ${h}`)
+  if (k) lines.push(`- Key message: ${k}`)
+  if (b) lines.push(`- Supporting copy (suggest mood and subject only): ${b}`)
+  return lines.join('\n')
+}
+
 export function buildImagePrompt(
   brand: BrandConstraints | undefined,
   description: string,

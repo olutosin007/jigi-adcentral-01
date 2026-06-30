@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { Sparkles, Palette, FolderPlus, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/authStore'
+import { isReviewerRole } from '@/lib/roles'
 import {
   QuickStatsWidget,
   PendingReviewsWidget,
@@ -47,6 +48,49 @@ export function Dashboard() {
   const greeting = getGreeting()
   const todayDate = format(new Date(), 'EEEE, d MMMM')
   const pendingCount = stats?.pendingReview ?? 0
+  const reviewerFirst = isReviewerRole(profile?.role) && pendingCount > 0
+
+  const pendingReviewsSection = (
+    <div
+      className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
+      style={{ animationDelay: reviewerFirst ? '150ms' : '225ms' }}
+    >
+      <div className={reviewerFirst ? '' : 'grid grid-cols-1 lg:grid-cols-3 gap-6'}>
+        <div className={reviewerFirst ? '' : 'lg:col-span-2'}>
+          <PendingReviewsWidget reviews={pendingReviews} isLoading={pendingLoading} />
+        </div>
+        {!reviewerFirst && (
+          <div className="space-y-6">
+            <RecentCampaignsWidget campaigns={recentCampaigns} isLoading={campaignsLoading} />
+            <GenerationMixCard stats={generationMix} isLoading={mixLoading} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const statsSection = (
+    <div
+      className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
+      style={{ animationDelay: reviewerFirst ? '225ms' : '150ms' }}
+    >
+      <QuickStatsWidget stats={stats} isLoading={statsLoading} />
+    </div>
+  )
+
+  const secondaryGridSection = reviewerFirst ? (
+    <div
+      className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
+      style={{ animationDelay: '300ms' }}
+    >
+      <div className="lg:col-span-2">
+        <RecentCampaignsWidget campaigns={recentCampaigns} isLoading={campaignsLoading} />
+      </div>
+      <div>
+        <GenerationMixCard stats={generationMix} isLoading={mixLoading} />
+      </div>
+    </div>
+  ) : null
 
   return (
     <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-10">
@@ -94,7 +138,7 @@ export function Dashboard() {
             <Palette className="h-4 w-4" />
             Manage Brands
           </Button>
-          {pendingCount > 0 && (
+          {pendingCount > 0 && isReviewerRole(profile?.role) && (
             <Button
               variant="outline"
               onClick={() => navigate('/app/review')}
@@ -107,27 +151,18 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Row - appears first on mobile */}
-      <div
-        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
-        style={{ animationDelay: '150ms' }}
-      >
-        <QuickStatsWidget stats={stats} isLoading={statsLoading} />
-      </div>
-
-      {/* Main Content Grid - mobile: Pending Reviews, then Recent Campaigns + Generation Mix */}
-      <div
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
-        style={{ animationDelay: '225ms' }}
-      >
-        <div className="lg:col-span-2">
-          <PendingReviewsWidget reviews={pendingReviews} isLoading={pendingLoading} />
-        </div>
-        <div className="space-y-6">
-          <RecentCampaignsWidget campaigns={recentCampaigns} isLoading={campaignsLoading} />
-          <GenerationMixCard stats={generationMix} isLoading={mixLoading} />
-        </div>
-      </div>
+      {reviewerFirst ? (
+        <>
+          {pendingReviewsSection}
+          {statsSection}
+          {secondaryGridSection}
+        </>
+      ) : (
+        <>
+          {statsSection}
+          {pendingReviewsSection}
+        </>
+      )}
     </div>
   )
 }

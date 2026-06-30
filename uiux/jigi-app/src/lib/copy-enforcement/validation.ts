@@ -1,9 +1,8 @@
 /**
- * Copy Validation Rules — PRD 07 Sprints 3–4
- * Character limits, exclusions, mandatory inclusions, legal disclaimers
+ * Copy Validation Rules — PRD 07; Sprint 5 — CCO/rule pass (compose with AI warnings via mergeCopyValidationWarnings).
  */
 
-import type { CopyDisplayFormat, ExclusionCheck, InclusionCheck } from './schema'
+import { countCopyDisplayChars, type CopyDisplayFormat, type ExclusionCheck, type InclusionCheck } from './schema'
 
 export interface CopyValidationResult {
   valid: boolean
@@ -12,12 +11,21 @@ export interface CopyValidationResult {
   exclusions_violated: boolean
 }
 
+/** Merge model + rule warnings without duplicates (AI first, then rules). */
+export function mergeCopyValidationWarnings(ai: string[], rules: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const w of [...ai, ...rules]) {
+    const t = w.trim()
+    if (!t || seen.has(t)) continue
+    seen.add(t)
+    out.push(w)
+  }
+  return out
+}
+
 /**
- * Validate copy against CCO rules.
- * - character_count within channel max_chars
- * - exclusions_check: any violated blocks approval
- * - mandatory_inclusions_check: any present: false → warning
- * - legal_disclaimers_appended when required
+ * Validate copy against CCO rules (and model flags on the normalized row).
  */
 export function validateCopy(
   copy: CopyDisplayFormat,
@@ -30,9 +38,9 @@ export function validateCopy(
 ): CopyValidationResult {
   const warnings: string[] = []
   let truncation_suggestion: string | undefined
-  let exclusions_violated = false
+  let exclusions_violated = copy.exclusions_violated === true
 
-  const charCount = copy.character_count ?? (copy.headline + copy.body + copy.cta).length
+  const charCount = copy.character_count ?? countCopyDisplayChars(copy)
   if (context.maxChars != null && charCount > context.maxChars) {
     const over = charCount - context.maxChars
     warnings.push(`Character count (${charCount}) exceeds channel limit (${context.maxChars}) by ${over} characters`)
@@ -75,6 +83,12 @@ export function validateCopy(
 
   if (context.legalDisclaimers?.length && !copy.legal_disclaimers_appended) {
     warnings.push('Legal disclaimers may be required but were not appended.')
+  }
+
+  if (copy.tone_adherence != null && copy.tone_adherence < 40) {
+    warnings.push(
+      `Tone adherence estimate is low (${copy.tone_adherence}/100). Review for brand fit.`
+    )
   }
 
   return {

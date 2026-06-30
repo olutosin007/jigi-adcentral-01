@@ -27,9 +27,11 @@ export function AppLayout() {
     }
   }, [location.pathname, isMobile])
 
+  const isCampaignDetail = /^\/app\/campaigns\/[^/]+$/.test(location.pathname)
+
   const getPageTitle = () => {
-    if (location.pathname.startsWith('/app/campaigns/')) {
-      return 'Campaign Detail'
+    if (isCampaignDetail) {
+      return ''
     }
     if (location.pathname.startsWith('/app/review/')) {
       return 'Asset Review'
@@ -50,6 +52,7 @@ export function AppLayout() {
       />
       <Header
         title={getPageTitle()}
+        hideTitle={isCampaignDetail}
         showCTAs={showCTAs}
         isMobile={isMobile}
         onMenuClick={() => setSidebarOpen(true)}

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useCampaign, useCampaignAssets, useBrand } from './useCampaignQueries'
+import { useCampaign, useCampaignAssets, useBrand, useReviewQueue } from './useCampaignQueries'
 import type { ReactNode } from 'react'
 
 const mockCampaign = {
@@ -32,7 +32,7 @@ const mockAssets = [
   },
 ]
 
-const createChain = (resolveData: unknown) => {
+const createChain = (resolveData: unknown, options?: { trackOrder?: ReturnType<typeof vi.fn> }) => {
   const chain: Record<string, unknown> = {
     select: vi.fn(function (this: typeof chain) {
       return this
@@ -40,16 +40,45 @@ const createChain = (resolveData: unknown) => {
     eq: vi.fn(function (this: typeof chain) {
       return this
     }),
-    order: vi.fn(function (this: typeof chain) {
+    in: vi.fn(function (this: typeof chain) {
+      return this
+    }),
+    order: vi.fn(function (this: typeof chain, column: string, opts: { ascending: boolean }) {
+      options?.trackOrder?.(column, opts)
       return this
     }),
     single: vi.fn(() => Promise.resolve({ data: resolveData, error: null })),
   }
   chain.select = vi.fn(() => chain)
   chain.eq = vi.fn(() => chain)
-  chain.order = vi.fn(() => Promise.resolve({ data: resolveData, error: null }))
+  chain.in = vi.fn(() => chain)
+  chain.order = vi.fn((column: string, opts: { ascending: boolean }) => {
+    options?.trackOrder?.(column, opts)
+    return Promise.resolve({ data: resolveData, error: null })
+  })
   return chain
 }
+
+const mockReviewQueueAssets = [
+  {
+    id: 'asset-old',
+    campaign_id: 'camp-old',
+    status: 'submitted',
+    updated_at: '2024-01-01T00:00:00Z',
+    created_at: '2024-01-05T00:00:00Z',
+    campaigns: { id: 'camp-old', name: 'Older Campaign', brand_id: 'brand-1', brands: { id: 'brand-1', name: 'Brand' } },
+  },
+  {
+    id: 'asset-new',
+    campaign_id: 'camp-new',
+    status: 'brand_review',
+    updated_at: '2024-01-10T00:00:00Z',
+    created_at: '2024-01-01T00:00:00Z',
+    campaigns: { id: 'camp-new', name: 'Newer Campaign', brand_id: 'brand-1', brands: { id: 'brand-1', name: 'Brand' } },
+  },
+]
+
+const reviewQueueOrderSpy = vi.fn()
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -58,9 +87,21 @@ vi.mock('@/lib/supabase', () => ({
         return createChain(mockCampaign)
       }
       if (table === 'creative_assets') {
-        const c = createChain(mockAssets)
-        delete c.single
-        return c
+        let reviewQueueQuery = false
+        const chain = createChain(mockAssets)
+        chain.in = vi.fn(() => {
+          reviewQueueQuery = true
+          return chain
+        })
+        chain.order = vi.fn((column: string, opts: { ascending: boolean }) => {
+          if (reviewQueueQuery) {
+            reviewQueueOrderSpy(column, opts)
+            return Promise.resolve({ data: mockReviewQueueAssets, error: null })
+          }
+          return Promise.resolve({ data: mockAssets, error: null })
+        })
+        delete chain.single
+        return chain
       }
       if (table === 'brands') {
         return createChain({ id: 'brand-1', name: 'Test Brand' })
@@ -131,6 +172,20 @@ describe('useCampaignQueries', () => {
         wrapper: createWrapper(),
       })
       expect(result.current.isFetching).toBe(false)
+    })
+  })
+
+  describe('useReviewQueue', () => {
+    it('orders pending assets by updated_at ascending and groups oldest campaigns first', async () => {
+      const { result } = renderHook(() => useReviewQueue(), {
+        wrapper: createWrapper(),
+      })
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(reviewQueueOrderSpy).toHaveBeenCalledWith('updated_at', { ascending: true })
+      expect(result.current.data?.[0]?.campaignName).toBe('Older Campaign')
+      expect(result.current.data?.[1]?.campaignName).toBe('Newer Campaign')
     })
   })
 })

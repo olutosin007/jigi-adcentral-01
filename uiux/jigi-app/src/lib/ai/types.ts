@@ -73,6 +73,14 @@ export interface ConceptResult {
   validation_warnings?: string[]
 }
 
+/** Optional copy variant anchoring for image prompts (Sprint 4 p2) */
+export interface CopyImageAnchor {
+  copy_asset_id?: string
+  headline?: string
+  key_message?: string
+  body_snippet?: string
+}
+
 export interface CopyResult {
   headline: string
   body: string
@@ -87,6 +95,13 @@ export interface CopyResult {
   mandatory_inclusions_check?: Array<{ requirement: string; present: boolean }>
   exclusions_check?: Array<{ exclusion: string; violated: boolean }>
   legal_disclaimers_appended?: boolean
+  /** p2 — copy suite */
+  variant_label?: string
+  variant_intent?: string
+  cta_alternates?: string[]
+  primary_text?: string
+  subject_line?: string
+  preview_text?: string
   validation_warnings?: string[]
   truncation_suggestion?: string
   exclusions_violated?: boolean
@@ -98,6 +113,10 @@ export interface ImageResult {
   url: string
   prompt_used: string
   model: string
+  /** Lineage: image generated with this copy variant as messaging anchor */
+  copy_asset_id?: string
+  copy_headline_anchor?: string
+  copy_key_message?: string
   image_provider?: 'google_imagen' | 'replicate' | 'azure_openai' | 'azure_foundry'
   image_tier?: 'draft' | 'refine' | 'final'
   routing_reason?: 'default' | 'retry' | 'quota_exhausted' | 'budget_guard'

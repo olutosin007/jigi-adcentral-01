@@ -72,7 +72,13 @@ export function Settings() {
   const handleSaveProfile = async () => {
     setIsSaving(true)
     try {
-      const result = await updateProfile({ name: nameInput || null, role: roleInput as 'admin' | 'approver' | 'reviewer' | 'creator' })
+      const payload: { name: string | null; role?: 'admin' | 'approver' | 'reviewer' | 'creator' } = {
+        name: nameInput || null,
+      }
+      if (profile?.role === 'admin') {
+        payload.role = roleInput as 'admin' | 'approver' | 'reviewer' | 'creator'
+      }
+      const result = await updateProfile(payload)
       if (result.success) {
         toast.success('Profile updated successfully')
       } else {
@@ -188,25 +194,42 @@ export function Settings() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="role">Role</Label>
-                        <Select
-                          value={roleInput}
-                          onValueChange={setRoleInput}
-                          aria-label="User role"
-                        >
-                          <SelectTrigger id="role" className="h-10 w-full sm:w-[280px]">
-                            <SelectValue placeholder="Select role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {USER_ROLES.map((role) => (
-                              <SelectItem key={role.value} value={role.value}>
-                                {role.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          {USER_ROLES.find((r) => r.value === roleInput)?.description}
-                        </p>
+                        {profile.role === 'admin' ? (
+                          <>
+                            <Select
+                              value={roleInput}
+                              onValueChange={setRoleInput}
+                              aria-label="User role"
+                            >
+                              <SelectTrigger id="role" className="h-10 w-full sm:w-[280px]">
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {USER_ROLES.map((role) => (
+                                  <SelectItem key={role.value} value={role.value}>
+                                    {role.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              {USER_ROLES.find((r) => r.value === roleInput)?.description}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <Input
+                              id="role"
+                              value={USER_ROLES.find((r) => r.value === profile.role)?.label ?? profile.role}
+                              readOnly
+                              className="h-10 w-full sm:w-[280px] bg-muted"
+                              aria-label="User role"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Role is assigned by your organisation admin.
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

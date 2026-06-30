@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Layers, FileText, Image, MoreHorizontal, Trash2, Eye, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { canSubmitAssetForReview } from '@/lib/status'
 import { DriftBadge } from './DriftBadge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -35,28 +37,33 @@ const typeGradients = {
   image: 'from-chart-3 to-chart-4',
 }
 
-const statusStyles: Record<string, { bg: string; text: string }> = {
-  draft: { bg: 'bg-muted', text: 'text-muted-foreground' },
-  agency_review: { bg: 'bg-primary/10', text: 'text-primary' },
-  submitted: { bg: 'bg-primary/10', text: 'text-primary' },
-  brand_review: { bg: 'bg-warning/10', text: 'text-warning' },
-  changes_requested: { bg: 'bg-warning/10', text: 'text-warning' },
-  approved: { bg: 'bg-success/10', text: 'text-success' },
-  rejected: { bg: 'bg-destructive/10', text: 'text-destructive' },
-}
-
 function getAssetName(asset: CreativeAsset): string {
-  const content = asset.content as any
+  const content = asset.content as unknown as Record<string, unknown>
   if (asset.type === 'concept') {
-    return content?.theme || 'Untitled Concept'
+    return (content?.theme as string) || 'Untitled Concept'
   }
   if (asset.type === 'copy') {
-    return content?.headline?.slice(0, 40) || 'Untitled Copy'
+    const h = content?.headline as string | undefined
+    return h?.slice(0, 40) || 'Untitled Copy'
   }
   if (asset.type === 'image') {
-    return content?.prompt_used?.slice(0, 40) || 'Generated Image'
+    return (content?.prompt_used as string | undefined)?.slice(0, 40) || 'Generated Image'
   }
   return 'Asset'
+}
+
+function getCopyCardMeta(asset: CreativeAsset): { chips: string[]; keySnippet?: string } {
+  if (asset.type !== 'copy') return { chips: [] }
+  const c = asset.content as unknown as Record<string, unknown>
+  const chips = [c.channel, c.deliverable_type].map((x) => (typeof x === 'string' ? x.trim() : '')).filter(Boolean)
+  const km = c.key_message_delivery
+  const keySnippet =
+    typeof km === 'string' && km.trim()
+      ? km.trim().length > 72
+        ? `${km.trim().slice(0, 72)}…`
+        : km.trim()
+      : undefined
+  return { chips, keySnippet }
 }
 
 export function AssetCard({
@@ -69,8 +76,8 @@ export function AssetCard({
 }: AssetCardProps) {
   const Icon = typeIcons[asset.type] || Layers
   const gradient = typeGradients[asset.type] || typeGradients.concept
-  const statusStyle = statusStyles[asset.status] || statusStyles.draft
   const name = getAssetName(asset)
+  const copyMeta = getCopyCardMeta(asset)
   const imageUrl = asset.type === 'image' ? (asset.content as { url?: string })?.url : null
   const [imageError, setImageError] = useState(false)
 
@@ -123,6 +130,25 @@ export function AssetCard({
           {name}
         </p>
 
+        {asset.type === 'copy' && (copyMeta.chips.length > 0 || copyMeta.keySnippet) && (
+          <div className="mb-2 space-y-1.5">
+            {copyMeta.chips.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {copyMeta.chips.map((chip) => (
+                  <Badge key={chip} variant="outline" className="text-[8px] px-1 py-0 font-normal">
+                    {chip}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {copyMeta.keySnippet && (
+              <p className="text-[10px] text-muted-foreground line-clamp-2" title={copyMeta.keySnippet}>
+                {copyMeta.keySnippet}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{asset.type}</span>
@@ -135,17 +161,26 @@ export function AssetCard({
               </Badge>
             )}
           </div>
-          <Badge variant="secondary" className={`${statusStyle.bg} ${statusStyle.text} text-[10px]`}>
-            {asset.status.replace('_', ' ')}
-          </Badge>
+          <StatusBadge status={asset.status} />
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground flex-wrap">
           <span>
             {asset.created_at && formatDistanceToNow(new Date(asset.created_at), { addSuffix: true })}
           </span>
-          
-          <DropdownMenu>
+
+          <div className="flex items-center gap-1">
+            {onSubmit && canSubmitAssetForReview(asset.status) && (
+              <Button
+                size="sm"
+                className="h-7 text-xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                onClick={onSubmit}
+              >
+                <Send className="w-3 h-3 mr-1" aria-hidden />
+                Submit
+              </Button>
+            )}
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                 <MoreHorizontal className="w-4 h-4" />
@@ -158,7 +193,7 @@ export function AssetCard({
                   View
                 </DropdownMenuItem>
               )}
-              {onSubmit && (asset.status === 'draft' || asset.status === 'agency_review') && (
+              {onSubmit && canSubmitAssetForReview(asset.status) && (
                 <DropdownMenuItem onClick={onSubmit}>
                   <Send className="w-4 h-4 mr-2" />
                   Submit for Review
@@ -174,7 +209,8 @@ export function AssetCard({
                 </>
               )}
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </div>

@@ -43,6 +43,10 @@ interface GenerateImageRequest {
     generation_timestamp?: string
   }
   prompt_hash?: string
+  copy_asset_id?: string
+  copy_headline_anchor?: string
+  copy_key_message?: string
+  copy_body_snippet?: string
 }
 
 interface ProviderExecutionResult {
@@ -258,6 +262,13 @@ export default async function handler(
       })
     }
 
+    if (body.copy_asset_id) {
+      console.info('[generate/image] copy messaging anchor', {
+        campaign_id: body.campaign_id,
+        copy_asset_id: body.copy_asset_id,
+      })
+    }
+
     const enhancedPrompt = enhancePromptWithBrand(body.prompt, body.brand_context)
     const quotaState = await loadQuotaState({
       supabaseAdmin,
@@ -414,6 +425,10 @@ export default async function handler(
         enhanced_prompt: enhancedPrompt,
         model: providerResult.modelUsed,
         concept_id: body.concept_id,
+        ...(body.copy_asset_id && { copy_asset_id: body.copy_asset_id }),
+        ...(body.copy_headline_anchor && { copy_headline_anchor: body.copy_headline_anchor }),
+        ...(body.copy_key_message && { copy_key_message: body.copy_key_message }),
+        ...(body.copy_body_snippet && { copy_body_snippet: body.copy_body_snippet }),
         aspect_ratio: aspectRatio,
         revised_prompt: providerResult.revisedPrompt,
         image_provider: selectedRoute.image_provider,

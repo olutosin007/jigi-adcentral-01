@@ -213,11 +213,15 @@ export function buildRouteChain(tier: ImageTier): RouteCandidate[] {
     })
   }
 
-  if (isPaidFallbackEnabled() && hasReplicateConfig()) {
+  // Replicate (Flux) is a first-class primary lane. Previously gated behind the
+  // paid-fallback flag; promoted so it works as the standalone workhorse once
+  // Azure lanes are decommissioned. Daily per-user/per-campaign/tier caps still
+  // bound spend.
+  if (hasReplicateConfig()) {
     chain.push({
       provider: 'replicate',
       model: getReplicateModelForTier(tier),
-      costBucket: 'paid_fallback',
+      costBucket: 'free',
     })
   }
 

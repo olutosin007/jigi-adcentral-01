@@ -46,3 +46,24 @@ export function getChannelConstraint(channelId: string): ChannelConstraint {
 export function hasChannelConstraints(channelId: string): boolean {
   return channelId in CHANNEL_CONSTRAINTS_LIBRARY && channelId !== 'other'
 }
+
+/**
+ * Single number for UI “channel guide” character budget (read-only hint).
+ * Picks the broadest applicable limit from the channel library.
+ */
+export function getPrimaryCopyBudgetChars(channelId: string | undefined): number | undefined {
+  if (!channelId?.trim()) return undefined
+  const { copy_limits: cl } = getChannelConstraint(channelId)
+  if (!cl || typeof cl !== 'object') return undefined
+  const limits = cl as Record<string, unknown>
+  const nums = [
+    limits.max_chars,
+    limits.caption_max,
+    limits.body_max,
+    limits.primary_max,
+    limits.description_max,
+    limits.optimal_chars,
+  ].filter((n): n is number => typeof n === 'number' && !Number.isNaN(n))
+  if (!nums.length) return undefined
+  return Math.max(...nums)
+}

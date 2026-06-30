@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { uploadFileToStorage, isAllowedMimeType, validateFileSize } from '@/lib/upload'
-import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ComplianceResult } from '@/lib/ai'
+import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type CopyImageAnchor, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ComplianceResult } from '@/lib/ai'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
 import type { Brand } from '@/store/brandStore'
 
@@ -90,6 +90,7 @@ interface GenerateCopyParams {
   brief: CampaignBrief
   seedIdea?: string
   format?: string
+  /** Sets `parent_asset_id` and feeds `concept_context` into the copy prompt */
   conceptAssetId?: string
   conceptContext?: Pick<ConceptResult, 'theme' | 'headlines' | 'visual_direction'>
   userId?: string
@@ -483,10 +484,11 @@ interface GenerateImageParams {
   userId?: string
   brandInclude?: BrandIncludeFlags
   channelId?: string
+  copyAnchor?: CopyImageAnchor
 }
 
 async function generateAndSaveImage(params: GenerateImageParams) {
-  const { campaignId, brandId, conceptId, visualDirection, imageTier, seedIdea, userId, brandInclude, channelId } = params
+  const { campaignId, brandId, conceptId, visualDirection, imageTier, seedIdea, userId, brandInclude, channelId, copyAnchor } = params
 
   let brandConstraints: BrandConstraints | undefined
   if (brandId) {
@@ -531,7 +533,8 @@ async function generateAndSaveImage(params: GenerateImageParams) {
     imageTier || 'draft',
     conceptId,
     brandInclude,
-    channel
+    channel,
+    copyAnchor
   )
 
   const imageData = (result.data as ImageResult[])[0]
@@ -732,7 +735,7 @@ async function fetchReviewQueue(filters?: ReviewQueueFilters): Promise<ReviewQue
       campaigns!inner(id, name, brand_id, brands(id, name))
     `)
     .in('status', ['submitted', 'brand_review'])
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: true })
 
   if (filters?.status) {
     query = query.eq('status', filters.status)
@@ -766,7 +769,11 @@ async function fetchReviewQueue(filters?: ReviewQueueFilters): Promise<ReviewQue
     grouped[campaignId].assets.push(asset as unknown as CreativeAsset)
   }
 
-  return Object.values(grouped)
+  return Object.values(grouped).sort((a, b) => {
+    const aOldest = a.assets[0]?.updated_at ?? a.assets[0]?.created_at ?? ''
+    const bOldest = b.assets[0]?.updated_at ?? b.assets[0]?.created_at ?? ''
+    return new Date(aOldest).getTime() - new Date(bOldest).getTime()
+  })
 }
 
 export function useReviewQueue(filters?: ReviewQueueFilters) {

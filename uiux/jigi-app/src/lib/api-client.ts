@@ -1,10 +1,14 @@
-import { supabase } from './supabase'
+import { useAuthStore } from '@/store/authStore'
+import { getSupabaseSessionSingleFlight } from './supabase-session'
 
 const API_BASE = '/api'
 
 async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
+  const fromStore = useAuthStore.getState().session?.access_token ?? null
+  if (fromStore) return fromStore
+
+  const { session } = await getSupabaseSessionSingleFlight()
+  return session?.access_token ?? null
 }
 
 async function apiRequest<T>(
@@ -97,6 +101,11 @@ export interface GenerateImageRequest {
   prompt_hash?: string
   /** Asset lineage (CCO version, etc.) for drift detection */
   lineage?: { cco_version?: number; bio_version?: number; generation_timestamp?: string }
+  /** Copy variant used as messaging anchor for the image prompt */
+  copy_asset_id?: string
+  copy_headline_anchor?: string
+  copy_key_message?: string
+  copy_body_snippet?: string
 }
 
 export interface GenerateImageResponse {

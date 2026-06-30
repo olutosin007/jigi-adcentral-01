@@ -108,6 +108,12 @@ export function getStatusConfig(status: string): StatusConfig {
   return STATUS_CONFIG[status as AssetStatus] || STATUS_CONFIG.draft
 }
 
+/** True when the asset can be sent into the review workflow from the UI. */
+export function canSubmitAssetForReview(status: string): boolean {
+  const transitions = getValidTransitions(status as AssetStatus)
+  return transitions.includes('submitted') || transitions.includes('agency_review')
+}
+
 export type ReviewAction = 'approve' | 'reject' | 'request_changes'
 
 export interface ReviewActionConfig {

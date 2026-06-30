@@ -27,6 +27,7 @@ import { ResetPassword } from '@/pages/auth/ResetPassword'
 import { ResetPasswordConfirm } from '@/pages/auth/ResetPasswordConfirm'
 import { OrganisationSetup } from '@/pages/setup/OrganisationSetup'
 import { JourneyChoice } from '@/pages/setup/JourneyChoice'
+import { ReviewerRoute } from '@/components/auth/ReviewerRoute'
 
 import { useAuthStore } from '@/store/authStore'
 
@@ -94,8 +95,14 @@ export function App() {
             }
           />
           
-          {/* App routes (auth temporarily disabled for development) */}
-          <Route path="/app" element={<AppLayout />}>
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute requireOrganisation>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             
@@ -114,8 +121,22 @@ export function App() {
             
             {/* Asset management & Review */}
             <Route path="approved" element={<ApprovedAssets />} />
-            <Route path="review" element={<ReviewQueue />} />
-            <Route path="review/:assetId" element={<AssetReview />} />
+            <Route
+              path="review"
+              element={
+                <ReviewerRoute>
+                  <ReviewQueue />
+                </ReviewerRoute>
+              }
+            />
+            <Route
+              path="review/:assetId"
+              element={
+                <ReviewerRoute>
+                  <AssetReview />
+                </ReviewerRoute>
+              }
+            />
             
             {/* Settings */}
             <Route path="settings" element={<Settings />} />
