@@ -228,11 +228,11 @@ CampaignDetail
 
 ### Wave 3b — Polish (follow-up PR)
 
-- [ ] **T17** — Generation history → Activity drawer (xl+)
-- [ ] **T18** — T8 journey badge on campaign header
-- [ ] **T19** — Restore JourneyChoice in setup fork
-- [ ] **T20** — Role-aware dashboard modes (creator vs reviewer home)
-- [ ] **T5/T6** — Empty states + mobile review bar (from UI-REBUILD-PLAN)
+- [x] **T17** — Generation history → Activity drawer (xl+)
+- [x] **T18** — T8 journey badge on campaign header
+- [x] **T19** — Restore JourneyChoice in setup fork
+- [x] **T20** — Role-aware dashboard modes (creator vs reviewer home)
+- [x] **T5/T6** — Empty states + mobile review bar (from UI-REBUILD-PLAN)
 
 ---
 

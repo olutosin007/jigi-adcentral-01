@@ -64,11 +64,28 @@ describe('Dashboard', () => {
     expect(pendingIndex).toBeLessThan(statsIndex)
   })
 
+  it('shows review-first CTA for reviewer even when queue is empty', () => {
+    mockPendingReview.current = 0
+    const { container } = render(<Dashboard />, { wrapper: createWrapper() })
+
+    expect(screen.getByRole('button', { name: 'Open review queue' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Quick Idea' })).not.toBeInTheDocument()
+
+    const pendingTitle = screen.getByText('Pending Your Review')
+    const activeCampaignsStat = screen.getByText('Active Campaigns')
+    const pendingIndex = Array.from(container.querySelectorAll('*')).indexOf(pendingTitle)
+    const statsIndex = Array.from(container.querySelectorAll('*')).indexOf(activeCampaignsStat)
+    expect(pendingIndex).toBeLessThan(statsIndex)
+  })
+
   it('shows recent campaigns before stats for creator role', () => {
     mockRole.current = 'creator'
     mockPendingReview.current = 0
 
     const { container } = render(<Dashboard />, { wrapper: createWrapper() })
+
+    expect(screen.getAllByRole('button', { name: 'New Campaign' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Quick Idea' })).toBeInTheDocument()
 
     const recentTitle = screen.getByText('Recent Campaigns')
     const activeCampaignsStat = screen.getByText('Active Campaigns')

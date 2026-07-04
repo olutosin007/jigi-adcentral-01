@@ -31,9 +31,13 @@ export function ReviewQueue() {
   const [statusFilter, setStatusFilter] = useState<AssetStatus | 'all'>('all')
   const [sortBy, setSortBy] = useState<string>('oldest')
 
-  const { data: queueItems = [], isLoading } = useReviewQueue(
-    statusFilter === 'all' ? undefined : { status: statusFilter }
-  )
+  const {
+    data: queueItems = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useReviewQueue(statusFilter === 'all' ? undefined : { status: statusFilter })
   const { data: recentlyReviewed = [] } = useRecentlyReviewed(user?.id || '')
 
   const sortedQueueItems = useMemo(() => {
@@ -75,6 +79,23 @@ export function ReviewQueue() {
             <Skeleton key={i} className="h-52 rounded-xl" />
           ))}
         </div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
+        <EmptyState
+          icon={Inbox}
+          title="Couldn’t load the review queue"
+          description={
+            error instanceof Error
+              ? error.message
+              : 'Check your connection or permissions, then try again.'
+          }
+          action={{ label: 'Try again', onClick: () => void refetch() }}
+        />
       </div>
     )
   }
@@ -149,12 +170,23 @@ export function ReviewQueue() {
 
         {sortedQueueItems.length === 0 ? (
           <EmptyState
-            icon={<CheckCircle2 className="h-12 w-12 text-success" />}
-            title={campaignFilter ? 'No pending assets for this campaign' : 'All caught up!'}
+            icon={<CheckCircle2 className="h-7 w-7 text-success" />}
+            title={campaignFilter ? 'No pending assets for this campaign' : 'All caught up'}
             description={
               campaignFilter
                 ? 'This campaign has no assets waiting for review right now.'
                 : 'No assets are waiting for your review.'
+            }
+            action={
+              campaignFilter
+                ? {
+                    label: 'Clear campaign filter',
+                    onClick: () => navigate('/app/review'),
+                  }
+                : {
+                    label: 'Browse campaigns',
+                    onClick: () => navigate('/app/campaigns'),
+                  }
             }
           />
         ) : (

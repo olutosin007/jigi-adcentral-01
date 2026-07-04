@@ -42,17 +42,19 @@ export function EmptyState({
         className
       )}
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
         {isReactElement(icon) ? (
           icon
         ) : (
           (() => {
             const Icon = icon as LucideIcon
-            return <Icon className="h-8 w-8 text-muted-foreground" />
+            return <Icon className="h-7 w-7 text-muted-foreground" aria-hidden />
           })()
         )}
       </div>
-      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+      <h3 className="mt-4 text-xl font-serif font-semibold tracking-tight text-foreground">
+        {title}
+      </h3>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">{description}</p>
       {(action || secondaryAction) && (
         <div className="mt-6 flex gap-3">

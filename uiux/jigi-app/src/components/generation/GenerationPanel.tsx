@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Sparkles, RefreshCw, AlertCircle, Lightbulb, FileText, Image, Wand2, ChevronDown } from 'lucide-react'
+import { Sparkles, RefreshCw, AlertCircle, Lightbulb, FileText, Image, Wand2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ConceptCard } from './ConceptCard'
 import { CopyCard } from './CopyCard'
 import { ImageCard } from './ImageCard'
@@ -430,7 +438,10 @@ export function GenerationPanel({
   ]
 
   return (
-    <div className={cn('flex h-full', embeddedInWorkspace && 'flex-col')} data-tour="generation-panel">
+    <div
+      className={cn('flex h-full', embeddedInWorkspace ? 'flex-col xl:flex-row' : '')}
+      data-tour="generation-panel"
+    >
       {/* Main Generation Area */}
       <div
         className={cn(
@@ -676,22 +687,13 @@ export function GenerationPanel({
         {activeTab === 'concepts' && !isGenerating && (
           <div>
             {concepts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Lightbulb className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No concepts yet</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Describe your campaign direction above and generate concepts to get started.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={handleGenerate}
-                >
-                  Generate concepts
-                </Button>
-              </div>
+              <EmptyState
+                icon={Lightbulb}
+                title="Generate your first concept"
+                description="Describe your campaign direction above and generate concepts to get started."
+                action={{ label: 'Generate concepts', onClick: handleGenerate }}
+                className="py-12"
+              />
             ) : (
               <>
                 <p className="text-xs text-muted-foreground mb-4">{concepts.length} concepts generated</p>
@@ -733,31 +735,25 @@ export function GenerationPanel({
         {activeTab === 'copy' && !isGenerating && (
           <div className="space-y-4">
             {copyAssets.length === 0 && concepts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileText className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No copy yet</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Generate concepts first, then select one to generate copy variants.
-                </p>
-              </div>
+              <EmptyState
+                icon={FileText}
+                title="Concepts come first"
+                description="Generate concepts first, then select one to generate copy variants."
+                action={{ label: 'Go to concepts', onClick: () => setActiveTab('concepts') }}
+                className="py-12"
+              />
             ) : copyAssets.length === 0 && concepts.length > 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileText className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No copy yet</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Select a concept above and generate copy variants.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={handleGenerate}
-                  disabled={!selectedConceptAsset}
-                >
-                  Generate copy
-                </Button>
-              </div>
+              <EmptyState
+                icon={FileText}
+                title="Generate your first copy"
+                description="Select a concept above and generate copy variants."
+                action={
+                  selectedConceptAsset
+                    ? { label: 'Generate copy', onClick: handleGenerate }
+                    : undefined
+                }
+                className="py-12"
+              />
             ) : (
               <>
             {concepts.length > 0 && (
@@ -904,48 +900,62 @@ export function GenerationPanel({
               ))}
             </div>
             {imageAssets.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Image className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No images yet</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Generate images from the prompt above or upload existing campaign visuals to review alongside AI
-                  work.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={handleOpenUpload}
-                >
-                  Upload image
-                </Button>
-              </div>
+              <EmptyState
+                icon={Image}
+                title="Generate your first image"
+                description="Generate images from the prompt above or upload existing campaign visuals."
+                action={{ label: 'Upload image', onClick: handleOpenUpload }}
+                className="py-12"
+              />
             )}
           </div>
         )}
 
         {embeddedInWorkspace && (
-          <div className="mt-6 border-t border-border pt-4">
-            <button
+          <div className="xl:hidden mt-6 border-t border-border pt-4">
+            <Button
               type="button"
-              onClick={() => setActivityOpen((open) => !open)}
-              className="flex w-full items-center justify-between text-sm font-semibold text-foreground py-2"
-              aria-expanded={activityOpen}
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setActivityOpen(true)}
             >
+              <History className="w-4 h-4" />
               Activity
-              <ChevronDown
-                className={cn('w-4 h-4 text-muted-foreground transition-transform', activityOpen && 'rotate-180')}
-              />
-            </button>
-            {activityOpen && (
-              <div className="max-h-48 overflow-y-auto pb-2">
-                <GenerationHistory campaignId={campaign.id} />
-              </div>
-            )}
+            </Button>
           </div>
         )}
       </div>
+
+      {/* Activity drawer — xl+ persistent rail */}
+      {embeddedInWorkspace && (
+        <aside
+          className="hidden xl:flex w-72 flex-shrink-0 flex-col border-l border-border bg-muted/40 overflow-hidden"
+          aria-label="Generation activity"
+        >
+          <div className="px-4 py-3 border-b border-border flex-shrink-0">
+            <h3 className="text-sm font-semibold text-foreground">Activity</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Generation history</p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3">
+            <GenerationHistory campaignId={campaign.id} hideHeading />
+          </div>
+        </aside>
+      )}
+
+      {/* Activity sheet — below xl */}
+      {embeddedInWorkspace && (
+        <Sheet open={activityOpen} onOpenChange={setActivityOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-sm p-0 gap-0">
+            <SheetHeader className="px-4 py-3 border-b border-border text-left">
+              <SheetTitle>Activity</SheetTitle>
+              <SheetDescription>Generation history for this campaign</SheetDescription>
+            </SheetHeader>
+            <div className="flex-1 overflow-y-auto p-4">
+              <GenerationHistory campaignId={campaign.id} hideHeading />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* Sidebar — standalone mode only */}
       {!embeddedInWorkspace && (

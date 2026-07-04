@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Download,
   Search,
@@ -72,6 +73,7 @@ function getContentText(asset: CreativeAsset): string {
 }
 
 export function ApprovedAssets() {
+  const navigate = useNavigate()
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -80,7 +82,13 @@ export function ApprovedAssets() {
   const [isDownloading, setIsDownloading] = useState<string | null>(null)
   const [isExportingZip, setIsExportingZip] = useState(false)
 
-  const { data: groupedAssets, isLoading } = useApprovedAssets()
+  const {
+    data: groupedAssets,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useApprovedAssets()
 
   const filteredGroups = useMemo(() => {
     if (!groupedAssets) return []
@@ -209,12 +217,29 @@ export function ApprovedAssets() {
     )
   }
 
+  if (isError) {
+    return (
+      <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
+        <EmptyState
+          icon={FolderOpen}
+          title="Couldn’t load approved assets"
+          description={
+            error instanceof Error
+              ? error.message
+              : 'Check your connection and try again.'
+          }
+          action={{ label: 'Try again', onClick: () => void refetch() }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6" data-tour="approved-assets">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Approved Assets</h1>
+          <h1 className="text-2xl font-serif font-semibold tracking-tight">Approved Assets</h1>
           <p className="text-muted-foreground">
             {totalAssets} approved asset{totalAssets !== 1 ? 's' : ''} ready for use
           </p>
@@ -295,12 +320,17 @@ export function ApprovedAssets() {
       {/* Empty State */}
       {totalAssets === 0 && (
         <EmptyState
-          icon={<CheckCircle className="h-12 w-12 text-primary" />}
+          icon={<CheckCircle className="h-7 w-7 text-primary" />}
           title={searchQuery ? 'No assets found' : 'No approved assets yet'}
           description={
             searchQuery
               ? 'No assets match your search. Try a different term.'
               : "Assets will appear here once they've been approved in the review queue."
+          }
+          action={
+            searchQuery
+              ? { label: 'Clear search', onClick: () => setSearchQuery('') }
+              : { label: 'Browse campaigns', onClick: () => navigate('/app/campaigns') }
           }
         />
       )}
