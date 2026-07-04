@@ -113,7 +113,7 @@ Every design decision should reinforce clarity (what needs my action?), trust (a
 | Screen | Pattern |
 |--------|---------|
 | Dashboard | Stat row + 2-column widgets (pending reviews prominent) |
-| Campaign detail | Sticky sub-nav (Brief / Generated / Assets); generation panel full height |
+| Campaign detail | Pipeline rail (Brief → Concepts → Copy → Images → All assets) + brief snippet bar; stage canvas full height |
 | Review queue | Campaign-grouped cards; amber pending badge |
 | Asset review | 3-column: optional queue strip \| asset preview \| details + actions |
 | Approved library | Dense grid with status=approved only; download affordance clear |
@@ -164,6 +164,6 @@ Every design decision should reinforce clarity (what needs my action?), trust (a
 | Fonts | `index.html` or font loader, `@theme` in globals |
 | Status badges | `src/lib/status.ts` + shared `StatusBadge` component |
 | Review layout | `src/pages/AssetReview.tsx`, `src/components/review/*` |
-| Campaign detail tabs | `src/pages/CampaignDetail.tsx`, `GenerationPanel.tsx` |
+| Campaign workspace | `src/pages/CampaignDetail.tsx`, `src/components/campaign/*`, `GenerationPanel.tsx` |
 
 **Next gstack steps:** `/plan-design-review` to audit existing screens against this doc; `/autoplan` for phased rebuild; `/design-html` for Pretext-native HTML prototypes of key screens.

@@ -27,7 +27,7 @@ export function BriefSnippetBar({
 
   return (
     <section
-      className="flex flex-wrap items-center gap-x-5 gap-y-2 px-6 md:px-8 py-3 bg-muted/60 border-b border-border text-sm"
+      className="flex flex-wrap items-center gap-x-5 gap-y-2 px-6 md:px-8 py-3 bg-muted border-b border-border text-[13px]"
       aria-label="Campaign brief summary"
     >
       <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">

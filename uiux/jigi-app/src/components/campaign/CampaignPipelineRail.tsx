@@ -16,7 +16,7 @@ export function CampaignPipelineRail({ activeStage, onStageChange }: CampaignPip
 
   return (
     <nav
-      className="flex md:flex-col gap-1 md:w-[212px] md:flex-shrink-0 md:border-r md:border-border md:bg-muted/50 md:p-3 overflow-x-auto md:overflow-y-auto scrollbar-thin"
+      className="flex md:flex-col gap-0.5 md:w-[212px] md:flex-shrink-0 md:border-r md:border-border md:bg-muted md:px-2.5 md:py-4 overflow-x-auto md:overflow-y-auto scrollbar-thin"
       aria-label="Creative pipeline"
     >
       {mainStages.map((item) => {
@@ -29,9 +29,9 @@ export function CampaignPipelineRail({ activeStage, onStageChange }: CampaignPip
             onClick={() => onStageChange(item.id)}
             aria-current={isActive ? 'step' : undefined}
             className={cn(
-              'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap md:whitespace-normal text-left transition-colors min-h-[44px] md:min-h-0',
-              isActive && 'bg-card text-foreground border border-border shadow-sm',
-              !isActive && !isDone && 'text-muted-foreground hover:bg-card/80 hover:text-foreground',
+              'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium whitespace-nowrap md:whitespace-normal text-left transition-colors min-h-[44px] md:min-h-0',
+              isActive && 'bg-card text-foreground border border-border font-semibold shadow-sm',
+              !isActive && !isDone && 'text-muted-foreground hover:bg-card hover:text-foreground',
               isDone && !isActive && 'text-success'
             )}
           >
@@ -56,10 +56,10 @@ export function CampaignPipelineRail({ activeStage, onStageChange }: CampaignPip
             onClick={() => onStageChange(assetsStage.id)}
             aria-current={activeStage === assetsStage.id ? 'step' : undefined}
             className={cn(
-              'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap md:whitespace-normal text-left transition-colors min-h-[44px] md:min-h-0',
+              'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[13px] font-medium whitespace-nowrap md:whitespace-normal text-left transition-colors min-h-[44px] md:min-h-0',
               activeStage === assetsStage.id
-                ? 'bg-card text-foreground border border-border shadow-sm'
-                : 'text-muted-foreground hover:bg-card/80 hover:text-foreground'
+                ? 'bg-card text-foreground border border-border font-semibold shadow-sm'
+                : 'text-muted-foreground hover:bg-card hover:text-foreground'
             )}
           >
             <span

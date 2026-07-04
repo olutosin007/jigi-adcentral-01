@@ -462,6 +462,12 @@ export function GenerationPanel({
           </div>
         )}
 
+        {embeddedInWorkspace && (
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            {activeTab === 'concepts' ? 'Concepts' : activeTab === 'copy' ? 'Copy' : 'Images'}
+          </p>
+        )}
+
         {activeTab === 'copy' && selectedConceptAsset && (
           <div
             className="mb-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm"
@@ -483,7 +489,7 @@ export function GenerationPanel({
         )}
 
         {/* Prompt Input */}
-        <div className="bg-background rounded-xl border border-border p-4 mb-6 shadow-sm">
+        <div className="bg-card rounded-[10px] border border-border p-3.5 mb-6 shadow-sm">
           <div className="flex items-start gap-3">
             <Textarea
               id="generation-prompt"
@@ -492,13 +498,13 @@ export function GenerationPanel({
               onChange={(e) => setPrompt(e.target.value)}
               placeholder={
                 activeTab === 'concepts'
-                  ? 'Describe your campaign direction, target audience, and key themes...'
+                  ? 'Describe your campaign direction, target audience, and key themes…'
                   : activeTab === 'copy'
-                  ? 'Describe the tone, message, and format for your copy...'
-                  : 'Describe the visual style, subject, and mood for your image...'
+                  ? 'Describe the tone, message, and format for your copy…'
+                  : 'Describe the visual style, subject, and mood for your image…'
               }
               rows={2}
-              className="flex-1 border-0 focus-visible:ring-0 resize-none"
+              className="flex-1 border-0 focus-visible:ring-0 resize-none font-mono text-[13px]"
             />
             <div className="flex flex-col items-end gap-2">
               {activeTab === 'images' && (
@@ -531,7 +537,7 @@ export function GenerationPanel({
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 {isGenerating
-                  ? 'Generating...'
+                  ? 'Generating…'
                   : `Generate ${activeTab === 'images' ? 'Image' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
               </Button>
               <Button
@@ -615,7 +621,7 @@ export function GenerationPanel({
                   Dismiss
                 </Button>
               </div>
-              <div className="rounded-lg bg-muted p-3 text-sm text-foreground max-h-32 overflow-y-auto mb-3">
+              <div className="rounded-md bg-muted p-3 text-[13px] font-mono text-foreground max-h-32 overflow-y-auto mb-3">
                 {refinedPrompt}
               </div>
               <Button

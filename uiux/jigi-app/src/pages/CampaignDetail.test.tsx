@@ -97,6 +97,21 @@ describe('CampaignDetail page', () => {
     expect(screen.getByRole('heading', { name: 'Test Campaign' })).toBeInTheDocument()
   })
 
+  it('shows brand-grounded journey badge and primary generate CTA', () => {
+    render(<CampaignDetail />, { wrapper: createWrapper() })
+    expect(screen.getByText('Brand-grounded')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Generate concepts' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Brief' })).not.toBeInTheDocument()
+  })
+
+  it('shows idea-first badge when journey_mode is idea_first', () => {
+    mockCampaign.journey_mode = 'idea_first'
+    render(<CampaignDetail />, { wrapper: createWrapper() })
+    expect(screen.getByText('Idea-first')).toBeInTheDocument()
+    expect(screen.queryByText('Brand-grounded')).not.toBeInTheDocument()
+    mockCampaign.journey_mode = 'brand_first'
+  })
+
   it('renders pipeline rail instead of legacy tabs', () => {
     render(<CampaignDetail />, { wrapper: createWrapper() })
     expect(screen.getByRole('navigation', { name: 'Creative pipeline' })).toBeInTheDocument()

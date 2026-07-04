@@ -3,7 +3,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
-  Pencil,
   Loader2,
   Building2,
   Lightbulb,
@@ -48,10 +47,21 @@ import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
 import type { CreativeAsset } from '@/store/campaignStore'
 
 const statusStyles: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  active: 'bg-success/10 text-success',
-  completed: 'bg-primary/10 text-primary',
-  archived: 'bg-amber-100 text-amber-800',
+  draft: 'bg-muted text-muted-foreground border-border',
+  active: 'bg-success/10 text-success border-success/20',
+  completed: 'bg-primary/10 text-primary border-primary/20',
+  archived: 'bg-muted text-muted-foreground border-border',
+}
+
+const STAGE_PRIMARY_CTA: Record<
+  PipelineStage,
+  { label: string; stage: PipelineStage }
+> = {
+  brief: { label: 'Generate concepts', stage: 'concepts' },
+  concepts: { label: 'Generate concepts', stage: 'concepts' },
+  copy: { label: 'Generate copy', stage: 'copy' },
+  images: { label: 'Generate images', stage: 'images' },
+  assets: { label: 'Generate concepts', stage: 'concepts' },
 }
 
 function getAssetDisplayName(asset: CreativeAsset): string {
@@ -277,26 +287,28 @@ export function CampaignDetail() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)]">
-      {/* Campaign Header */}
-      <div className="bg-background border-b border-border px-6 md:px-8 py-5 flex-shrink-0">
-        <nav className="flex items-center gap-2 mb-4" aria-label="Breadcrumb">
+      {/* Campaign Header — page owns chrome (no AppLayout title) */}
+      <div className="bg-background border-b border-border px-6 md:px-8 pt-5 pb-4 flex-shrink-0">
+        <nav className="flex items-center gap-2 mb-2" aria-label="Breadcrumb">
           <button
             onClick={goBack}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Campaigns
           </button>
-          <span className="text-muted-foreground/50">/</span>
-          <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
+          <span className="text-muted-foreground/50 text-xs">/</span>
+          <span className="text-xs font-medium text-foreground truncate max-w-[200px]">
             {campaign.name}
           </span>
         </nav>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-xl font-serif font-semibold text-foreground mb-2">{campaign.name}</h1>
-            <div className="flex items-center gap-4 flex-wrap text-sm">
+            <h1 className="text-2xl font-serif font-semibold tracking-tight text-foreground">
+              {campaign.name}
+            </h1>
+            <div className="flex items-center gap-2.5 flex-wrap text-[13px] mt-2">
               <span className="text-muted-foreground">
                 Last updated {formatDistanceToNow(new Date(campaign.updated_at), { addSuffix: true })}
               </span>
@@ -308,13 +320,20 @@ export function CampaignDetail() {
               ) : (
                 <span className="text-muted-foreground italic">No brand attached</span>
               )}
-              {campaign.journey_mode === 'idea_first' && (
+              {campaign.journey_mode === 'idea_first' ? (
                 <Badge
                   variant="secondary"
-                  className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 text-[10px]"
+                  className="bg-[#FEF3C7] text-[#D97706] dark:bg-[#422006] dark:text-[#FBBF24] border-transparent text-[10px] font-semibold"
                 >
                   <Lightbulb className="w-3 h-3 mr-1" />
                   Idea-first
+                </Badge>
+              ) : (
+                <Badge
+                  variant="secondary"
+                  className="bg-primary/10 text-primary border-transparent text-[10px] font-semibold"
+                >
+                  Brand-grounded
                 </Badge>
               )}
               <span className="text-muted-foreground">
@@ -323,44 +342,52 @@ export function CampaignDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={startBriefEdit}>
-              <Pencil className="w-3.5 h-3.5 mr-1" />
-              Edit Brief
-            </Button>
             {campaign.status === 'archived' ? (
-              <Button variant="outline" size="sm" onClick={handleUnarchive} disabled={isArchiving}>
+              <Button variant="ghost" size="sm" onClick={handleUnarchive} disabled={isArchiving}>
                 {isArchiving ? (
                   <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
                 ) : (
                   <ArchiveRestore className="w-3.5 h-3.5 mr-1" />
                 )}
-                {isArchiving ? 'Unarchiving...' : 'Unarchive'}
+                {isArchiving ? 'Unarchiving…' : 'Unarchive'}
               </Button>
             ) : (
-              <Button variant="outline" size="sm" onClick={handleArchive} disabled={isArchiving}>
+              <Button variant="ghost" size="sm" onClick={handleArchive} disabled={isArchiving}>
                 {isArchiving ? (
                   <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
                 ) : (
                   <Archive className="w-3.5 h-3.5 mr-1" />
                 )}
-                {isArchiving ? 'Archiving...' : 'Archive'}
+                {isArchiving ? 'Archiving…' : 'Archive'}
               </Button>
             )}
             {campaign.status === 'draft' && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setShowDeleteDialog(true)}
-                className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:border-destructive"
+                className="text-destructive hover:bg-destructive/10"
                 aria-label="Delete campaign"
               >
                 <Trash2 className="w-3.5 h-3.5 mr-1" />
                 Delete
               </Button>
             )}
-            <Badge className={statusStyles[campaign.status] || statusStyles.draft}>
+            <Badge
+              variant="outline"
+              className={statusStyles[campaign.status] || statusStyles.draft}
+            >
               {campaign.status}
             </Badge>
+            <Button
+              size="sm"
+              onClick={() => {
+                const cta = STAGE_PRIMARY_CTA[stage]
+                if (cta.stage !== stage) setStage(cta.stage)
+              }}
+            >
+              {STAGE_PRIMARY_CTA[stage].label}
+            </Button>
           </div>
         </div>
       </div>
@@ -369,7 +396,7 @@ export function CampaignDetail() {
         objective={brief.objective}
         audience={brief.audience}
         channels={brief.channels}
-        onEditBrief={() => setStage('brief')}
+        onEditBrief={startBriefEdit}
         hidden={stage === 'brief'}
       />
 
