@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { getSupabaseSessionSingleFlight } from '@/lib/supabase-session'
+import { isEmailAllowed, authAllowlistDeniedMessage } from '@/lib/auth-allowlist'
 
 /**
  * React Strict Mode mounts effects twice; without this, `initialize()` runs twice and registers
@@ -33,6 +34,7 @@ interface AuthState {
   initialize: () => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>
   updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>
@@ -68,6 +70,12 @@ export const useAuthStore = create<AuthState>()(
             }
 
             if (session) {
+              const email = session.user.email
+              if (!isEmailAllowed(email)) {
+                await supabase.auth.signOut()
+                set({ isLoading: false, isInitialized: true, session: null, user: null, profile: null })
+                return
+              }
               set({ session, user: session.user, isLoading: false, isInitialized: true })
               get().fetchProfile().catch((err) => console.error('Background profile fetch:', err))
             } else {
@@ -75,7 +83,12 @@ export const useAuthStore = create<AuthState>()(
             }
 
             if (!authStateSubscription) {
-              const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+              const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+                if (session?.user?.email && !isEmailAllowed(session.user.email)) {
+                  await supabase.auth.signOut()
+                  set({ session: null, user: null, profile: null })
+                  return
+                }
                 set({ session, user: session?.user ?? null })
 
                 if (event === 'SIGNED_IN' && session) {
@@ -98,6 +111,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signUp: async (email, password, name) => {
+        if (!isEmailAllowed(email)) {
+          return { success: false, error: authAllowlistDeniedMessage() }
+        }
+
         set({ isLoading: true, error: null })
         
         try {
@@ -128,6 +145,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signIn: async (email, password) => {
+        if (!isEmailAllowed(email)) {
+          return { success: false, error: authAllowlistDeniedMessage() }
+        }
+
         set({ isLoading: true, error: null })
         
         try {
@@ -148,6 +169,26 @@ export const useAuthStore = create<AuthState>()(
           return { success: true }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Sign in failed'
+          set({ isLoading: false, error: message })
+          return { success: false, error: message }
+        }
+      },
+
+      signInWithGoogle: async () => {
+        set({ isLoading: true, error: null })
+        try {
+          const redirectTo = `${window.location.origin}/auth/callback`
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo },
+          })
+          if (error) {
+            set({ isLoading: false, error: error.message })
+            return { success: false, error: error.message }
+          }
+          return { success: true }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Google sign-in failed'
           set({ isLoading: false, error: message })
           return { success: false, error: message }
         }

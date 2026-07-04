@@ -8,7 +8,6 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
   FormControl,
@@ -19,6 +18,7 @@ import {
 } from '@/components/ui/form'
 import { useAuthStore } from '@/store/authStore'
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 
 export function Login() {
   const navigate = useNavigate()
@@ -106,16 +106,7 @@ export function Login() {
             )}
           />
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Checkbox id="remember" />
-              <label
-                htmlFor="remember"
-                className="text-sm text-muted-foreground cursor-pointer"
-              >
-                Remember me
-              </label>
-            </div>
+          <div className="flex items-center justify-end">
             <Link
               to="/reset-password"
               className="text-sm font-medium text-primary hover:text-primary/90 hover:underline transition-colors"
@@ -150,9 +141,7 @@ export function Login() {
         </div>
       </div>
 
-      <Button variant="outline" className="w-full" disabled>
-        Continue with Google
-      </Button>
+      <GoogleSignInButton />
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don't have an account?{' '}

@@ -55,7 +55,7 @@ export function CommentsSidebar({
   const resolvedCount = comments.filter((c) => c.resolved).length
 
   return (
-    <div className="flex flex-col h-full bg-background border-l">
+    <div className="flex flex-col h-full bg-background border-l" data-tour="comments-sidebar">
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />

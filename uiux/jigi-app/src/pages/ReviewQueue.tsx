@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Filter, Inbox, CheckCircle2, Clock, ArrowUpDown, Image as ImageIcon, FileText, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,6 +25,8 @@ const SORT_OPTIONS = [
 
 export function ReviewQueue() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const campaignFilter = searchParams.get('campaign')
   const { user } = useAuthStore()
   const [statusFilter, setStatusFilter] = useState<AssetStatus | 'all'>('all')
   const [sortBy, setSortBy] = useState<string>('oldest')
@@ -35,22 +37,24 @@ export function ReviewQueue() {
   const { data: recentlyReviewed = [] } = useRecentlyReviewed(user?.id || '')
 
   const sortedQueueItems = useMemo(() => {
-    if (sortBy === 'campaign') {
-      return [...queueItems].sort((a, b) => a.campaignName.localeCompare(b.campaignName))
+    let items = queueItems
+    if (campaignFilter) {
+      items = items.filter((item) => item.campaignId === campaignFilter)
     }
-    return [...queueItems].sort((a, b) => {
+    if (sortBy === 'campaign') {
+      return [...items].sort((a, b) => a.campaignName.localeCompare(b.campaignName))
+    }
+    return [...items].sort((a, b) => {
       const oldestA = a.assets[a.assets.length - 1]?.created_at ?? ''
       const oldestB = b.assets[b.assets.length - 1]?.created_at ?? ''
       return new Date(oldestA).getTime() - new Date(oldestB).getTime()
     })
-  }, [queueItems, sortBy])
+  }, [queueItems, sortBy, campaignFilter])
 
-  const totalPending = queueItems.reduce((sum, item) => sum + item.assetCount, 0)
+  const totalPending = sortedQueueItems.reduce((sum, item) => sum + item.assetCount, 0)
 
-  const handleStartReview = (item: ReviewQueueItem) => {
-    if (item.assets.length > 0) {
-      navigate(`/app/review/${item.assets[0].id}`)
-    }
+  const handleReviewAsset = (assetId: string) => {
+    navigate(`/app/review/${assetId}`)
   }
 
   if (isLoading) {
@@ -76,7 +80,7 @@ export function ReviewQueue() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-8">
+    <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-8" data-tour="review-queue">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -90,6 +94,15 @@ export function ReviewQueue() {
           <span>{totalPending} pending review</span>
         </div>
       </div>
+
+      {campaignFilter && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+          <span className="text-foreground">Showing pending assets for one campaign.</span>
+          <Link to="/app/review" className="font-medium text-primary hover:underline">
+            Show all campaigns
+          </Link>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
@@ -134,11 +147,15 @@ export function ReviewQueue() {
           Pending Your Review
         </h2>
 
-        {queueItems.length === 0 ? (
+        {sortedQueueItems.length === 0 ? (
           <EmptyState
             icon={<CheckCircle2 className="h-12 w-12 text-success" />}
-            title="All caught up!"
-            description="No assets are waiting for your review."
+            title={campaignFilter ? 'No pending assets for this campaign' : 'All caught up!'}
+            description={
+              campaignFilter
+                ? 'This campaign has no assets waiting for review right now.'
+                : 'No assets are waiting for your review.'
+            }
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -146,7 +163,10 @@ export function ReviewQueue() {
               <ReviewQueueCard
                 key={item.campaignId}
                 item={item}
-                onStartReview={() => handleStartReview(item)}
+                onStartReview={() => {
+                  if (item.assets.length > 0) handleReviewAsset(item.assets[0].id)
+                }}
+                onReviewAsset={handleReviewAsset}
               />
             ))}
           </div>
@@ -175,7 +195,13 @@ export function ReviewQueue() {
                 <Card
                   key={asset.id}
                   className="cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-200 border-border rounded-xl"
-                  onClick={() => navigate(`/app/review/${asset.id}`)}
+                  onClick={() => {
+                    if (asset.status === 'approved' || asset.status === 'rejected') {
+                      navigate(`/app/campaigns/${asset.campaign_id}?stage=assets`)
+                    } else {
+                      handleReviewAsset(asset.id)
+                    }
+                  }}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2">
@@ -211,9 +237,10 @@ export function ReviewQueue() {
 interface ReviewQueueCardProps {
   item: ReviewQueueItem
   onStartReview: () => void
+  onReviewAsset: (assetId: string) => void
 }
 
-function ReviewQueueCard({ item, onStartReview }: ReviewQueueCardProps) {
+function ReviewQueueCard({ item, onStartReview, onReviewAsset }: ReviewQueueCardProps) {
   const assetTypes = item.assets.reduce((acc, asset) => {
     acc[asset.type] = (acc[asset.type] || 0) + 1
     return acc
@@ -244,10 +271,13 @@ function ReviewQueueCard({ item, onStartReview }: ReviewQueueCardProps) {
         {/* Asset Previews */}
         <div className="flex gap-2">
           {previewAssets.map((asset, idx) => (
-            <div
+            <button
               key={asset.id}
-              className="w-16 h-16 rounded-lg bg-muted border border-border flex items-center justify-center overflow-hidden"
+              type="button"
+              onClick={() => onReviewAsset(asset.id)}
+              className="w-16 h-16 rounded-lg bg-muted border border-border flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
               style={{ opacity: 1 - idx * 0.15 }}
+              aria-label={`Review ${asset.type} asset`}
             >
               {asset.type === 'image' && (asset.content as { url?: string })?.url ? (
                 <img
@@ -260,7 +290,7 @@ function ReviewQueueCard({ item, onStartReview }: ReviewQueueCardProps) {
                   {asset.type}
                 </span>
               )}
-            </div>
+            </button>
           ))}
           {item.assetCount > 3 && (
             <div className="w-16 h-16 rounded-lg bg-muted border border-border flex items-center justify-center">

@@ -32,6 +32,7 @@ interface BrandDbRow {
     colours?: Array<{ hex?: string; role?: string }> | { primary?: string; secondary?: string; accent?: string }
     fonts?: { heading?: string; body?: string }
     logo_url?: string
+    visual_style?: string
   }
   voice?: {
     tone?: string[]
@@ -81,7 +82,10 @@ export function buildBioFromBrand(brand: BrandDbRow | null): BioContext | null {
         secondary: secondaryColour,
       },
       typography,
-      photography_style: undefined,
+      visual_style: identity?.visual_style || undefined,
+      // Bridge to the existing template placeholder so brand art-direction shows
+      // up even before dedicated photography/illustration fields exist.
+      photography_style: identity?.visual_style || undefined,
       illustration_style: undefined,
       logo_rules: identity?.logo_url ? 'Include brand logo placement where appropriate' : undefined,
     },

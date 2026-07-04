@@ -215,6 +215,11 @@ export function GenerationPanel({
   }, [copyAssets, imageCopyAnchorId])
 
   const handleGenerate = async () => {
+    if (!userId) {
+      toast.error('Session still loading — wait a moment and try again.')
+      return
+    }
+
     const brief = {
       ...campaign.brief,
       objective: prompt || campaign.brief?.objective || campaign.seed_idea,
@@ -425,7 +430,7 @@ export function GenerationPanel({
   ]
 
   return (
-    <div className={cn('flex h-full', embeddedInWorkspace && 'flex-col')}>
+    <div className={cn('flex h-full', embeddedInWorkspace && 'flex-col')} data-tour="generation-panel">
       {/* Main Generation Area */}
       <div
         className={cn(
@@ -521,7 +526,7 @@ export function GenerationPanel({
               )}
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || (activeTab === 'copy' && !selectedConceptAsset)}
+                disabled={isGenerating || !userId || (activeTab === 'copy' && !selectedConceptAsset)}
                 className="flex-shrink-0"
               >
                 <Sparkles className="w-4 h-4 mr-2" />

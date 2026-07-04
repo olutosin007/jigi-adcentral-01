@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/store/authStore'
 import { uploadFileToStorage, isAllowedMimeType, validateFileSize } from '@/lib/upload'
 import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type CopyImageAnchor, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ComplianceResult } from '@/lib/ai'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
@@ -96,8 +97,20 @@ interface GenerateCopyParams {
   userId?: string
 }
 
+async function resolveActorUserId(explicitUserId?: string): Promise<string> {
+  if (explicitUserId) return explicitUserId
+  const fromStore = useAuthStore.getState().user?.id
+  if (fromStore) return fromStore
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user?.id) {
+    throw new Error('You must be signed in to generate creative.')
+  }
+  return data.user.id
+}
+
 async function generateAndSaveConcepts(params: GenerateConceptsParams) {
-  const { campaignId, brandId, brief, seedIdea, userId } = params
+  const { campaignId, brandId, brief, seedIdea, userId: explicitUserId } = params
+  const userId = await resolveActorUserId(explicitUserId)
 
   let brandConstraints: BrandConstraints | undefined
   if (brandId) {
@@ -113,6 +126,7 @@ async function generateAndSaveConcepts(params: GenerateConceptsParams) {
             heading: brand.identity?.fonts?.heading || 'Inter',
             body: brand.identity?.fonts?.body || 'Inter',
           },
+          visual_style: brand.identity?.visual_style,
           logo_url: brand.identity?.logo_url,
         },
         voice: {
@@ -144,6 +158,19 @@ async function generateAndSaveConcepts(params: GenerateConceptsParams) {
   )
 
   const concepts = result.data as ConceptResult[]
+
+  if (concepts.length === 0) {
+    throw new Error('No concepts were returned. Please try again.')
+  }
+
+  const serverSaved = result.metadata?.saved_assets as CreativeAsset[] | undefined
+  if (serverSaved && serverSaved.length > 0) {
+    return {
+      concepts,
+      assets: serverSaved,
+      metadata: result.metadata,
+    }
+  }
 
   const lineage = result.metadata?.lineage
   const promptHash = result.metadata?.prompt_hash
@@ -200,6 +227,7 @@ async function generateAndSaveCopy(params: GenerateCopyParams) {
             heading: brand.identity?.fonts?.heading || 'Inter',
             body: brand.identity?.fonts?.body || 'Inter',
           },
+          visual_style: brand.identity?.visual_style,
         },
         voice: {
           tone: brand.voice?.tone || [],
@@ -504,6 +532,7 @@ async function generateAndSaveImage(params: GenerateImageParams) {
             heading: brand.identity?.fonts?.heading || 'Inter',
             body: brand.identity?.fonts?.body || 'Inter',
           },
+          visual_style: brand.identity?.visual_style,
           logo_url: brand.identity?.logo_url,
         },
         voice: {

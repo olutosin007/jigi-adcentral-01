@@ -12,6 +12,8 @@ export interface BioContext {
   visual_identity?: {
     colours?: { primary?: string; secondary?: string }
     typography?: string
+    /** Brand art-direction guidance (mood, lighting, composition). */
+    visual_style?: string
     photography_style?: string
     illustration_style?: string
     logo_rules?: string

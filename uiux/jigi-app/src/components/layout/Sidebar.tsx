@@ -16,6 +16,7 @@ import type { ComponentType } from 'react'
 import { useRecentCampaigns, useDashboardStats } from '@/hooks/useDashboardQueries'
 import { useAuthStore } from '@/store/authStore'
 import { isReviewerRole } from '@/lib/roles'
+import { useEffectiveRole } from '@/hooks/useEffectiveRole'
 import { useAppStore } from '@/store'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -90,19 +91,20 @@ interface SidebarContentProps {
 function SidebarContent({ collapsed = false, onNavigate, onToggle }: SidebarContentProps) {
   const location = useLocation()
   const { user, profile } = useAuthStore()
+  const effectiveRole = useEffectiveRole()
   const { data: recentCampaignsData, isLoading: recentLoading } = useRecentCampaigns(5)
   const { data: dashboardStats } = useDashboardStats(user?.id ?? '')
 
   const displayName =
     profile?.name ?? user?.user_metadata?.full_name ?? (user?.email?.split('@')[0] || 'User')
-  const roleLabel = getRoleLabel(profile?.role)
+  const roleLabel = getRoleLabel(effectiveRole ?? undefined)
 
   const visibleNavSections = useMemo(
     () =>
       navSections.filter(
-        (section) => section.title !== 'Review' || isReviewerRole(profile?.role)
+        (section) => section.title !== 'Review' || isReviewerRole(effectiveRole)
       ),
-    [profile?.role]
+    [effectiveRole]
   )
 
   const isActive = (href: string) => {
@@ -202,7 +204,7 @@ function SidebarContent({ collapsed = false, onNavigate, onToggle }: SidebarCont
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin" data-tour="sidebar-nav">
         <TooltipProvider delayDuration={0}>
           {visibleNavSections.map((section, sectionIdx) => (
             <div

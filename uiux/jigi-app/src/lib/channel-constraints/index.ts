@@ -9,4 +9,6 @@ export {
   getChannelConstraint,
   hasChannelConstraints,
   getPrimaryCopyBudgetChars,
+  getCopyPromptBudget,
 } from './services'
+export type { CopyPromptBudget } from './services'

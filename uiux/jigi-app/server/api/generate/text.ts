@@ -11,6 +11,7 @@ process.once('unhandledRejection', (reason) => {
 import { createChatCompletion, getLlmModelName, type ChatMessage } from '../lib/llm.js'
 import { ensureDatabaseContract } from '../lib/schema-contract.js'
 import { COPY_PROMPT_REVISION } from '../lib/copy-prompt-revision.js'
+import { saveConceptAssets } from '../lib/save-generated-assets.js'
 
 /** compliance: on-demand brand check only; no automatic post-copy trigger (p2 Sprint 5). */
 type GenerationType = 'concept' | 'copy' | 'compliance' | 'image_prompt_refine'
@@ -317,12 +318,37 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
       copy_prompt_revision: body.type === 'copy' ? COPY_PROMPT_REVISION : null,
     })
 
+    let savedAssets: Record<string, unknown>[] | undefined
+    if (body.type === 'concept') {
+      const concepts = (parsedContent.concepts as Record<string, unknown>[] | undefined) ?? []
+      if (concepts.length === 0) {
+        return res.status(502).json({
+          error: 'Model returned no concepts. Please try again.',
+        })
+      }
+
+      await supabaseAdmin
+        .from('campaigns')
+        .update({ created_by: user.id })
+        .eq('id', body.campaign_id)
+        .is('created_by', null)
+
+      savedAssets = await saveConceptAssets(supabaseAdmin, {
+        campaignId: body.campaign_id,
+        userId: user.id,
+        generationMode: body.brand_id ? 'brand_grounded' : 'idea_first',
+        concepts,
+        promptHash: body.prompt_hash ?? null,
+      })
+    }
+
     return res.json({
       content: parsedContent,
       type: body.type,
       model,
       latency_ms: latencyMs,
       tokens_used: usage.prompt_tokens + usage.completion_tokens,
+      saved_assets: savedAssets,
     })
   } catch (error) {
     const latencyMs = Date.now() - startTime

@@ -48,18 +48,29 @@ export function Dashboard() {
   const greeting = getGreeting()
   const todayDate = format(new Date(), 'EEEE, d MMMM')
   const pendingCount = stats?.pendingReview ?? 0
-  const reviewerFirst = isReviewerRole(profile?.role) && pendingCount > 0
+  const isReviewer = isReviewerRole(profile?.role)
+  const isCreator = !isReviewer
+  const reviewerFirst = isReviewer && pendingCount > 0
+
+  const recentCampaignsProminent = isCreator ? (
+    <div
+      className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
+      style={{ animationDelay: '150ms' }}
+    >
+      <RecentCampaignsWidget campaigns={recentCampaigns} isLoading={campaignsLoading} />
+    </div>
+  ) : null
 
   const pendingReviewsSection = (
     <div
       className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
-      style={{ animationDelay: reviewerFirst ? '150ms' : '225ms' }}
+      style={{ animationDelay: reviewerFirst ? '150ms' : isCreator ? '300ms' : '225ms' }}
     >
       <div className={reviewerFirst ? '' : 'grid grid-cols-1 lg:grid-cols-3 gap-6'}>
         <div className={reviewerFirst ? '' : 'lg:col-span-2'}>
           <PendingReviewsWidget reviews={pendingReviews} isLoading={pendingLoading} />
         </div>
-        {!reviewerFirst && (
+        {!reviewerFirst && !isCreator && (
           <div className="space-y-6">
             <RecentCampaignsWidget campaigns={recentCampaigns} isLoading={campaignsLoading} />
             <GenerationMixCard stats={generationMix} isLoading={mixLoading} />
@@ -72,11 +83,20 @@ export function Dashboard() {
   const statsSection = (
     <div
       className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
-      style={{ animationDelay: reviewerFirst ? '225ms' : '150ms' }}
+      style={{ animationDelay: reviewerFirst ? '225ms' : isCreator ? '225ms' : '150ms' }}
     >
       <QuickStatsWidget stats={stats} isLoading={statsLoading} />
     </div>
   )
+
+  const creatorMixSection = isCreator ? (
+    <div
+      className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both motion-reduce:animate-none motion-reduce:opacity-100"
+      style={{ animationDelay: '375ms' }}
+    >
+      <GenerationMixCard stats={generationMix} isLoading={mixLoading} />
+    </div>
+  ) : null
 
   const secondaryGridSection = reviewerFirst ? (
     <div
@@ -104,7 +124,9 @@ export function Dashboard() {
           {greeting}, {userName}
         </h1>
         <p className="text-muted-foreground">
-          Here&apos;s what&apos;s happening with your creative workflows today.
+          {isCreator
+            ? 'Pick up where you left off on your campaigns.'
+            : "Here's what's happening with your creative workflows today."}
         </p>
       </div>
 
@@ -156,6 +178,13 @@ export function Dashboard() {
           {pendingReviewsSection}
           {statsSection}
           {secondaryGridSection}
+        </>
+      ) : isCreator ? (
+        <>
+          {recentCampaignsProminent}
+          {statsSection}
+          {pendingReviewsSection}
+          {creatorMixSection}
         </>
       ) : (
         <>

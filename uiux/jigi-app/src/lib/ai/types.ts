@@ -18,6 +18,8 @@ export interface BrandConstraints {
     colours: Array<{ hex: string; role: string }>
     fonts: { heading: string; body: string }
     logo_url?: string
+    /** Art-direction guidance for image generation (mood, lighting, composition). */
+    visual_style?: string
   }
   voice: {
     tone: string[]
@@ -149,6 +151,7 @@ export interface GenerationResult {
     cost_bucket?: 'free' | 'paid_fallback'
     prompt_hash?: string
     lineage?: { cco_version?: number; bio_version?: number; generation_timestamp?: string }
+    saved_assets?: Record<string, unknown>[]
     /** PRD 08: Asset from image API for validation update */
     asset?: { id: string; content?: Record<string, unknown> }
   }

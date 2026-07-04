@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import {
-  SearchIcon,
   PlusIcon,
   ClipboardCheckIcon,
   MenuIcon,
@@ -10,7 +9,10 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { isReviewerRole } from '@/lib/roles'
+import { useEffectiveRole } from '@/hooks/useEffectiveRole'
 import { UserAvatar } from '@/components/layout/UserAvatar'
+import { ViewAsSwitcher } from '@/components/tour/ViewAsSwitcher'
+import { TourLaunchButton } from '@/components/tour/TourLaunchButton'
 import { NotificationBell } from '@/components/notifications'
 import {
   DropdownMenu,
@@ -39,6 +41,7 @@ export function Header({
 }: HeaderProps) {
   const navigate = useNavigate()
   const { user, profile, signOut } = useAuthStore()
+  const effectiveRole = useEffectiveRole()
 
   const displayName =
     profile?.name ?? user?.user_metadata?.full_name ?? (user?.email?.split('@')[0] || 'User')
@@ -73,24 +76,10 @@ export function Header({
         ) : null}
       </div>
 
-      {/* Search */}
-      <div className="relative hidden md:flex items-center">
-        <SearchIcon className="absolute left-3 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-        <input
-          type="search"
-          placeholder="Search assets, campaigns..."
-          className="pl-9 pr-10 py-1.5 text-sm bg-muted border border-transparent rounded-lg w-56 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-primary focus-visible:bg-background transition-all duration-200 placeholder:text-muted-foreground motion-reduce:transition-none"
-          aria-label="Search"
-        />
-        <kbd className="absolute right-3 hidden sm:inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-          <span className="text-xs">⌘</span>K
-        </kbd>
-      </div>
-
       {/* CTAs */}
       {showCTAs && (
         <div className="flex items-center gap-2">
-          {isReviewerRole(profile?.role) && (
+          {isReviewerRole(effectiveRole) && (
             <button
               onClick={() => navigate('/app/review')}
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent hover:border-accent transition-all duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -108,6 +97,10 @@ export function Header({
           </button>
         </div>
       )}
+
+      {/* Manual tour entry + demo persona switcher (carries the role-switch anchor) */}
+      <TourLaunchButton />
+      <ViewAsSwitcher />
 
       {/* Notifications */}
       {user?.id ? (

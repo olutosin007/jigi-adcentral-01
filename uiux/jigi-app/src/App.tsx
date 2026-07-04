@@ -25,6 +25,7 @@ import { Login } from '@/pages/auth/Login'
 import { Signup } from '@/pages/auth/Signup'
 import { ResetPassword } from '@/pages/auth/ResetPassword'
 import { ResetPasswordConfirm } from '@/pages/auth/ResetPasswordConfirm'
+import { AuthCallback } from '@/pages/auth/AuthCallback'
 import { OrganisationSetup } from '@/pages/setup/OrganisationSetup'
 import { JourneyChoice } from '@/pages/setup/JourneyChoice'
 import { ReviewerRoute } from '@/components/auth/ReviewerRoute'
@@ -76,6 +77,7 @@ export function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           
           {/* Setup routes (require auth but not full setup) */}
           <Route

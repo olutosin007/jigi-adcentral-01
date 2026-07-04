@@ -69,7 +69,7 @@ export function AssetDetailsSidebar({
   const StatusIcon = statusConfig.icon
 
   return (
-    <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-muted/30 overflow-y-auto h-full">
+    <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-muted/30 overflow-y-auto h-full" data-tour="asset-details">
       <div className="p-6 space-y-6">
         {/* Status Card */}
         <Card>

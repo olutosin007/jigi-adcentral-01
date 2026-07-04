@@ -62,7 +62,7 @@ export function ReviewActions({ onReview, isReviewing, disabled, approveBlocked,
           <AlertDescription>{approveBlockedReason}</AlertDescription>
         </Alert>
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" data-tour="review-actions">
         {/* Approve Button - Primary */}
         <Button
           onClick={() => handleAction('approve')}

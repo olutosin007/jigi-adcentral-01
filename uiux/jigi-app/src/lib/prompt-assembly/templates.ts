@@ -93,6 +93,7 @@ BRAND VISUAL IDENTITY:
   Primary colours: {bio.visual_identity.colours.primary}
   Secondary colours: {bio.visual_identity.colours.secondary}
   Typography: {bio.visual_identity.typography}
+  Visual style: {bio.visual_identity.visual_style}
   Photography style: {bio.visual_identity.photography_style}
   Illustration style: {bio.visual_identity.illustration_style}
   Logo usage: {bio.visual_identity.logo_rules}

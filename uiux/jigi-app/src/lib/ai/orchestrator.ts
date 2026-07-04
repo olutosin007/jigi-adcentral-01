@@ -10,6 +10,7 @@ import {
   validateCopy,
 } from '@/lib/copy-enforcement'
 import { validateImage } from '@/lib/image-enforcement'
+import { getCopyPromptBudget } from '@/lib/channel-constraints'
 import type {
   GenerationRequest,
   GenerationResult,
@@ -136,7 +137,14 @@ export class AIOrchestrator {
             selectedChannels: cco.channel_constraints?.map((c) => c.channel_id),
             psychographicTraits: cco.audience_context?.psychographic_traits,
           }
-        : undefined
+        : brand
+          ? {
+              // Brand-grounded (no CCO): the enriched prompt now emits alignment
+              // fields, so run validation to surface low-alignment / missing links.
+              keyMessage: brief.requirements?.trim() || brief.objective,
+              selectedChannels: brief.channels,
+            }
+          : undefined
 
       const schemaMismatch =
         usingAssembledPrompt && rawConcepts.length > 0 && !rawConcepts.every((r) => isConceptOutputSchema(r))
@@ -166,6 +174,7 @@ export class AIOrchestrator {
           generation_mode: generationMode,
           prompt_hash: promptHash,
           lineage,
+          saved_assets: response.saved_assets,
         },
       }
     } catch (error) {
@@ -187,6 +196,7 @@ export class AIOrchestrator {
 
     try {
       const channelId = brief.channels?.[0] ?? format
+      const copyBudget = getCopyPromptBudget(channelId)
       let prompt: string
       let promptHash: string | undefined
       let lineage: { cco_version?: number; bio_version?: number; generation_timestamp?: string } | undefined
@@ -204,7 +214,7 @@ export class AIOrchestrator {
             ? buildAssetLineage(assembled.cco_version)
             : undefined
       } else {
-        prompt = buildCopyPrompt(brand, brief, format, fallback)
+        prompt = buildCopyPrompt(brand, brief, format, fallback, copyBudget)
       }
 
       const response = await generateText({
@@ -225,12 +235,12 @@ export class AIOrchestrator {
       const channelConstraint = cco?.channel_constraints?.find((c) => c.channel_id === channelId)
       const validationContext = cco
         ? {
-            maxChars: channelConstraint?.copy_limits?.max_chars,
+            maxChars: channelConstraint?.copy_limits?.max_chars ?? copyBudget?.primaryMax,
             parsedRequirements: cco.hard_constraints?.parsed_requirements,
             parsedExclusions: cco.hard_constraints?.parsed_exclusions,
             legalDisclaimers: cco.hard_constraints?.legal_disclaimers,
           }
-        : undefined
+        : { maxChars: copyBudget?.primaryMax }
 
       const variants: CopyResult[] = rawVariants.map((raw) => {
         const normalized = normalizeCopyToDisplay(raw)

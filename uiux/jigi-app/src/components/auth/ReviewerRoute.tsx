@@ -2,13 +2,17 @@ import { Navigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { isReviewerRole } from '@/lib/roles'
+import { useEffectiveRole } from '@/hooks/useEffectiveRole'
 
 interface ReviewerRouteProps {
   children: ReactNode
 }
 
 export function ReviewerRoute({ children }: ReviewerRouteProps) {
-  const { profile, isLoading, isInitialized } = useAuthStore()
+  const { isLoading, isInitialized } = useAuthStore()
+  // Presentation gate: respects the demo "view as" override so the approver
+  // walkthrough is reachable in one session. Data stays RLS-protected.
+  const effectiveRole = useEffectiveRole()
 
   if (!isInitialized || isLoading) {
     return (
@@ -18,7 +22,7 @@ export function ReviewerRoute({ children }: ReviewerRouteProps) {
     )
   }
 
-  if (!isReviewerRole(profile?.role)) {
+  if (!isReviewerRole(effectiveRole)) {
     return <Navigate to="/app/dashboard" replace />
   }
 
