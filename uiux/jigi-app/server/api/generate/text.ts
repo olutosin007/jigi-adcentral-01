@@ -49,6 +49,7 @@ const SYSTEM_PROMPTS: Record<GenerationType, string> = {
 - On-brand and aligned with the provided brand voice
 - Fresh, memorable, and strategically sound
 - Actionable with clear visual and copy directions
+- Explicit about how each concept delivers the campaign key message
 
 Respond in JSON format with this structure:
 {
@@ -57,7 +58,8 @@ Respond in JSON format with this structure:
       "theme": "string - the core creative theme",
       "headlines": ["string - 3 headline options"],
       "visual_direction": "string - guidance for visual execution",
-      "rationale": "string - why this concept works for the brand"
+      "key_message_link": "string - how this concept delivers the campaign key message",
+      "rationale": "string - why this concept works for the brand or idea"
     }
   ]
 }`,
