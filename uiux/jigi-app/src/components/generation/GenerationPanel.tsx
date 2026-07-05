@@ -234,9 +234,15 @@ export function GenerationPanel({
       return
     }
 
+    const trimmedPrompt = prompt.trim()
     const brief = {
       ...campaign.brief,
-      objective: prompt || campaign.brief?.objective || campaign.seed_idea,
+      objective: campaign.brief?.objective || campaign.seed_idea || '',
+      ...(trimmedPrompt
+        ? {
+            requirements: [campaign.brief?.requirements, trimmedPrompt].filter(Boolean).join('\n'),
+          }
+        : {}),
     }
 
     try {
@@ -544,9 +550,9 @@ export function GenerationPanel({
               onChange={(e) => setPrompt(e.target.value)}
               placeholder={
                 activeTab === 'concepts'
-                  ? 'Describe your campaign direction, target audience, and key themes…'
+                  ? 'Creative direction (optional) — extra themes or emphasis beyond the brief…'
                   : activeTab === 'copy'
-                  ? 'Describe the tone, message, and format for your copy…'
+                  ? 'Creative direction (optional) — tone or emphasis for these variants…'
                   : 'Describe the visual style, subject, and mood for your image…'
               }
               rows={2}

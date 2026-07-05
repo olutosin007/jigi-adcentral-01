@@ -11,18 +11,36 @@ vi.mock('@/store/campaignStore', () => ({
 }))
 
 describe('BriefSnippetBar', () => {
-  it('renders objective, audience, and channels', () => {
+  it('renders key message, objective, audience, and channels', () => {
     render(
       <BriefSnippetBar
+        keyMessage="Stay refreshed all summer"
         objective="Grow awareness"
         audience="Gen Z"
         channels={['instagram_post', 'linkedin_post']}
         onEditBrief={vi.fn()}
       />
     )
+    expect(screen.getByText('Stay refreshed all summer')).toBeInTheDocument()
     expect(screen.getByText('Grow awareness')).toBeInTheDocument()
     expect(screen.getByText('Gen Z')).toBeInTheDocument()
     expect(screen.getByText('Instagram Post, LinkedIn Post')).toBeInTheDocument()
+  })
+
+  it('B6: shows readiness chip and exclusions indicator', () => {
+    render(
+      <BriefSnippetBar
+        keyMessage="Core proposition"
+        objective="Grow awareness"
+        audience="Gen Z professionals"
+        channels={['instagram_post']}
+        exclusions="No competitor names"
+        readiness={{ ready: false, missing: ['Key message', 'Audience'], warnings: [] }}
+        onEditBrief={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Incomplete (2)')).toBeInTheDocument()
+    expect(screen.getByText('Exclusions')).toBeInTheDocument()
   })
 
   it('calls onEditBrief when edit clicked', async () => {

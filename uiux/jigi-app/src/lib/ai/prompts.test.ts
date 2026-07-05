@@ -10,9 +10,10 @@ const brand: BrandConstraints = {
 }
 
 const brief: CampaignBrief = {
-  objective: 'Launch',
-  audience: 'Everyone',
+  objective: 'Launch summer refresh campaign',
+  audience: 'Everyone interested in wellness',
   channels: ['instagram_story'],
+  key_message: 'Feel refreshed every day',
 }
 
 describe('buildCopyPrompt length limits', () => {
@@ -71,6 +72,31 @@ describe('buildConceptPrompt brand-grounded schema (PRD-06)', () => {
     const prompt = buildConceptPrompt(strategyBrand, brief)
     expect(prompt).toContain('secret formula')
     expect(prompt).toContain('iconic bottle')
+  })
+
+  it('B4: brand-grounded concept prompt includes brief key_message', () => {
+    const prompt = buildConceptPrompt(strategyBrand, brief)
+    expect(prompt).toContain('Feel refreshed every day')
+    expect(prompt).not.toContain('Key message to deliver: Launch summer')
+  })
+})
+
+describe('buildConceptPrompt idea-first key message', () => {
+  it('B5: idea-first concept prompt includes brief key_message', () => {
+    const prompt = buildConceptPrompt(undefined, brief, { seed_idea: 'A fresh summer campaign idea' })
+    expect(prompt).toContain('- Key message: Feel refreshed every day')
+  })
+})
+
+describe('buildCopyPrompt key message', () => {
+  it('B4: brand-grounded copy prompt includes brief key_message', () => {
+    const prompt = buildCopyPrompt(brand, brief, 'social_post')
+    expect(prompt).toContain('- Key message: Feel refreshed every day')
+  })
+
+  it('B5: idea-first copy prompt includes brief key_message', () => {
+    const prompt = buildCopyPrompt(undefined, brief, 'social_post', { seed_idea: 'A fresh summer idea' })
+    expect(prompt).toContain('- Key message: Feel refreshed every day')
   })
 })
 

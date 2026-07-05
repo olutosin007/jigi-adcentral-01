@@ -38,6 +38,8 @@ export interface CampaignBrief {
   audience?: string
   channels?: string[]
   requirements?: string
+  key_message?: string
+  exclusions?: string
 }
 
 export interface FallbackContext {

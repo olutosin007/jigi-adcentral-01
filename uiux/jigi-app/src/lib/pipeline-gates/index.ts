@@ -1,5 +1,5 @@
 export { buildPipelineGateInput } from './build-input'
-export { isBriefComplete } from './brief-readiness'
+export { evaluateBriefReadiness, isBriefComplete } from './brief-readiness'
 export {
   canGenerateConcepts,
   canGenerateCopy,
@@ -25,3 +25,4 @@ export type {
   StageGateMap,
   StageGateStatus,
 } from './types'
+export type { BriefReadinessResult } from '@/lib/brief-readiness'
