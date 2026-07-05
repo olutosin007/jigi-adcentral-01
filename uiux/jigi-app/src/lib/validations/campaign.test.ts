@@ -4,6 +4,7 @@ import {
   ideaFirstBriefSchema,
   createCampaignSchema,
   updateCampaignSchema,
+  selectCampaignAssetSchema,
   fullBriefSchema,
 } from './campaign'
 
@@ -106,6 +107,34 @@ describe('campaign validations', () => {
       expect(() =>
         updateCampaignSchema.parse({ status: 'invalid_status' })
       ).toThrow()
+    })
+
+    it('rejects direct selection field updates', () => {
+      expect(() =>
+        updateCampaignSchema.parse({
+          selected_concept_asset_id: '550e8400-e29b-41d4-a716-446655440000',
+        })
+      ).toThrow(/POST \/api\/campaigns\/select/)
+    })
+  })
+
+  describe('selectCampaignAssetSchema', () => {
+    it('validates concept selection request', () => {
+      const valid = {
+        campaign_id: '550e8400-e29b-41d4-a716-446655440000',
+        selection: 'concept' as const,
+        asset_id: '660e8400-e29b-41d4-a716-446655440001',
+      }
+      expect(selectCampaignAssetSchema.parse(valid)).toEqual(valid)
+    })
+
+    it('allows null asset_id to clear selection', () => {
+      const valid = {
+        campaign_id: '550e8400-e29b-41d4-a716-446655440000',
+        selection: 'copy' as const,
+        asset_id: null,
+      }
+      expect(selectCampaignAssetSchema.parse(valid)).toEqual(valid)
     })
   })
 

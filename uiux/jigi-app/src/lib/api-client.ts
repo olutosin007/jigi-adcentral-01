@@ -194,6 +194,25 @@ export async function reviewAsset(
   })
 }
 
+export interface SelectCampaignAssetRequest {
+  campaign_id: string
+  selection: 'concept' | 'copy'
+  asset_id: string | null
+}
+
+export interface SelectCampaignAssetResponse {
+  campaign: Record<string, unknown>
+}
+
+export async function selectCampaignAsset(
+  request: SelectCampaignAssetRequest
+): Promise<SelectCampaignAssetResponse> {
+  return apiRequest<SelectCampaignAssetResponse>('/campaigns/select', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
 export interface SendNotificationRequest {
   user_id: string
   type: 'submission' | 'approval' | 'rejection' | 'changes_requested' | 'comment_added' | 'comment_reply'

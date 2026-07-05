@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { uploadFileToStorage, isAllowedMimeType, validateFileSize } from '@/lib/upload'
+import { selectCampaignAsset } from '@/lib/api-client'
 import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type CopyImageAnchor, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ComplianceResult } from '@/lib/ai'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
 import type { Brand } from '@/store/brandStore'
@@ -364,6 +365,43 @@ export function useDeleteAsset() {
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', result.campaignId],
       })
+      queryClient.invalidateQueries({
+        queryKey: ['campaign', result.campaignId],
+      })
+    },
+  })
+}
+
+export function useSelectConcept(campaignId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (assetId: string | null) =>
+      selectCampaignAsset({
+        campaign_id: campaignId,
+        selection: 'concept',
+        asset_id: assetId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] })
+      queryClient.invalidateQueries({ queryKey: ['campaign-assets', campaignId] })
+    },
+  })
+}
+
+export function useSelectCopy(campaignId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (assetId: string | null) =>
+      selectCampaignAsset({
+        campaign_id: campaignId,
+        selection: 'copy',
+        asset_id: assetId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] })
+      queryClient.invalidateQueries({ queryKey: ['campaign-assets', campaignId] })
     },
   })
 }

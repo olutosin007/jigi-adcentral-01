@@ -89,6 +89,7 @@ const server = http.createServer(async (req, res) => {
     'POST /api/creative-router/generate': './api/creative-router/generate.ts',
     'POST /api/assets/submit': './api/assets/submit.ts',
     'POST /api/assets/review': './api/assets/review.ts',
+    'POST /api/campaigns/select': './api/campaigns/select.ts',
     'POST /api/notifications/send': './api/notifications/send.ts',
   }
   const key = `${req.method} ${pathname}`
