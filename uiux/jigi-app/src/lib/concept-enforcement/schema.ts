@@ -92,11 +92,19 @@ export function normalizeConceptToDisplay(raw: Record<string, unknown>): Concept
       brand_alignment_rationale: raw.brand_alignment_rationale,
     }
   }
-  // Legacy format
+  // Legacy / idea-first display schema — derive key_message_link when the model omits it
+  const rationale = (raw.rationale as string) ?? ''
+  const explicitLink =
+    typeof raw.key_message_link === 'string' && raw.key_message_link.trim()
+      ? raw.key_message_link.trim()
+      : undefined
+  const keyMessageLink = explicitLink || (rationale.trim() ? rationale.trim() : undefined)
+
   return {
     theme: (raw.theme as string) ?? '',
     headlines: Array.isArray(raw.headlines) ? (raw.headlines as string[]) : [],
     visual_direction: (raw.visual_direction as string) ?? '',
-    rationale: (raw.rationale as string) ?? '',
+    rationale,
+    key_message_link: keyMessageLink,
   }
 }

@@ -184,10 +184,8 @@ export class AIOrchestrator {
             selectedChannels: cco.channel_constraints?.map((c) => c.channel_id),
             psychographicTraits: cco.audience_context?.psychographic_traits,
           }
-        : brand
+        : brief.key_message?.trim() || brief.objective
           ? {
-              // Brand-grounded (no CCO): the enriched prompt now emits alignment
-              // fields, so run validation to surface low-alignment / missing links.
               keyMessage: brief.key_message?.trim() || brief.objective,
               selectedChannels: brief.channels,
             }

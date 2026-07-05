@@ -118,6 +118,15 @@ export function ConceptCard({
         </p>
       )}
 
+      {concept.key_message_link && (
+        <div className="mb-4 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
+            Key message link
+          </p>
+          <p className="text-xs text-foreground line-clamp-3">{concept.key_message_link}</p>
+        </div>
+      )}
+
       {(concept.validation_warnings?.length ?? 0) > 0 || (typeof concept.brand_alignment_score === 'number' && concept.brand_alignment_score < 60) ? (
         <div className="mb-4 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
           <div className="flex items-start gap-2">
