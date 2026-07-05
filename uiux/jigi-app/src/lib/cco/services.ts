@@ -20,7 +20,7 @@ import { diffCCO, flagDriftAssets } from '@/lib/drift-detection'
  */
 export async function persistCCO(
   campaignId: string,
-  brandId: string,
+  brandId: string | null,
   cco: Omit<CampaignContextObject, 'campaign_id' | 'brand_id' | 'compiled_at' | 'version'>
 ): Promise<{ success: boolean; cco?: CampaignContextObject; error?: string }> {
   try {

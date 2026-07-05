@@ -38,15 +38,12 @@ export async function assemblePrompt(
 ): Promise<AssemblePromptResult | null> {
   const { campaignId, brandId, track, channelId } = input
 
-  const [ccoResult, brand] = await Promise.all([
-    fetchCCO(campaignId),
-    fetchBrand(brandId),
-  ])
-
+  const ccoResult = await fetchCCO(campaignId)
   if (!ccoResult.success || !ccoResult.cco) {
     return null
   }
 
+  const brand = brandId ? await fetchBrand(brandId) : null
   const bio: BioContext | null = buildBioFromBrand(brand)
   const { cco, truncated, truncatedSections } = truncateCCOForBudget(ccoResult.cco)
 

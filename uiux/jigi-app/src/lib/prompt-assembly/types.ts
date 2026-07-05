@@ -24,7 +24,7 @@ export type TrackType = 'concept' | 'copy' | 'image'
 
 export interface AssemblePromptInput {
   campaignId: string
-  brandId: string
+  brandId?: string | null
   track: TrackType
   channelId?: string
 }
