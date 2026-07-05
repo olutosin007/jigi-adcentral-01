@@ -26,6 +26,8 @@ import { useCampaignStore, CAMPAIGN_STATUS_OPTIONS } from '@/store/campaignStore
 import { useBrandStore } from '@/store/brandStore'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
+import { evaluateBriefReadiness } from '@/lib/brief-readiness'
+import { BriefIncompleteBanner } from '@/components/campaign/BriefIncompleteBanner'
 import type { Campaign } from '@/store/campaignStore'
 
 const SORT_OPTIONS = [
@@ -95,6 +97,17 @@ export function Campaigns() {
     return result
   }, [campaigns, debouncedSearch, statusFilter, sortBy])
 
+  const incompleteBriefCount = useMemo(
+    () =>
+      filteredAndSortedCampaigns.filter((c) =>
+        !evaluateBriefReadiness(c.brief ?? {}, {
+          journey_mode: c.journey_mode,
+          seed_idea: c.seed_idea ?? null,
+        }).ready
+      ).length,
+    [filteredAndSortedCampaigns]
+  )
+
   if (isLoading && campaigns.length === 0) {
     return (
       <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6">
@@ -149,6 +162,16 @@ export function Campaigns() {
           New campaign
         </Button>
       </div>
+
+      {incompleteBriefCount > 0 && (
+        <BriefIncompleteBanner
+          readiness={{
+            ready: false,
+            missing: [`${incompleteBriefCount} campaign${incompleteBriefCount === 1 ? '' : 's'} with incomplete briefs`],
+            warnings: [],
+          }}
+        />
+      )}
 
       {campaigns.length > 0 && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
@@ -301,6 +324,11 @@ interface CampaignCardProps {
 }
 
 function CampaignCard({ campaign, getBrandName, getStatusStyle, onNavigate, onArchive, onUnarchive, onDeleteRequest, isArchiving = false }: CampaignCardProps) {
+  const briefReadiness = evaluateBriefReadiness(campaign.brief ?? {}, {
+    journey_mode: campaign.journey_mode,
+    seed_idea: campaign.seed_idea ?? null,
+  })
+
   return (
     <Card
       className="cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-200 border-border rounded-xl"
@@ -386,6 +414,11 @@ function CampaignCard({ campaign, getBrandName, getStatusStyle, onNavigate, onAr
           <p className="mt-2 text-xs text-muted-foreground line-clamp-2 italic">
             &quot;{campaign.seed_idea}&quot;
           </p>
+        )}
+        {!briefReadiness.ready && (
+          <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+            <BriefIncompleteBanner readiness={briefReadiness} compact />
+          </div>
         )}
       </CardContent>
     </Card>

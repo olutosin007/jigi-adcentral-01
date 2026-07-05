@@ -1,7 +1,16 @@
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Sparkles, Building2, Wand2, Lightbulb, Loader2, ChevronRight, Check } from 'lucide-react'
+import {
+  ArrowLeft,
+  Sparkles,
+  Building2,
+  Wand2,
+  Lightbulb,
+  Loader2,
+  ChevronRight,
+  Plus,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +24,9 @@ import { useCampaignStore } from '@/store/campaignStore'
 import { useBrandStore } from '@/store/brandStore'
 import { useAuthStore } from '@/store/authStore'
 import { BriefForm } from '@/components/campaigns/BriefForm'
+import { QuickCreateBrandDialog } from '@/components/brands/QuickCreateBrandDialog'
+import { BriefReadinessChecklist } from '@/components/campaign/BriefReadinessChecklist'
+import { buildCreateChecklistItems } from '@/lib/brief-readiness'
 import { uploadCampaignReference } from '@/lib/brief-reference-upload'
 import { z } from 'zod'
 
@@ -45,50 +57,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-function ReadinessChecklist({
-  name,
-  brandId,
-  objective,
-  audience,
-  channels,
-  keyMessage,
-  seedIdea,
-  journeyMode,
-}: {
-  name: string
-  brandId: string | undefined
-  objective: string
-  audience: string
-  channels: string[]
-  keyMessage: string
-  seedIdea: string
-  journeyMode: 'brand_first' | 'idea_first'
-}) {
-  const items: { label: string; done: boolean }[] = [
-    { label: 'Campaign name', done: (name || '').trim().length >= 3 },
-    ...(journeyMode === 'brand_first'
-      ? [{ label: 'Brand selected', done: !!brandId }]
-      : [{ label: 'Your idea', done: (seedIdea || '').trim().length >= 10 }]),
-    { label: 'Objective', done: (objective || '').trim().length >= 10 },
-    { label: 'Target audience', done: (audience || '').trim().length >= 10 },
-    { label: 'Key message', done: (keyMessage || '').trim().length >= 1 },
-    { label: 'Channels', done: (channels || []).length >= 1 },
-  ]
-  return (
-    <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-      {items.map(({ label, done }) => (
-        <div key={label} className="flex items-center gap-2 text-sm">
-          {done ? (
-            <Check className="h-4 w-4 text-primary flex-shrink-0" />
-          ) : (
-            <span className="h-4 w-4 rounded-full border border-muted-foreground/50 flex-shrink-0" />
-          )}
-          <span className={done ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+const CREATE_STEPS = ['Basics', 'Brief', 'Channels'] as const
 
 export function CampaignCreate() {
   const navigate = useNavigate()
@@ -101,7 +70,9 @@ export function CampaignCreate() {
   const { brands, fetchBrands } = useBrandStore()
   const { user } = useAuthStore()
   const [pendingReferenceFiles, setPendingReferenceFiles] = useState<File[]>([])
-  
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
+  const [step, setStep] = useState(0)
+
   const [journeyMode, setJourneyMode] = useState<'brand_first' | 'idea_first'>(
     state?.journeyMode || (modeParam === 'idea_first' ? 'idea_first' : 'brand_first')
   )
@@ -166,6 +137,7 @@ export function CampaignCreate() {
     if (data.journey_mode === 'brand_first' && !data.brand_id) {
       toast.error('Select a brand for brand-first campaigns')
       methods.setError('brand_id', { type: 'manual', message: 'Brand is required' })
+      setStep(0)
       return
     }
 
@@ -251,7 +223,6 @@ export function CampaignCreate() {
     }
   }
 
-  const steps = ['Basics', 'Brief', 'Channels']
   const focusFirstInvalid = () => {
     const errors = methods.formState.errors
     const order = ['name', 'seed_idea', 'brand_id', 'objective', 'audience', 'key_message', 'channels'] as const
@@ -263,15 +234,67 @@ export function CampaignCreate() {
     }
   }
 
+  const validateBasicsStep = async (): Promise<boolean> => {
+    const nameValid = await methods.trigger('name')
+    if (!nameValid) return false
+
+    if (journeyMode === 'brand_first') {
+      if (!methods.getValues('brand_id')) {
+        methods.setError('brand_id', { type: 'manual', message: 'Brand is required' })
+        return false
+      }
+    } else {
+      const seed = methods.getValues('seed_idea')?.trim() ?? ''
+      if (seed.length < 10) {
+        methods.setError('seed_idea', {
+          type: 'manual',
+          message: 'Your idea must be at least 10 characters',
+        })
+        return false
+      }
+    }
+    return true
+  }
+
+  const handleNext = async () => {
+    if (step === 0) {
+      const ok = await validateBasicsStep()
+      if (ok) setStep(1)
+      return
+    }
+    if (step === 1) {
+      const ok = await methods.trigger(['objective', 'audience', 'key_message'])
+      if (ok) setStep(2)
+      return
+    }
+  }
+
+  const handleBack = () => {
+    if (step > 0) setStep(step - 1)
+  }
+
   const handleSubmitWithValidation = methods.handleSubmit(
     onSubmit,
-    () => { focusFirstInvalid() }
+    () => {
+      focusFirstInvalid()
+    }
   )
+
+  const checklistItems = buildCreateChecklistItems({
+    name: methods.watch('name') ?? '',
+    brandId: methods.watch('brand_id'),
+    objective: methods.watch('objective') ?? '',
+    audience: methods.watch('audience') ?? '',
+    channels: methods.watch('channels') ?? [],
+    keyMessage: methods.watch('key_message') ?? '',
+    seedIdea: methods.watch('seed_idea') ?? '',
+    journeyMode,
+  })
 
   return (
     <FormProvider {...methods}>
       <form onSubmit={handleSubmitWithValidation} className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-8">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
             <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Go back">
               <ArrowLeft className="h-5 w-5" />
@@ -279,18 +302,32 @@ export function CampaignCreate() {
             <div>
               <h1 className="text-2xl font-semibold">Create Campaign</h1>
               <p className="text-muted-foreground">
-                {journeyMode === 'idea_first' ? 'Start from your idea' : 'Brand-first campaign'}
+                Step {step + 1} of {CREATE_STEPS.length} — {CREATE_STEPS[step]}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {steps.map((label, i) => (
+          <div className="flex items-center gap-2 flex-wrap">
+            {CREATE_STEPS.map((label, i) => (
               <span key={label} className="flex items-center gap-1.5">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-medium">
+                <button
+                  type="button"
+                  disabled={i > step}
+                  onClick={() => i < step && setStep(i)}
+                  className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-colors ${
+                    i === step
+                      ? 'bg-primary text-primary-foreground'
+                      : i < step
+                        ? 'bg-primary/20 text-primary hover:bg-primary/30'
+                        : 'bg-muted text-muted-foreground'
+                  } ${i < step ? 'cursor-pointer' : 'cursor-default'}`}
+                  aria-current={i === step ? 'step' : undefined}
+                >
                   {i + 1}
+                </button>
+                <span className={`text-sm ${i === step ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  {label}
                 </span>
-                <span className="text-sm text-muted-foreground">{label}</span>
-                {i < steps.length - 1 && (
+                {i < CREATE_STEPS.length - 1 && (
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
               </span>
@@ -298,183 +335,204 @@ export function CampaignCreate() {
           </div>
         </div>
 
-        {/* Section 1: Basics */}
-        <div className="space-y-8">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">1</span>
-            <h2 className="text-lg font-semibold">Basics</h2>
-          </div>
-
-        {/* Journey Mode Selector */}
-        <RadioGroup
-          value={journeyMode}
-          onValueChange={(v) => handleJourneyModeChange(v as 'brand_first' | 'idea_first')}
-          className="flex gap-4"
-          aria-label="Campaign journey mode"
-        >
-          <RadioGroupItem value="brand_first" id="journey-brand_first" asChild>
-            <label
-              className={`flex flex-1 flex-col p-4 rounded-lg border-2 transition-all text-left cursor-pointer ${
-                journeyMode === 'brand_first'
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:border-primary/50'
-              }`}
-            >
-              <Building2
-                className={`h-6 w-6 mb-2 ${
-                  journeyMode === 'brand_first' ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              />
-              <h3 className="font-semibold">Brand-First</h3>
-              <p className="text-sm text-muted-foreground">
-                Start with your brand profile for consistent creative
-              </p>
-            </label>
-          </RadioGroupItem>
-          <RadioGroupItem value="idea_first" id="journey-idea_first" asChild>
-            <label
-              className={`flex flex-1 flex-col p-4 rounded-lg border-2 transition-all text-left cursor-pointer ${
-                journeyMode === 'idea_first'
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:border-primary/50'
-              }`}
-            >
-              <Lightbulb
-                className={`h-6 w-6 mb-2 ${
-                  journeyMode === 'idea_first' ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              />
-              <h3 className="font-semibold">Idea-First</h3>
-              <p className="text-sm text-muted-foreground">
-                Start with your idea, add brand later
-              </p>
-            </label>
-          </RadioGroupItem>
-        </RadioGroup>
-
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Campaign Details</CardTitle>
-                <CardDescription>Basic information about your campaign (Step 1)</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Campaign Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., Summer Sale 2026"
-                    {...methods.register('name')}
-                    className={methods.formState.errors.name ? 'border-destructive' : ''}
-                  />
-                  {methods.formState.errors.name && (
-                    <p className="text-sm text-destructive">{methods.formState.errors.name.message}</p>
-                  )}
-                </div>
-
-                {journeyMode === 'idea_first' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="seed_idea">
-                      Your Idea <span className="text-destructive">*</span>
-                    </Label>
-                    <Textarea
-                      id="seed_idea"
-                      placeholder="Describe your campaign idea, concept, or creative direction..."
-                      {...methods.register('seed_idea')}
-                      rows={4}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      This will be used as the starting point for AI generation
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {journeyMode === 'brand_first' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Select Brand
-                  </CardTitle>
-                  <CardDescription>
-                    Choose which brand profile to use for this campaign
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {brands.length === 0 ? (
-                    <div className="text-center py-6">
-                      <Building2 className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                      <p className="text-sm text-muted-foreground mb-3">
-                        No brands set up yet
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate('/app/onboarding')}
-                      >
-                        Create a brand
-                      </Button>
-                    </div>
-                  ) : (
-                    <Select
-                      value={methods.watch('brand_id') || ''}
-                      onValueChange={(value) => methods.setValue('brand_id', value)}
+            {step === 0 && (
+              <>
+                <RadioGroup
+                  value={journeyMode}
+                  onValueChange={(v) => handleJourneyModeChange(v as 'brand_first' | 'idea_first')}
+                  className="flex gap-4"
+                  aria-label="Campaign journey mode"
+                >
+                  <RadioGroupItem value="brand_first" id="journey-brand_first" asChild>
+                    <label
+                      className={`flex flex-1 flex-col p-4 rounded-lg border-2 transition-all text-left cursor-pointer ${
+                        journeyMode === 'brand_first'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                      }`}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a brand" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {brands.map((brand) => (
-                          <SelectItem key={brand.id} value={brand.id}>
-                            <div className="flex items-center gap-2">
-                              {brand.identity?.logo_url ? (
-                                <img
-                                  src={brand.identity.logo_url}
-                                  alt={brand.name}
-                                  className="h-5 w-5 rounded object-contain"
-                                />
-                              ) : (
-                                <div 
-                                  className="h-5 w-5 rounded"
-                                  style={{ 
-                                    backgroundColor: brand.identity?.colours?.primary || '#0D9488' 
-                                  }}
-                                />
-                              )}
-                              <span>{brand.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </CardContent>
-              </Card>
+                      <Building2
+                        className={`h-6 w-6 mb-2 ${
+                          journeyMode === 'brand_first' ? 'text-primary' : 'text-muted-foreground'
+                        }`}
+                      />
+                      <h3 className="font-semibold">Brand-First</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Start with your brand profile for consistent creative
+                      </p>
+                    </label>
+                  </RadioGroupItem>
+                  <RadioGroupItem value="idea_first" id="journey-idea_first" asChild>
+                    <label
+                      className={`flex flex-1 flex-col p-4 rounded-lg border-2 transition-all text-left cursor-pointer ${
+                        journeyMode === 'idea_first'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <Lightbulb
+                        className={`h-6 w-6 mb-2 ${
+                          journeyMode === 'idea_first' ? 'text-primary' : 'text-muted-foreground'
+                        }`}
+                      />
+                      <h3 className="font-semibold">Idea-First</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Start with your idea, add brand later
+                      </p>
+                    </label>
+                  </RadioGroupItem>
+                </RadioGroup>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Campaign Details</CardTitle>
+                    <CardDescription>Name your campaign and set the starting point</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">
+                        Campaign Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="name"
+                        placeholder="e.g., Summer Sale 2026"
+                        {...methods.register('name')}
+                        className={methods.formState.errors.name ? 'border-destructive' : ''}
+                      />
+                      {methods.formState.errors.name && (
+                        <p className="text-sm text-destructive">{methods.formState.errors.name.message}</p>
+                      )}
+                    </div>
+
+                    {journeyMode === 'idea_first' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="seed_idea">
+                          Your Idea <span className="text-destructive">*</span>
+                        </Label>
+                        <Textarea
+                          id="seed_idea"
+                          placeholder="Describe your campaign idea, concept, or creative direction..."
+                          {...methods.register('seed_idea')}
+                          rows={4}
+                          className={methods.formState.errors.seed_idea ? 'border-destructive' : ''}
+                        />
+                        {methods.formState.errors.seed_idea && (
+                          <p className="text-sm text-destructive">{methods.formState.errors.seed_idea.message}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          This will be used as the starting point for AI generation
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {journeyMode === 'brand_first' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5" />
+                        Select Brand
+                      </CardTitle>
+                      <CardDescription>
+                        Choose which brand profile to use for this campaign
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {brands.length === 0 ? (
+                        <div className="text-center py-6">
+                          <Building2 className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <p className="text-sm text-muted-foreground mb-3">No brands set up yet</p>
+                          <Button type="button" variant="outline" size="sm" onClick={() => setQuickCreateOpen(true)}>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Quick create brand
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Select
+                            value={methods.watch('brand_id') || ''}
+                            onValueChange={(value) => methods.setValue('brand_id', value, { shouldValidate: true })}
+                          >
+                            <SelectTrigger className={methods.formState.errors.brand_id ? 'border-destructive' : ''}>
+                              <SelectValue placeholder="Select a brand" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {brands.map((brand) => (
+                                <SelectItem key={brand.id} value={brand.id}>
+                                  <div className="flex items-center gap-2">
+                                    {brand.identity?.logo_url ? (
+                                      <img
+                                        src={brand.identity.logo_url}
+                                        alt={brand.name}
+                                        className="h-5 w-5 rounded object-contain"
+                                      />
+                                    ) : (
+                                      <div
+                                        className="h-5 w-5 rounded"
+                                        style={{
+                                          backgroundColor: brand.identity?.colours?.primary || '#0D9488',
+                                        }}
+                                      />
+                                    )}
+                                    <span>{brand.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {methods.formState.errors.brand_id && (
+                            <p className="text-sm text-destructive">{methods.formState.errors.brand_id.message}</p>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground"
+                            onClick={() => setQuickCreateOpen(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Quick create brand
+                          </Button>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-medium">2</span>
+            {step === 1 && (
+              <Card>
+                <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Wand2 className="h-5 w-5" />
                     Campaign Brief
                   </CardTitle>
-                </div>
-                <CardDescription>
-                  Define your campaign objectives and target audience (Brief and channels)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BriefForm showChannels={true} onPendingReferenceFilesChange={setPendingReferenceFiles} />
-              </CardContent>
-            </Card>
+                  <CardDescription>Define objectives, audience, and key message</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BriefForm
+                    showChannels={false}
+                    onPendingReferenceFilesChange={setPendingReferenceFiles}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {step === 2 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Channels &amp; review</CardTitle>
+                  <CardDescription>Select where this campaign will run, then create</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BriefForm channelsOnly />
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="space-y-6 lg:sticky lg:top-[76px] lg:self-start">
@@ -482,59 +540,61 @@ export function CampaignCreate() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  Ready to Create
+                  {step === 2 ? 'Ready to Create' : 'Progress'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Review your campaign settings and save to start generating creative assets.
+                  {step === 2
+                    ? 'Review your campaign settings and save to start generating creative assets.'
+                    : 'Complete each step before moving on. You can save an incomplete draft anytime.'}
                 </p>
-                <ReadinessChecklist
-                  name={methods.watch('name') ?? ''}
-                  brandId={methods.watch('brand_id')}
-                  objective={methods.watch('objective') ?? ''}
-                  audience={methods.watch('audience') ?? ''}
-                  channels={methods.watch('channels') ?? []}
-                  keyMessage={methods.watch('key_message') ?? ''}
-                  seedIdea={methods.watch('seed_idea') ?? ''}
-                  journeyMode={journeyMode}
-                />
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isLoading}
-                  size="lg"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Create Campaign
-                    </>
+                <BriefReadinessChecklist items={checklistItems} />
+                <div className="flex flex-col gap-2">
+                  {step > 0 && (
+                    <Button type="button" variant="outline" className="w-full" onClick={handleBack} disabled={isLoading}>
+                      Back
+                    </Button>
                   )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleSaveDraft}
-                  disabled={isLoading}
-                >
-                  Save as Draft
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full text-muted-foreground"
-                  onClick={() => navigate('/app/campaigns')}
-                  disabled={isLoading}
-                >
-                  Cancel
-                </Button>
+                  {step < 2 ? (
+                    <Button type="button" className="w-full" size="lg" onClick={() => void handleNext()}>
+                      Next: {CREATE_STEPS[step + 1]}
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button type="submit" className="w-full" disabled={isLoading} size="lg">
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Create Campaign
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleSaveDraft}
+                    disabled={isLoading}
+                  >
+                    Save as Draft
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full text-muted-foreground"
+                    onClick={() => navigate('/app/campaigns')}
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -544,12 +604,9 @@ export function CampaignCreate() {
                   <div className="flex gap-3">
                     <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                        Idea-First Mode
-                      </p>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Idea-First Mode</p>
                       <p className="text-sm text-amber-700 dark:text-amber-300/90 mt-1">
-                        Assets will be generated without brand constraints. You can attach a brand
-                        profile later for future consistency.
+                        Assets will be generated without brand constraints. You can attach a brand profile later.
                       </p>
                     </div>
                   </div>
@@ -565,7 +622,7 @@ export function CampaignCreate() {
                     <div>
                       <p className="text-sm font-medium text-foreground">Brand-Grounded</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        All generated assets will follow your brand's colors, tone, and guidelines.
+                        Generated assets will follow your brand&apos;s colors, tone, and guidelines.
                       </p>
                     </div>
                   </div>
@@ -574,7 +631,15 @@ export function CampaignCreate() {
             )}
           </div>
         </div>
-        </div>
+
+        <QuickCreateBrandDialog
+          open={quickCreateOpen}
+          onOpenChange={setQuickCreateOpen}
+          onBrandCreated={(brandId) => {
+            methods.setValue('brand_id', brandId, { shouldValidate: true })
+            void fetchBrands()
+          }}
+        />
       </form>
     </FormProvider>
   )
