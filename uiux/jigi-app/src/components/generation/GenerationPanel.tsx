@@ -42,6 +42,17 @@ import { cn } from '@/lib/utils'
 import { getPrimaryCopyBudgetChars } from '@/lib/channel-constraints'
 import { toast } from 'sonner'
 import type { GenerationStage } from '@/lib/campaign-workspace'
+import { trackGenerateImagePath } from '@/lib/analytics'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type GenerationType = GenerationStage
 type ImageTier = 'draft' | 'refine' | 'final'
@@ -104,6 +115,7 @@ export function GenerationPanel({
   const [refinedPrompt, setRefinedPrompt] = useState<string | null>(null)
   const [brandInclude, setBrandInclude] = useState<BrandIncludeFlags>(() => ({ ...DEFAULT_BRAND_INCLUDE }))
   const [imageCopyAnchorId, setImageCopyAnchorId] = useState('')
+  const [exploreConceptAsset, setExploreConceptAsset] = useState<CreativeAsset | null>(null)
 
   const refinedPromptStorageKey = `jigi-refined-image-prompt-${campaign.id}`
 
@@ -232,6 +244,13 @@ export function GenerationPanel({
   }, [copyAssets, imageCopyAnchorId])
 
   useEffect(() => {
+    if (!productionCopyAssetId) return
+    if (copyAssets.some((asset) => asset.id === productionCopyAssetId)) {
+      setImageCopyAnchorId(productionCopyAssetId)
+    }
+  }, [productionCopyAssetId, copyAssets])
+
+  useEffect(() => {
     if (activeTab !== 'copy' || selectedConceptAssetId || !productionConceptAssetId) return
     if (concepts.some((asset) => asset.id === productionConceptAssetId)) {
       setSelectedConceptAssetId(productionConceptAssetId)
@@ -295,6 +314,12 @@ export function GenerationPanel({
           ? copyAssetToImageAnchor(anchorAsset.id, anchorAsset.content as CopyResult)
           : undefined
         const conceptIdForImage = anchorAsset?.parent_asset_id ?? undefined
+        const usesProductionCopy = !!copyAnchor || !!productionCopyAssetId
+
+        trackGenerateImagePath(usesProductionCopy ? 'production_path' : 'explore_path', {
+          campaign_id: campaign.id,
+          source: 'images_tab',
+        })
 
         const result = await generateImage.mutateAsync({
           campaignId: campaign.id,
@@ -323,6 +348,10 @@ export function GenerationPanel({
 
   const handleGenerateImageFromConcept = async (conceptAsset: CreativeAsset) => {
     const concept = conceptAsset.content as ConceptResult
+    trackGenerateImagePath('explore_path', {
+      campaign_id: campaign.id,
+      source: 'concept',
+    })
     try {
       setShowPreview(true)
       setPreviewImage(null)
@@ -350,6 +379,10 @@ export function GenerationPanel({
   const handleGenerateImageFromCopyAsset = async (copyAsset: CreativeAsset) => {
     const copy = copyAsset.content as CopyResult
     const copyAnchor = copyAssetToImageAnchor(copyAsset.id, copy)
+    trackGenerateImagePath('production_path', {
+      campaign_id: campaign.id,
+      source: 'copy_detail',
+    })
     try {
       setActiveTab('images')
       setShowPreview(true)
@@ -396,13 +429,27 @@ export function GenerationPanel({
     }
   }
 
-  const handleUseCopyForProduction = async (assetId: string) => {
+  const handleGenerateCopyFromConcept = (assetId: string) => {
+    void handleUseConceptForProduction(assetId, { goToCopy: true })
+  }
+
+  const requestExploreImageFromConcept = (conceptAsset: CreativeAsset) => {
+    setExploreConceptAsset(conceptAsset)
+  }
+
+  const handleGenerateKeyArtFromCopy = async (assetId: string) => {
     if (!productionConceptAssetId) {
       toast.error('Select a concept for production first')
       return
     }
     try {
       await selectCopy.mutateAsync(assetId)
+      setImageCopyAnchorId(assetId)
+      setActiveTab('images')
+      trackGenerateImagePath('production_path', {
+        campaign_id: campaign.id,
+        source: 'copy_card',
+      })
       toast.success('Copy set for key art')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to select copy')
@@ -772,8 +819,8 @@ export function GenerationPanel({
                   onUseForProduction={() => handleUseConceptForProduction(asset.id)}
                   onView={() => setActiveConceptForModal(asset)}
                   onDelete={() => handleDelete(asset.id)}
-                  onGenerateCopy={() => handleUseConceptForProduction(asset.id)}
-                  onGenerateImage={() => handleGenerateImageFromConcept(asset)}
+                  onGenerateCopy={() => handleGenerateCopyFromConcept(asset.id)}
+                  onGenerateImage={() => requestExploreImageFromConcept(asset)}
                   onSubmit={() => handleSubmitAsset(asset.id)}
                   showActions={true}
                 />
@@ -886,7 +933,12 @@ export function GenerationPanel({
                             inProduction={productionCopyAssetId === asset.id}
                             onUseForProduction={
                               productionConceptAssetId
-                                ? () => handleUseCopyForProduction(asset.id)
+                                ? () => handleGenerateKeyArtFromCopy(asset.id)
+                                : undefined
+                            }
+                            onGenerateKeyArt={
+                              productionConceptAssetId
+                                ? () => handleGenerateKeyArtFromCopy(asset.id)
                                 : undefined
                             }
                             onView={() => setActiveCopyForModal(asset)}
@@ -1168,8 +1220,7 @@ export function GenerationPanel({
         onGoToCopy={
           activeConceptForModal
             ? () => {
-                setSelectedConceptAssetId(activeConceptForModal.id)
-                setActiveTab('copy')
+                void handleUseConceptForProduction(activeConceptForModal.id, { goToCopy: true })
                 setActiveConceptForModal(null)
               }
             : undefined
@@ -1177,7 +1228,7 @@ export function GenerationPanel({
         onGenerateImage={
           activeConceptForModal
             ? () => {
-                handleGenerateImageFromConcept(activeConceptForModal)
+                requestExploreImageFromConcept(activeConceptForModal)
                 setActiveConceptForModal(null)
               }
             : undefined
@@ -1251,6 +1302,36 @@ export function GenerationPanel({
             : undefined
         }
       />
+
+      <AlertDialog
+        open={!!exploreConceptAsset}
+        onOpenChange={(open) => {
+          if (!open) setExploreConceptAsset(null)
+        }}
+      >
+        <AlertDialogContent data-testid="explore-image-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Skip copy for this image?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Skip copy? Image may not match final line. For messaging-aligned key art, generate copy first
+              and use Generate key art on a copy variant.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (exploreConceptAsset) {
+                  void handleGenerateImageFromConcept(exploreConceptAsset)
+                  setExploreConceptAsset(null)
+                }
+              }}
+            >
+              Generate anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

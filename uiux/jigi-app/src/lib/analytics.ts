@@ -43,3 +43,13 @@ export function trackEvent(event: string, props: AnalyticsProps = {}): void {
 export function trackTourEvent(event: TourEventName, props: AnalyticsProps = {}): void {
   trackEvent(event, props)
 }
+
+export type GenerateImagePath = 'production_path' | 'explore_path'
+
+/** Tracks concept→copy→image production flow vs explore shortcuts (P4 Sprint 4). */
+export function trackGenerateImagePath(
+  path: GenerateImagePath,
+  props: AnalyticsProps = {}
+): void {
+  trackEvent('generate_image', { path, ...props })
+}
