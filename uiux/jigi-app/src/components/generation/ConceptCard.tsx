@@ -202,7 +202,7 @@ export function ConceptCard({
           {(onGenerateCopy || onGenerateImage || onDelete) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()} aria-label="More concept actions">
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>

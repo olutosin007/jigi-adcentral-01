@@ -1,4 +1,4 @@
-import { Check, Copy, Trash2, MoreHorizontal, Edit, Send, AlertTriangle } from 'lucide-react'
+import { Check, Copy, Trash2, MoreHorizontal, Edit, Send, Sparkles, AlertTriangle } from 'lucide-react'
 import { DriftBadge } from './DriftBadge'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +33,8 @@ interface CopyCardProps {
   onEdit?: () => void
   onDelete?: () => void
   onSubmit?: () => void
+  /** Production path: persist copy selection and open Images stage */
+  onGenerateKeyArt?: () => void
   showActions?: boolean
   /** Channel character budget for display (from getPrimaryCopyBudgetChars) */
   channelMaxChars?: number
@@ -52,6 +54,7 @@ export function CopyCard({
   onEdit,
   onDelete,
   onSubmit,
+  onGenerateKeyArt,
   showActions = true,
   channelMaxChars,
 }: CopyCardProps) {
@@ -228,7 +231,7 @@ export function CopyCard({
             </Button>
           )}
 
-          {(onEdit || onDelete) && (
+          {(onEdit || onDelete || onGenerateKeyArt) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
@@ -236,6 +239,23 @@ export function CopyCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {onGenerateKeyArt && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onGenerateKeyArt()
+                    }}
+                    className="flex flex-col items-stretch gap-0.5 py-2.5"
+                  >
+                    <span className="flex items-center text-sm">
+                      <Sparkles className="w-4 h-4 mr-2 shrink-0" />
+                      Generate key art
+                    </span>
+                    <span className="text-[10px] text-muted-foreground pl-6 leading-snug">
+                      Sets copy selection and opens Images
+                    </span>
+                  </DropdownMenuItem>
+                )}
                 {onEdit && (
                   <DropdownMenuItem onClick={onEdit}>
                     <Edit className="w-4 h-4 mr-2" />

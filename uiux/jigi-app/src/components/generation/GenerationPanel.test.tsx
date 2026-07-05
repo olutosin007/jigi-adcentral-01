@@ -251,4 +251,35 @@ describe('GenerationPanel', () => {
     expect(screen.getByText(/Brand profile incomplete — results may drift/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /complete brand kit/i })).toBeInTheDocument()
   })
+
+  it('K1: concept generate image opens explore confirm dialog', async () => {
+    const user = userEvent.setup()
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
+      { wrapper: createWrapper() }
+    )
+
+    await user.click(screen.getByRole('button', { name: /more concept actions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /generate image/i }))
+
+    expect(screen.getByTestId('explore-image-confirm')).toBeInTheDocument()
+    expect(screen.getByText(/Skip copy\? Image may not match final line/i)).toBeInTheDocument()
+  })
+
+  it('K2: generate copy from concept persists selection via selectConcept', async () => {
+    const user = userEvent.setup()
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
+      { wrapper: createWrapper() }
+    )
+
+    await user.click(screen.getByRole('button', { name: /more concept actions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /generate copy/i }))
+
+    expect(mockSelectConceptMutate).toHaveBeenCalledWith('concept-1')
+  })
 })

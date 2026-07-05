@@ -34,6 +34,21 @@ The shortest path from nothing to a submitted asset.
 
 ## 4. Decision branches
 
+### Production path vs explore (P4)
+
+The default **production path** chains persisted selections — no re-picking after refresh:
+
+```mermaid
+flowchart LR
+    A[Confirm concept] --> B[Generate copy]
+    B --> C[Generate key art]
+    C --> D[Generate image]
+```
+
+- **Concept → Copy:** ConceptCard *Generate copy* or *Use for copy & visuals* persists `selected_concept_asset_id` and opens the Copy tab.
+- **Copy → Images:** CopyCard *Generate key art* persists `selected_copy_asset_id`, sets the messaging anchor, and opens Images.
+- **Explore shortcuts:** Concept → image (ConceptCard or detail modal) shows a confirm dialog: *Skip copy? Image may not match final line.* Images tab without a copy anchor shows an amber explore banner.
+
 - **Idea-first entry** _(optional)_: step 1 picks `idea_first`; step 2 (brand) is skipped — use **Quick create brand** inline on create if needed later. Create uses a real **3-step stepper** (Basics → Brief → Channels). Incomplete briefs show a dashboard/list/detail banner: *Brief incomplete — generation may be off-brief*. Incomplete brand kits show a similar banner on the generation panel. Generation runs with idea grounding + CCO-lite; brand can be attached later. Everything from step 4 onward is identical.
 - **Internal agency gate** _(optional)_: before step 8, submit with `target=agency_review` (status → `agency_review`). An internal `reviewer` checks it, then submits onward to the brand. Use when the agency wants a QA pass before the brand sees anything.
 - **Iterate before submit**: steps 4–7 loop freely; regeneration and edits stay in `draft`.
