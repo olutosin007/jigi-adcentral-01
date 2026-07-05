@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -43,8 +43,13 @@ import {
   type PipelineStage,
   isGenerationStage,
 } from '@/lib/campaign-workspace'
+import {
+  buildPipelineGateInput,
+  evaluateStageGates,
+  getNextPipelineAction,
+  type StageGateMap,
+} from '@/lib/pipeline-gates'
 import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
-import type { CreativeAsset } from '@/store/campaignStore'
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground border-border',
@@ -53,16 +58,15 @@ const statusStyles: Record<string, string> = {
   archived: 'bg-muted text-muted-foreground border-border',
 }
 
-const STAGE_PRIMARY_CTA: Record<
-  PipelineStage,
-  { label: string; stage: PipelineStage }
-> = {
-  brief: { label: 'Generate concepts', stage: 'concepts' },
-  concepts: { label: 'Generate concepts', stage: 'concepts' },
-  copy: { label: 'Generate copy', stage: 'copy' },
-  images: { label: 'Generate images', stage: 'images' },
-  assets: { label: 'Generate concepts', stage: 'concepts' },
+const DEFAULT_GATE_MAP: StageGateMap = {
+  brief: 'in_progress',
+  concepts: 'available',
+  copy: 'available',
+  images: 'available',
+  assets: 'available',
 }
+
+import type { CreativeAsset } from '@/store/campaignStore'
 
 function getAssetDisplayName(asset: CreativeAsset): string {
   const content = asset.content as unknown as Record<string, unknown>
@@ -107,6 +111,37 @@ export function CampaignDetail() {
   const deleteAsset = useDeleteAsset()
   const submitAsset = useSubmitAsset()
   const validateAssetsMutation = useValidateAssets()
+
+  const gateInput = useMemo(
+    () => (campaign ? buildPipelineGateInput(campaign, allAssets) : null),
+    [campaign, allAssets]
+  )
+  const gateMap = useMemo(
+    () => (gateInput ? evaluateStageGates(gateInput) : DEFAULT_GATE_MAP),
+    [gateInput]
+  )
+  const nextPipelineAction = useMemo(
+    () => (gateInput ? getNextPipelineAction(gateInput) : null),
+    [gateInput]
+  )
+
+  const handlePrimaryCta = () => {
+    if (!nextPipelineAction) return
+    if (nextPipelineAction.stage !== stage) {
+      setStage(nextPipelineAction.stage)
+    }
+    requestAnimationFrame(() => {
+      if (nextPipelineAction.actionType === 'focus_generate') {
+        document.getElementById('generation-prompt')?.focus()
+      }
+      if (nextPipelineAction.actionType === 'scroll_selection') {
+        document.getElementById('production-selection')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        })
+      }
+    })
+  }
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -379,14 +414,8 @@ export function CampaignDetail() {
             >
               {campaign.status}
             </Badge>
-            <Button
-              size="sm"
-              onClick={() => {
-                const cta = STAGE_PRIMARY_CTA[stage]
-                if (cta.stage !== stage) setStage(cta.stage)
-              }}
-            >
-              {STAGE_PRIMARY_CTA[stage].label}
+            <Button size="sm" onClick={handlePrimaryCta}>
+              {nextPipelineAction?.label ?? 'Continue'}
             </Button>
           </div>
         </div>
@@ -402,6 +431,7 @@ export function CampaignDetail() {
 
       <CampaignWorkspace
         activeStage={stage}
+        gateMap={gateMap}
         onStageChange={setStage}
         briefStage={
           <CampaignBriefStage

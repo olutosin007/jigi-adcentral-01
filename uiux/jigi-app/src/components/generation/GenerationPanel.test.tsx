@@ -42,8 +42,10 @@ const mockDraftConceptAsset = {
   updated_at: '2024-01-01',
 }
 
-const { mockCampaignAssetsData } = vi.hoisted(() => ({
+const { mockCampaignAssetsData, mockSelectConceptMutate, mockSelectCopyMutate } = vi.hoisted(() => ({
   mockCampaignAssetsData: { current: [] as typeof mockDraftConceptAsset[] },
+  mockSelectConceptMutate: vi.fn().mockResolvedValue({}),
+  mockSelectCopyMutate: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
@@ -71,6 +73,14 @@ vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
     useCampaignAssets: () => ({ data: mockCampaignAssetsData.current }),
     useDeleteAsset: () => ({ mutateAsync: vi.fn() }),
     useBrand: () => ({ data: undefined }),
+    useSelectConcept: () => ({
+      mutateAsync: mockSelectConceptMutate,
+      isPending: false,
+    }),
+    useSelectCopy: () => ({
+      mutateAsync: mockSelectCopyMutate,
+      isPending: false,
+    }),
   }
 })
 
@@ -98,6 +108,8 @@ describe('GenerationPanel', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockCampaignAssetsData.current = []
+    mockSelectConceptMutate.mockClear()
+    mockSelectCopyMutate.mockClear()
   })
 
   it('renders Concepts, Copy, Images tabs', () => {
@@ -144,6 +156,35 @@ describe('GenerationPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /submit for review/i }))
     expect(onSubmitAsset).toHaveBeenCalledWith('concept-1')
+  })
+
+  it('U4: calls select concept hook when Use for copy & visuals is clicked', async () => {
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+    const user = userEvent.setup()
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
+      { wrapper: createWrapper() }
+    )
+
+    await user.click(screen.getByRole('button', { name: /use for copy & visuals/i }))
+    expect(mockSelectConceptMutate).toHaveBeenCalledWith('concept-1')
+  })
+
+  it('U6: shows explore banner on Images tab when no copy selection', async () => {
+    const user = userEvent.setup()
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" stage="images" />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByTestId('images-explore-banner')).toBeInTheDocument()
+    expect(
+      screen.getByText(/for messaging-aligned key art, select copy first/i)
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByText('Images'))
+    expect(screen.getByTestId('images-explore-banner')).toBeInTheDocument()
   })
 
   it('shows Images tab content when Images tab is selected', async () => {
