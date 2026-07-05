@@ -15,6 +15,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthStore } from '@/store/authStore'
 import { useBrandStore } from '@/store/brandStore'
+import {
+  DEFAULT_BRAND_COLOURS,
+  DEFAULT_BRAND_FONTS,
+  deriveBrandEssentials,
+} from '@/lib/brand-profile-status'
 
 interface QuickCreateBrandDialogProps {
   open: boolean
@@ -50,11 +55,14 @@ export function QuickCreateBrandDialog({
       name: trimmed,
       organisation_id: profile.organisation_id,
       identity: {
-        colours: { primary: '#0D9488', secondary: '#1C1917', accent: '#D97706', neutral: '#78716C' },
-        fonts: { heading: 'Inter', body: 'Source Sans 3' },
+        colours: { ...DEFAULT_BRAND_COLOURS },
+        fonts: { ...DEFAULT_BRAND_FONTS },
       },
       voice: { tone: [], preferred_words: [], avoided_words: [] },
-      brand_profile_status: 'starter',
+      brand_profile_status: deriveBrandEssentials(
+        { colours: DEFAULT_BRAND_COLOURS, fonts: DEFAULT_BRAND_FONTS },
+        { tone: [], preferred_words: [], avoided_words: [] }
+      ).status,
       journey_mode: profile.journey_mode || 'brand_first',
     })
     setIsCreating(false)
