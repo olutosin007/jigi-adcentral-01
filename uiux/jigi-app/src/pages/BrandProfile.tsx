@@ -13,14 +13,15 @@ import { BrandColorsEditor } from '@/components/brands/BrandColorsEditor'
 import { BrandTypographyEditor } from '@/components/brands/BrandTypographyEditor'
 import { BrandToneEditor } from '@/components/brands/BrandToneEditor'
 import { BrandWordListsEditor } from '@/components/brands/BrandWordListsEditor'
+import { BrandEssentialsChecklist } from '@/components/brands/BrandEssentialsChecklist'
 import { useBrandStore, type BrandIdentity, type BrandVoice } from '@/store/brandStore'
-import { deriveBrandProfileStatus } from '@/lib/brand-profile-status'
+import { deriveBrandEssentials, deriveBrandProfileStatus } from '@/lib/brand-profile-status'
 import { getContrastColor } from '@/lib/colors'
 import { loadGoogleFont } from '@/lib/fonts'
 import { cn } from '@/lib/utils'
 
 const statusLabels = {
-  complete: 'Complete',
+  complete: 'On-brand ready',
   partial: 'Partial',
   starter: 'Starter',
 }
@@ -46,6 +47,7 @@ export function BrandProfile() {
   const [editingTone, setEditingTone] = useState(false)
   const [editingWords, setEditingWords] = useState(false)
   const [kitSaving, setKitSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState('identity')
 
   useEffect(() => {
     if (id) {
@@ -171,6 +173,7 @@ export function BrandProfile() {
   }
 
   const { identity, voice, brand_profile_status: status } = currentBrand
+  const essentials = deriveBrandEssentials(identity, voice)
   const colours = identity?.colours || {}
   const fonts = identity?.fonts || {}
   const tone = voice?.tone || []
@@ -178,6 +181,36 @@ export function BrandProfile() {
   const avoidedWords = voice?.avoided_words || []
 
   const isArchived = currentBrand.status === 'archived'
+
+  const handleEssentialAction = (essentialId: string) => {
+    switch (essentialId) {
+      case 'primary_colour':
+        setActiveTab('identity')
+        setEditingColors(true)
+        break
+      case 'typography':
+        setActiveTab('identity')
+        setEditingTypography(true)
+        break
+      case 'tone':
+        setActiveTab('voice')
+        setEditingTone(true)
+        break
+      case 'word_lists':
+        setActiveTab('voice')
+        setEditingWords(true)
+        break
+      case 'logo':
+        navigate('/app/onboarding')
+        break
+      case 'visual_style':
+        setActiveTab('identity')
+        toast.info('Visual style editor is in the next profile update — add direction in brand strategy soon.')
+        break
+      default:
+        break
+    }
+  }
 
   return (
     <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6">
@@ -231,11 +264,11 @@ export function BrandProfile() {
                   </Badge>
                 )}
                 <Badge className={cn('text-xs', statusColors[status])}>
-                  {statusLabels[status]}
+                  {statusLabels[status]} · {essentials.score}/{essentials.maxScore}
                 </Badge>
                 {status !== 'complete' && (
                   <span className="text-xs text-muted-foreground">
-                    Finish your brand kit in the sections below
+                    Complete essentials below for on-brand AI
                   </span>
                 )}
               </div>
@@ -275,7 +308,16 @@ export function BrandProfile() {
         isDeleting={isDeleting}
       />
 
-      <Tabs defaultValue="identity" className="space-y-6">
+      {!isArchived && essentials.score < essentials.maxScore && (
+        <BrandEssentialsChecklist
+          items={essentials.items}
+          score={essentials.score}
+          maxScore={essentials.maxScore}
+          onItemAction={handleEssentialAction}
+        />
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="identity">Identity</TabsTrigger>
           <TabsTrigger value="voice">Voice</TabsTrigger>

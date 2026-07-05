@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { useBrandStore } from '@/store/brandStore'
 import { useAuthStore } from '@/store/authStore'
+import { DEFAULT_BRAND_COLOURS, DEFAULT_BRAND_FONTS } from '@/lib/brand-profile-status'
 
 import { LogoUploadStep } from './steps/LogoUploadStep'
 import { ColorPaletteStep } from './steps/ColorPaletteStep'
@@ -74,14 +75,14 @@ export function OnboardingWizard({ brandId, initialData, onComplete }: Onboardin
       brandName: initialData?.brandName || '',
       logoUrl: initialData?.logoUrl || '',
       colours: initialData?.colours || {
-        primary: '#0D9488',
-        secondary: '#6366F1',
-        accent: '#F59E0B',
-        neutral: '#6B7280',
+        primary: DEFAULT_BRAND_COLOURS.primary,
+        secondary: DEFAULT_BRAND_COLOURS.secondary,
+        accent: DEFAULT_BRAND_COLOURS.accent,
+        neutral: DEFAULT_BRAND_COLOURS.neutral,
       },
       typography: initialData?.typography || {
-        heading: 'Plus Jakarta Sans',
-        body: 'Inter',
+        heading: DEFAULT_BRAND_FONTS.heading,
+        body: DEFAULT_BRAND_FONTS.body,
         customHeading: '',
         customBody: '',
       },
