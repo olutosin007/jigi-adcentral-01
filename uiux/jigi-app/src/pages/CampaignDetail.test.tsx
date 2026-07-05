@@ -12,7 +12,7 @@ const mockCampaign = {
   created_by: 'user-1',
   name: 'Test Campaign',
   brief: { objective: 'Test objective', audience: 'Youth', channels: ['instagram_post'] },
-  journey_mode: 'brand_first' as const,
+  journey_mode: 'brand_first' as 'brand_first' | 'idea_first',
   status: 'draft' as const,
   created_at: '2024-01-01',
   updated_at: '2024-01-01',
