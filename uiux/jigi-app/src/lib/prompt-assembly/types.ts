@@ -22,11 +22,20 @@ export interface BioContext {
 
 export type TrackType = 'concept' | 'copy' | 'image'
 
+export interface ConceptContextForAssembly {
+  theme: string
+  headlines?: string[]
+  visual_direction?: string
+  key_message_link?: string
+}
+
 export interface AssemblePromptInput {
   campaignId: string
   brandId?: string | null
   track: TrackType
   channelId?: string
+  /** Selected concept — injected into copy (and concept) assembled prompts */
+  conceptContext?: ConceptContextForAssembly
 }
 
 export interface AssemblePromptResult {
