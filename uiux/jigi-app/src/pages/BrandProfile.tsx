@@ -16,6 +16,7 @@ import { BrandWordListsEditor } from '@/components/brands/BrandWordListsEditor'
 import { BrandVisualStyleEditor } from '@/components/brands/BrandVisualStyleEditor'
 import { BrandStrategyEditor } from '@/components/brands/BrandStrategyEditor'
 import { BrandEssentialsChecklist } from '@/components/brands/BrandEssentialsChecklist'
+import { BrandPreviewPanel } from '@/components/brands/BrandPreviewPanel'
 import { useBrandStore, type BrandIdentity, type BrandVoice, type BrandStrategy } from '@/store/brandStore'
 import { deriveBrandEssentials, deriveBrandProfileStatus } from '@/lib/brand-profile-status'
 import { getContrastColor } from '@/lib/colors'
@@ -190,6 +191,14 @@ export function BrandProfile() {
   const avoidedWords = voice?.avoided_words || []
 
   const isArchived = currentBrand.status === 'archived'
+  const isKitEditing =
+    isEditing ||
+    editingColors ||
+    editingTypography ||
+    editingTone ||
+    editingWords ||
+    editingVisualStyle ||
+    editingStrategy
 
   const handleEssentialAction = (essentialId: string) => {
     switch (essentialId) {
@@ -326,6 +335,8 @@ export function BrandProfile() {
         />
       )}
 
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="identity">Identity</TabsTrigger>
@@ -755,6 +766,17 @@ export function BrandProfile() {
           </Card>
         </TabsContent>
       </Tabs>
+        </div>
+
+        {!isKitEditing && !isArchived && (
+          <BrandPreviewPanel
+            brandName={currentBrand.name}
+            identity={identity}
+            voice={voice}
+            essentials={essentials}
+          />
+        )}
+      </div>
     </div>
   )
 }

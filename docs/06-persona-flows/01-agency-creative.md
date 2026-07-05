@@ -24,9 +24,9 @@ The shortest path from nothing to a submitted asset.
 | # | User action | Route | Component | System response | Status after | Anchor |
 |---|-------------|-------|-----------|-----------------|--------------|--------|
 | 1 | Pick "Brand-first" | `/setup/journey` | `JourneyChoice` | `journey_mode = brand_first` | — | `journey-choice` |
-| 2 | Create / confirm brand | `/app/brands` or inline on create | `Brands`, `QuickCreateBrandDialog` | Brand saved (identity, voice, strategy, visual style) | — | `brand-create` |
+| 2 | Create / confirm brand | `/app/brands` or inline on create | `Brands`, `QuickCreateBrandDialog`, `BrandProfile` | Brand saved (identity, voice, strategy, visual style). Profile shows **Preview** sidebar (colours, fonts, tone, visual style, readiness ring) in read mode | — | `brand-create` |
 | 3 | Start a campaign | `/app/campaigns/new` | `CampaignCreate` (3-step: Basics → Brief → Channels), `BriefForm` | Campaign created with brief + channels; CCO-lite compiles on save for idea-first | — | `brief-form` |
-| 4 | Generate concept | `/app/campaigns/:id` | `GenerationPanel`, `ConceptCard` | On-brand concepts returned + brand-alignment score | `draft` | `generation-panel` |
+| 4 | Generate concept | `/app/campaigns/:id` | `GenerationPanel`, `ConceptCard`, `BrandIncompleteBanner` | On-brand concepts returned + brand-alignment score. If brand kit is incomplete, an amber banner warns *Brand profile incomplete — results may drift* with a link to complete the kit | `draft` | `generation-panel` |
 | 5 | Generate copy | `/app/campaigns/:id` | `GenerationPanel`, `CopyCard` | Copy within channel length limits | `draft` | `generation-panel` |
 | 6 | Generate image | `/app/campaigns/:id` | `GenerationPanel`, `ImageCard` | Image using brand palette + visual style | `draft` | `generation-panel` |
 | 7 | Check compliance | `/app/campaigns/:id` | `ComplianceDisplay`, `DriftBadge` | Compliance / drift feedback shown | `draft` | `compliance-panel` |
@@ -34,7 +34,7 @@ The shortest path from nothing to a submitted asset.
 
 ## 4. Decision branches
 
-- **Idea-first entry** _(optional)_: step 1 picks `idea_first`; step 2 (brand) is skipped — use **Quick create brand** inline on create if needed later. Create uses a real **3-step stepper** (Basics → Brief → Channels). Incomplete briefs show a dashboard/list/detail banner: *Brief incomplete — generation may be off-brief*. Generation runs with idea grounding + CCO-lite; brand can be attached later. Everything from step 4 onward is identical.
+- **Idea-first entry** _(optional)_: step 1 picks `idea_first`; step 2 (brand) is skipped — use **Quick create brand** inline on create if needed later. Create uses a real **3-step stepper** (Basics → Brief → Channels). Incomplete briefs show a dashboard/list/detail banner: *Brief incomplete — generation may be off-brief*. Incomplete brand kits show a similar banner on the generation panel. Generation runs with idea grounding + CCO-lite; brand can be attached later. Everything from step 4 onward is identical.
 - **Internal agency gate** _(optional)_: before step 8, submit with `target=agency_review` (status → `agency_review`). An internal `reviewer` checks it, then submits onward to the brand. Use when the agency wants a QA pass before the brand sees anything.
 - **Iterate before submit**: steps 4–7 loop freely; regeneration and edits stay in `draft`.
 
@@ -61,7 +61,7 @@ flowchart LR
 
 ## 7. Moments that matter
 
-1. **First on-brand generation (steps 4–6)** — the "wow". If the first concept/image feels off-brand, trust collapses. The tour should slow down and point at the brand-alignment score and visual-style result.
+1. **First on-brand generation (steps 4–6)** — the "wow". If the first concept/image feels off-brand, trust collapses. The tour should slow down and point at the brand-alignment score and visual-style result. If the brand kit is incomplete, the generation banner is the cue to finish essentials before heavy iteration.
 2. **Submit (step 8)** — the commitment moment. Make the `target` choice (internal vs brand) unambiguous.
 3. **Changes-requested loop (§5)** — where creators get lost. Surface review notes prominently on return.
 
