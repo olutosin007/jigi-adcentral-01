@@ -42,6 +42,12 @@ export interface Campaign {
   campaign_context?: CampaignContextObject | null
   /** CCO version; increments on every brief edit. Used for drift detection. */
   cco_version?: number
+  /** Production concept selection for pipeline (P1 Sprint 2). */
+  selected_concept_asset_id?: string | null
+  /** Production copy selection for key art (P1 Sprint 2). */
+  selected_copy_asset_id?: string | null
+  /** When selection columns were last updated. */
+  selection_updated_at?: string | null
 }
 
 export interface CreativeAsset {
@@ -270,6 +276,9 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
     try {
       const updatePayload: Partial<Campaign> = { ...data }
+      delete updatePayload.selected_concept_asset_id
+      delete updatePayload.selected_copy_asset_id
+      delete updatePayload.selection_updated_at
       if (data.journey_mode && !data.generation_mode) {
         updatePayload.generation_mode =
           data.journey_mode === 'idea_first' ? 'idea_first' : 'brand_grounded'

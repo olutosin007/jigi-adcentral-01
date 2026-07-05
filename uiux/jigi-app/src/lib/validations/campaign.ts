@@ -30,10 +30,32 @@ export const createCampaignSchema = z.object({
   brief: campaignBriefSchema.partial(),
 })
 
-export const updateCampaignSchema = z.object({
-  name: z.string().min(3).optional(),
-  brief: campaignBriefSchema.partial().optional(),
-  status: z.enum(['draft', 'active', 'completed', 'archived']).optional(),
+export const updateCampaignSchema = z
+  .object({
+    name: z.string().min(3).optional(),
+    brief: campaignBriefSchema.partial().optional(),
+    status: z.enum(['draft', 'active', 'completed', 'archived']).optional(),
+    selected_concept_asset_id: z.string().uuid().nullable().optional(),
+    selected_copy_asset_id: z.string().uuid().nullable().optional(),
+    selection_updated_at: z.string().datetime().nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.selected_concept_asset_id !== undefined ||
+      data.selected_copy_asset_id !== undefined ||
+      data.selection_updated_at !== undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Campaign selections must be updated via POST /api/campaigns/select',
+      })
+    }
+  })
+
+export const selectCampaignAssetSchema = z.object({
+  campaign_id: z.string().uuid(),
+  selection: z.enum(['concept', 'copy']),
+  asset_id: z.string().uuid().nullable(),
 })
 
 export const fullBriefSchema = z.object({
@@ -52,4 +74,5 @@ export type CampaignBrief = z.infer<typeof campaignBriefSchema>
 export type IdeaFirstBrief = z.infer<typeof ideaFirstBriefSchema>
 export type CreateCampaignData = z.infer<typeof createCampaignSchema>
 export type UpdateCampaignData = z.infer<typeof updateCampaignSchema>
+export type SelectCampaignAssetData = z.infer<typeof selectCampaignAssetSchema>
 export type FullBriefData = z.infer<typeof fullBriefSchema>
