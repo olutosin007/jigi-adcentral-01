@@ -63,12 +63,17 @@ describe('evaluateStageGates', () => {
     expect(gates.concepts).not.toBe('complete')
   })
 
-  it('G3: idea-first with seed_idea and channels — brief complete', () => {
+  it('G3: idea-first with complete brief — brief complete', () => {
     const gates = evaluateStageGates(
       makeInput({
         journey_mode: 'idea_first',
         seed_idea: 'A beach vacation vibe for sunscreen launch',
-        brief: { channels: ['facebook_post'] },
+        brief: {
+          objective: 'Launch summer sunscreen campaign nationwide',
+          audience: 'Young professionals aged 25 to 35',
+          channels: ['facebook_post'],
+          key_message: 'Protect your skin all summer',
+        },
       })
     )
     expect(gates.brief).toBe('complete')

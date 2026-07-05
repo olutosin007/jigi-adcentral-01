@@ -18,7 +18,8 @@ function buildBrandGroundedConceptPrompt(brand: BrandConstraints, brief: Campaig
   const avoidedWords = brand.voice.avoided_words?.join(', ') || ''
   const differentiators = brand.strategy?.differentiators?.join('; ') || ''
   const channels = brief.channels?.join(', ') || 'social media'
-  const keyMessage = brief.requirements?.trim() || brief.objective || 'the campaign objective'
+  const keyMessage =
+    brief.key_message?.trim() || brief.objective?.trim() || 'the campaign objective'
 
   return `You are a senior creative strategist generating advertising campaign concepts.
 
@@ -70,6 +71,7 @@ function buildIdeaFirstConceptPrompt(brief: CampaignBrief, fallback?: FallbackCo
   const channels = brief.channels?.join(', ') || 'social media'
   const seedIdea = fallback?.seed_idea || brief.objective || ''
   const styleHints = fallback?.style_hints?.join(', ') || ''
+  const keyMessage = brief.key_message?.trim() || brief.objective?.trim() || seedIdea
 
   return `You are a senior creative strategist generating advertising campaign concepts.
 
@@ -82,6 +84,7 @@ BRIEF:
 - Campaign objective: ${brief.objective || seedIdea}
 - Target audience: ${brief.audience || fallback?.audience || 'General audience'}
 - Channels: ${channels}
+- Key message: ${keyMessage}
 ${brief.requirements ? `- Specific requirements: ${brief.requirements}` : ''}
 
 TASK:
@@ -158,6 +161,7 @@ function buildBrandGroundedCopyPrompt(
   const preferredWords = brand.voice.preferred_words?.join(', ') || ''
   const avoidedWords = brand.voice.avoided_words?.join(', ') || ''
   const sampleVoice = brand.voice.samples?.[0] || ''
+  const keyMessage = brief.key_message?.trim() || brief.objective?.trim() || 'Not specified'
 
   return `You are an expert copywriter creating advertising copy for a brand.
 
@@ -170,6 +174,7 @@ ${sampleVoice ? `- Style reference: ${sampleVoice}` : ''}
 BRIEF:
 - Objective: ${brief.objective || 'Not specified'}
 - Audience: ${brief.audience || 'Not specified'}
+- Key message: ${keyMessage}
 - Format: ${format}
 ${buildLengthLimitsBlock(budget)}
 
@@ -199,6 +204,7 @@ function buildIdeaFirstCopyPrompt(
   budget?: CopyLengthBudget
 ): string {
   const seedIdea = fallback?.seed_idea || brief.objective || ''
+  const keyMessage = brief.key_message?.trim() || brief.objective?.trim() || seedIdea
 
   return `You are an expert copywriter creating advertising copy.
 
@@ -209,6 +215,7 @@ ${brief.audience || fallback?.audience ? `- Target audience: ${brief.audience ||
 BRIEF:
 - Objective: ${brief.objective || seedIdea}
 - Audience: ${brief.audience || fallback?.audience || 'General audience'}
+- Key message: ${keyMessage}
 - Format: ${format}
 ${buildLengthLimitsBlock(budget)}
 

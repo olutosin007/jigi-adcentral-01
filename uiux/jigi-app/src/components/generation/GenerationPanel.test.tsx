@@ -127,7 +127,7 @@ describe('GenerationPanel', () => {
       <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
       { wrapper: createWrapper() }
     )
-    const textarea = screen.getByPlaceholderText(/describe your campaign/i)
+    const textarea = screen.getByPlaceholderText(/creative direction \(optional\)/i)
     expect(textarea).toBeInTheDocument()
   })
 

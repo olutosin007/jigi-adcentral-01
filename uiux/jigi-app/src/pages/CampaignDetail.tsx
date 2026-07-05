@@ -45,6 +45,7 @@ import {
 } from '@/lib/campaign-workspace'
 import {
   buildPipelineGateInput,
+  evaluateBriefReadiness,
   evaluateStageGates,
   getNextPipelineAction,
   type StageGateMap,
@@ -123,6 +124,16 @@ export function CampaignDetail() {
   const nextPipelineAction = useMemo(
     () => (gateInput ? getNextPipelineAction(gateInput) : null),
     [gateInput]
+  )
+  const briefReadiness = useMemo(
+    () =>
+      campaign
+        ? evaluateBriefReadiness(campaign.brief ?? {}, {
+            journey_mode: campaign.journey_mode,
+            seed_idea: campaign.seed_idea ?? null,
+          })
+        : undefined,
+    [campaign]
   )
 
   const handlePrimaryCta = () => {
@@ -422,9 +433,12 @@ export function CampaignDetail() {
       </div>
 
       <BriefSnippetBar
+        keyMessage={brief.key_message}
         objective={brief.objective}
         audience={brief.audience}
         channels={brief.channels}
+        exclusions={brief.exclusions}
+        readiness={briefReadiness}
         onEditBrief={startBriefEdit}
         hidden={stage === 'brief'}
       />
