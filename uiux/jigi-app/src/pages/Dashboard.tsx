@@ -10,6 +10,7 @@ import {
   RecentCampaignsWidget,
   GenerationMixCard,
 } from '@/components/dashboard'
+import { BriefIncompleteBanner } from '@/components/campaign/BriefIncompleteBanner'
 import {
   useDashboardStats,
   usePendingReviews,
@@ -50,6 +51,13 @@ export function Dashboard() {
   const pendingCount = stats?.pendingReview ?? 0
   const isReviewer = isReviewerRole(profile?.role)
   const isCreator = !isReviewer
+  const incompleteBriefCount =
+    recentCampaigns?.filter((c) => c.briefReady === false).length ?? 0
+  const incompleteBriefReadiness = {
+    ready: false,
+    missing: [`${incompleteBriefCount} campaign${incompleteBriefCount === 1 ? '' : 's'} with incomplete briefs`],
+    warnings: [] as string[],
+  }
 
   const pendingReviewsSection = (
     <div
@@ -119,6 +127,13 @@ export function Dashboard() {
               : "You're all caught up — nothing pending right now."}
         </p>
       </div>
+
+      {isCreator && incompleteBriefCount > 0 && (
+        <BriefIncompleteBanner
+          readiness={incompleteBriefReadiness}
+          onEditBrief={() => navigate('/app/campaigns')}
+        />
+      )}
 
       {/* Role-aware quick actions */}
       <div

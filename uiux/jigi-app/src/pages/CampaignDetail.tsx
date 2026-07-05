@@ -20,6 +20,7 @@ import { AssetGrid } from '@/components/generation/AssetGrid'
 import { UploadModal } from '@/components/upload/UploadModal'
 import { CampaignWorkspace } from '@/components/campaign/CampaignWorkspace'
 import { BriefSnippetBar } from '@/components/campaign/BriefSnippetBar'
+import { BriefIncompleteBanner } from '@/components/campaign/BriefIncompleteBanner'
 import { CampaignBriefStage, type BriefFormData } from '@/components/campaign/CampaignBriefStage'
 import {
   useCampaign,
@@ -431,6 +432,12 @@ export function CampaignDetail() {
           </div>
         </div>
       </div>
+
+      {briefReadiness && stage !== 'brief' && (
+        <div className="px-6 md:px-8 py-3 border-b border-border flex-shrink-0">
+          <BriefIncompleteBanner readiness={briefReadiness} onEditBrief={startBriefEdit} />
+        </div>
+      )}
 
       <BriefSnippetBar
         keyMessage={brief.key_message}

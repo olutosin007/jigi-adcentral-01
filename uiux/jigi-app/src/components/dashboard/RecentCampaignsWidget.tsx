@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BriefIncompleteBanner } from '@/components/campaign/BriefIncompleteBanner'
 import type { RecentCampaignItem } from '@/hooks/useDashboardQueries'
 
 interface RecentCampaignsWidgetProps {
@@ -116,6 +117,12 @@ export function RecentCampaignsWidget({ campaigns = [], isLoading }: RecentCampa
               <p className="text-xs text-muted-foreground mt-2">
                 Updated {formatDistanceToNow(new Date(campaign.updatedAt), { addSuffix: true })}
               </p>
+              {campaign.briefReady === false && (
+                <BriefIncompleteBanner
+                  readiness={{ ready: false, missing: ['Brief incomplete'], warnings: [] }}
+                  compact
+                />
+              )}
             </div>
           )
         })}

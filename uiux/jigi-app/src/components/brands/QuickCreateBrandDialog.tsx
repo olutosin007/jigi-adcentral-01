@@ -19,9 +19,15 @@ import { useBrandStore } from '@/store/brandStore'
 interface QuickCreateBrandDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** When set, selects the new brand in-place instead of navigating to brand profile. */
+  onBrandCreated?: (brandId: string) => void
 }
 
-export function QuickCreateBrandDialog({ open, onOpenChange }: QuickCreateBrandDialogProps) {
+export function QuickCreateBrandDialog({
+  open,
+  onOpenChange,
+  onBrandCreated,
+}: QuickCreateBrandDialogProps) {
   const navigate = useNavigate()
   const { profile } = useAuthStore()
   const { createBrand } = useBrandStore()
@@ -54,10 +60,16 @@ export function QuickCreateBrandDialog({ open, onOpenChange }: QuickCreateBrandD
     setIsCreating(false)
 
     if (result.success && result.brand) {
-      toast.success('Brand created — add your kit details next')
+      toast.success(
+        onBrandCreated ? 'Brand created — selected for this campaign' : 'Brand created — add your kit details next'
+      )
       onOpenChange(false)
       setName('')
-      navigate(`/app/brands/${result.brand.id}`)
+      if (onBrandCreated) {
+        onBrandCreated(result.brand.id)
+      } else {
+        navigate(`/app/brands/${result.brand.id}`)
+      }
     } else {
       toast.error(result.error || 'Failed to create brand')
     }

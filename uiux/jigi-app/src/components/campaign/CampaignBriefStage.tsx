@@ -4,6 +4,9 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ReferenceAssetUploadInline } from '@/components/campaigns/ReferenceAssetUploadInline'
+import { BriefReadinessChecklist } from '@/components/campaign/BriefReadinessChecklist'
+import { BriefIncompleteBanner } from '@/components/campaign/BriefIncompleteBanner'
+import { buildBriefChecklistItems, evaluateBriefReadiness } from '@/lib/brief-readiness'
 import { CHANNEL_OPTIONS, TONE_OPTIONS } from '@/store/campaignStore'
 import type { Campaign } from '@/store/campaignStore'
 
@@ -41,9 +44,30 @@ export function CampaignBriefStage({
   onSave,
   onBriefDataChange,
 }: CampaignBriefStageProps) {
+  const checklistItems = buildBriefChecklistItems(brief as NonNullable<Campaign['brief']>, {
+    journey_mode: campaign.journey_mode,
+    seed_idea: campaign.seed_idea ?? null,
+    brand_id: campaign.brand_id,
+  })
+  const readiness = evaluateBriefReadiness(brief as NonNullable<Campaign['brief']>, {
+    journey_mode: campaign.journey_mode,
+    seed_idea: campaign.seed_idea ?? null,
+  })
+  const displayReadiness =
+    campaign.journey_mode === 'brand_first' && !campaign.brand_id
+      ? { ...readiness, ready: false, missing: [...readiness.missing, 'Brand selected'] }
+      : readiness
+
   return (
     <div className="p-6 md:p-8 overflow-y-auto h-full">
       <div className="max-w-2xl space-y-6">
+        <BriefIncompleteBanner readiness={displayReadiness} />
+
+        <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Brief readiness</h3>
+          <BriefReadinessChecklist items={checklistItems} />
+        </div>
+
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Campaign Brief</h2>
           {isEditing ? (

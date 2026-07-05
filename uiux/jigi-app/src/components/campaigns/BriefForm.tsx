@@ -14,13 +14,20 @@ import { HelpCircle } from 'lucide-react'
 
 interface BriefFormProps {
   showChannels?: boolean
+  /** When true, only render the channels section (create flow step 3). */
+  channelsOnly?: boolean
   /** Campaign ID for reference asset uploads. Only set when editing existing campaign. */
   campaignId?: string
   /** Callback when files are selected but not yet uploaded (create flow, no campaignId). */
   onPendingReferenceFilesChange?: (files: File[]) => void
 }
 
-export function BriefForm({ showChannels = true, campaignId, onPendingReferenceFilesChange }: BriefFormProps) {
+export function BriefForm({
+  showChannels = true,
+  channelsOnly = false,
+  campaignId,
+  onPendingReferenceFilesChange,
+}: BriefFormProps) {
   const { register, setValue, watch, formState: { errors } } = useFormContext()
   const selectedChannels = watch('channels') || []
   const selectedTones = (watch('tone_override') || []) as string[]
@@ -41,6 +48,48 @@ export function BriefForm({ showChannels = true, campaignId, onPendingReferenceF
     } else {
       setValue('tone_override', [...current, tone], { shouldValidate: true })
     }
+  }
+
+  if (channelsOnly) {
+    return (
+      <div className="space-y-4" data-tour="brief-form-channels">
+        <div>
+          <Label>
+            Target Channels <span className="text-destructive">*</span>
+          </Label>
+          <p className="text-sm text-muted-foreground mt-1">
+            Select where your creative will be published
+          </p>
+        </div>
+        <div className="space-y-4">
+          {CHANNEL_CATEGORIES.map((cat) => {
+            const items = CHANNEL_OPTIONS.filter((c) => c.category === cat.id)
+            if (!items.length) return null
+            return (
+              <div key={cat.id} className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {cat.label}
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {items.map((channel) => (
+                    <label key={channel.value} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={selectedChannels.includes(channel.value)}
+                        onCheckedChange={() => toggleChannel(channel.value)}
+                      />
+                      <span className="text-sm">{channel.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {errors.channels && (
+          <p className="text-sm text-destructive">{errors.channels.message as string}</p>
+        )}
+      </div>
+    )
   }
 
   return (
