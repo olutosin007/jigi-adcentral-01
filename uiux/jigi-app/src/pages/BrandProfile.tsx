@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Palette, Type, MessageSquare, Users, Building2, Settings, Edit, Loader2, AlertCircle, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
+import { ArrowLeft, Palette, Type, MessageSquare, Users, Building2, Settings, Edit, Loader2, AlertCircle, Archive, ArchiveRestore, Trash2, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,10 @@ import { BrandColorsEditor } from '@/components/brands/BrandColorsEditor'
 import { BrandTypographyEditor } from '@/components/brands/BrandTypographyEditor'
 import { BrandToneEditor } from '@/components/brands/BrandToneEditor'
 import { BrandWordListsEditor } from '@/components/brands/BrandWordListsEditor'
+import { BrandVisualStyleEditor } from '@/components/brands/BrandVisualStyleEditor'
+import { BrandStrategyEditor } from '@/components/brands/BrandStrategyEditor'
 import { BrandEssentialsChecklist } from '@/components/brands/BrandEssentialsChecklist'
-import { useBrandStore, type BrandIdentity, type BrandVoice } from '@/store/brandStore'
+import { useBrandStore, type BrandIdentity, type BrandVoice, type BrandStrategy } from '@/store/brandStore'
 import { deriveBrandEssentials, deriveBrandProfileStatus } from '@/lib/brand-profile-status'
 import { getContrastColor } from '@/lib/colors'
 import { loadGoogleFont } from '@/lib/fonts'
@@ -46,6 +48,8 @@ export function BrandProfile() {
   const [editingTypography, setEditingTypography] = useState(false)
   const [editingTone, setEditingTone] = useState(false)
   const [editingWords, setEditingWords] = useState(false)
+  const [editingVisualStyle, setEditingVisualStyle] = useState(false)
+  const [editingStrategy, setEditingStrategy] = useState(false)
   const [kitSaving, setKitSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('identity')
 
@@ -89,15 +93,20 @@ export function BrandProfile() {
     }
   }
 
-  const saveBrandKit = async (patch: { identity?: BrandIdentity; voice?: BrandVoice }) => {
+  const saveBrandKit = async (patch: {
+    identity?: BrandIdentity
+    voice?: BrandVoice
+    strategy?: BrandStrategy
+  }) => {
     if (!id || !currentBrand) return false
     setKitSaving(true)
     const identity = { ...currentBrand.identity, ...patch.identity }
     const voice = { ...currentBrand.voice, ...patch.voice }
+    const strategy = { ...currentBrand.strategy, ...patch.strategy }
     const brand_profile_status = deriveBrandProfileStatus(identity, voice)
     const result = await updateBrand(
       id,
-      { identity, voice, brand_profile_status },
+      { identity, voice, strategy, brand_profile_status },
       { quiet: true }
     )
     setKitSaving(false)
@@ -172,7 +181,7 @@ export function BrandProfile() {
     )
   }
 
-  const { identity, voice, brand_profile_status: status } = currentBrand
+  const { identity, voice, strategy, brand_profile_status: status } = currentBrand
   const essentials = deriveBrandEssentials(identity, voice)
   const colours = identity?.colours || {}
   const fonts = identity?.fonts || {}
@@ -205,7 +214,7 @@ export function BrandProfile() {
         break
       case 'visual_style':
         setActiveTab('identity')
-        toast.info('Visual style editor is in the next profile update — add direction in brand strategy soon.')
+        setEditingVisualStyle(true)
         break
       default:
         break
@@ -438,6 +447,118 @@ export function BrandProfile() {
                   {!isArchived && (
                     <Button variant="outline" size="sm" onClick={() => setEditingTypography(true)}>
                       Add typography
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5 text-primary" />
+                  Visual Style
+                </CardTitle>
+                <CardDescription>
+                  Photography and art direction for on-brand image generation
+                </CardDescription>
+              </div>
+              {!editingVisualStyle && !isArchived && (
+                <Button variant="outline" size="sm" onClick={() => setEditingVisualStyle(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {editingVisualStyle ? (
+                <BrandVisualStyleEditor
+                  visualStyle={identity?.visual_style || ''}
+                  isSaving={kitSaving}
+                  onCancel={() => setEditingVisualStyle(false)}
+                  onSave={async (visual_style) => {
+                    const ok = await saveBrandKit({ identity: { ...identity, visual_style } })
+                    if (ok) setEditingVisualStyle(false)
+                  }}
+                />
+              ) : identity?.visual_style ? (
+                <p className="text-sm text-foreground whitespace-pre-wrap">{identity.visual_style}</p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    No visual direction yet — image generation may feel generic.
+                  </p>
+                  {!isArchived && (
+                    <Button variant="outline" size="sm" onClick={() => setEditingVisualStyle(true)}>
+                      Add visual style
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  Brand Strategy
+                </CardTitle>
+                <CardDescription>Positioning and differentiators for concept generation</CardDescription>
+              </div>
+              {!editingStrategy && !isArchived && (
+                <Button variant="outline" size="sm" onClick={() => setEditingStrategy(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {editingStrategy ? (
+                <BrandStrategyEditor
+                  positioning={strategy?.positioning || ''}
+                  differentiators={strategy?.differentiators || []}
+                  isSaving={kitSaving}
+                  onCancel={() => setEditingStrategy(false)}
+                  onSave={async (positioning, differentiators) => {
+                    const ok = await saveBrandKit({ strategy: { ...strategy, positioning, differentiators } })
+                    if (ok) setEditingStrategy(false)
+                  }}
+                />
+              ) : strategy?.positioning || (strategy?.differentiators?.length ?? 0) > 0 ? (
+                <div className="space-y-3">
+                  {strategy?.positioning && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                        Positioning
+                      </p>
+                      <p className="text-sm text-foreground">{strategy.positioning}</p>
+                    </div>
+                  )}
+                  {strategy?.differentiators && strategy.differentiators.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                        Differentiators
+                      </p>
+                      <ul className="list-disc list-inside text-sm text-foreground space-y-1">
+                        {strategy.differentiators.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Add positioning and differentiators to strengthen concept alignment.
+                  </p>
+                  {!isArchived && (
+                    <Button variant="outline" size="sm" onClick={() => setEditingStrategy(true)}>
+                      Add strategy
                     </Button>
                   )}
                 </div>
