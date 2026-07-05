@@ -1,5 +1,35 @@
 import type { BrandConstraints, BrandIncludeFlags, CampaignBrief, FallbackContext } from './types'
 
+/** Selected concept fields injected into copy generation prompts. */
+export interface ConceptContextForPrompt {
+  theme: string
+  headlines?: string[]
+  visual_direction?: string
+  key_message_link?: string
+}
+
+export function buildConceptContextPromptBlock(
+  concept: ConceptContextForPrompt,
+  keyMessage?: string
+): string {
+  const headlines = concept.headlines ?? []
+  const lines = [
+    'SELECTED CONCEPT CONTEXT (copy must align with this direction):',
+    `- Theme: ${concept.theme}`,
+  ]
+  if (headlines.length) lines.push(`- Headlines: ${headlines.join(', ')}`)
+  if (concept.visual_direction?.trim()) {
+    lines.push(`- Visual direction: ${concept.visual_direction.trim()}`)
+  }
+  if (concept.key_message_link?.trim()) {
+    lines.push(`- Key message link: ${concept.key_message_link.trim()}`)
+  }
+  if (keyMessage?.trim()) {
+    lines.push(`- Campaign key message to deliver: ${keyMessage.trim()}`)
+  }
+  return `\n\n${lines.join('\n')}`
+}
+
 export function buildConceptPrompt(
   brand: BrandConstraints | undefined,
   brief: CampaignBrief,
@@ -92,13 +122,15 @@ Generate 2 distinct campaign concept directions based on the core idea. For each
 1. Theme/Big Idea (2-4 words)
 2. 3 headline variants
 3. Visual direction description (2-3 sentences)
-4. Brief rationale (1 sentence)
+4. key_message_link — explicit statement of how this concept delivers the key message
+5. Brief rationale (1 sentence)
 
 Each concept must:
 - Build on the core idea creatively
 - Be distinct from the other concepts
 - Be executable across the listed channels
 - Feel modern and engaging
+- Serve the key message via key_message_link
 
 Return valid JSON in this exact format:
 {
@@ -107,6 +139,7 @@ Return valid JSON in this exact format:
       "theme": "Theme Name",
       "headlines": ["Headline 1", "Headline 2", "Headline 3"],
       "visual_direction": "Description of visuals...",
+      "key_message_link": "How this concept delivers the key message",
       "rationale": "Why this concept works..."
     }
   ]
@@ -143,12 +176,18 @@ export function buildCopyPrompt(
   brief: CampaignBrief,
   format: string = 'social_post',
   fallback?: FallbackContext,
-  budget?: CopyLengthBudget
+  budget?: CopyLengthBudget,
+  conceptContext?: ConceptContextForPrompt
 ): string {
+  const keyMessage = brief.key_message?.trim() || brief.objective?.trim()
+  const conceptBlock = conceptContext
+    ? buildConceptContextPromptBlock(conceptContext, keyMessage)
+    : ''
+
   if (brand) {
-    return buildBrandGroundedCopyPrompt(brand, brief, format, budget)
+    return buildBrandGroundedCopyPrompt(brand, brief, format, budget) + conceptBlock
   }
-  return buildIdeaFirstCopyPrompt(brief, format, fallback, budget)
+  return buildIdeaFirstCopyPrompt(brief, format, fallback, budget) + conceptBlock
 }
 
 function buildBrandGroundedCopyPrompt(

@@ -86,6 +86,12 @@ describe('buildConceptPrompt idea-first key message', () => {
     const prompt = buildConceptPrompt(undefined, brief, { seed_idea: 'A fresh summer campaign idea' })
     expect(prompt).toContain('- Key message: Feel refreshed every day')
   })
+
+  it('H4: idea-first concept prompt requires key_message_link in JSON schema', () => {
+    const prompt = buildConceptPrompt(undefined, brief, { seed_idea: 'A fresh summer campaign idea' })
+    expect(prompt).toContain('key_message_link')
+    expect(prompt).toContain('How this concept delivers the key message')
+  })
 })
 
 describe('buildCopyPrompt key message', () => {
@@ -97,6 +103,24 @@ describe('buildCopyPrompt key message', () => {
   it('B5: idea-first copy prompt includes brief key_message', () => {
     const prompt = buildCopyPrompt(undefined, brief, 'social_post', { seed_idea: 'A fresh summer idea' })
     expect(prompt).toContain('- Key message: Feel refreshed every day')
+  })
+
+  it('H5: fallback copy prompt embeds selected concept context', () => {
+    const prompt = buildCopyPrompt(
+      brand,
+      brief,
+      'social_post',
+      undefined,
+      undefined,
+      {
+        theme: 'Fresh Start',
+        headlines: ['New day, new you'],
+        visual_direction: 'Crisp morning light',
+      }
+    )
+    expect(prompt).toContain('SELECTED CONCEPT CONTEXT')
+    expect(prompt).toContain('Fresh Start')
+    expect(prompt).toContain('New day, new you')
   })
 })
 

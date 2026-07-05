@@ -84,4 +84,22 @@ describe('assemblePrompt', () => {
 
     expect(result).toBeNull()
   })
+
+  it('H6: assembles copy prompt with selected concept context', async () => {
+    const result = await assemblePrompt({
+      campaignId: ccoLite.campaign_id,
+      track: 'copy',
+      channelId: 'instagram_post',
+      conceptContext: {
+        theme: 'Golden Hour',
+        headlines: ['Chase the light'],
+        visual_direction: 'Warm sunset lifestyle photography',
+      },
+    })
+
+    expect(result).not.toBeNull()
+    expect(result?.prompt).toContain('SELECTED CONCEPT CONTEXT')
+    expect(result?.prompt).toContain('Golden Hour')
+    expect(result?.prompt).toContain('Stay refreshed all summer')
+  })
 })

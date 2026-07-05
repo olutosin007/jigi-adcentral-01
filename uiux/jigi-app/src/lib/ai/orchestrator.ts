@@ -1,7 +1,9 @@
 import { generateText, generateImage as generateImageApi } from '@/lib/api-client'
 import { buildConceptPrompt, buildCopyPrompt, buildCompliancePrompt, buildImagePrompt, buildCopyAnchorPromptBlock } from './prompts'
+import type { ConceptContextForPrompt } from './prompts'
 import { assemblePrompt } from '@/lib/prompt-assembly'
 import { buildAssetLineage } from '@/lib/cco'
+import { supabase } from '@/lib/supabase'
 import { isConceptOutputSchema, normalizeConceptToDisplay, validateConcept } from '@/lib/concept-enforcement'
 import {
   coerceValidationWarnings,
@@ -25,10 +27,48 @@ import type {
   FallbackContext,
 } from './types'
 
-interface ConceptContextInput {
-  theme: string
-  headlines: string[]
-  visual_direction: string
+interface ConceptContextInput extends ConceptContextForPrompt {}
+
+async function resolveConceptContextForCopy(
+  campaignId: string | undefined,
+  conceptAssetId?: string,
+  provided?: ConceptContextInput
+): Promise<ConceptContextInput | undefined> {
+  if (provided?.theme) return provided
+  if (!campaignId) return provided
+
+  let assetId = conceptAssetId
+  if (!assetId) {
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('selected_concept_asset_id')
+      .eq('id', campaignId)
+      .maybeSingle()
+    assetId = campaign?.selected_concept_asset_id ?? undefined
+  }
+  if (!assetId) return undefined
+
+  const { data: asset } = await supabase
+    .from('creative_assets')
+    .select('content')
+    .eq('id', assetId)
+    .maybeSingle()
+  if (!asset?.content || typeof asset.content !== 'object') return undefined
+
+  const content = asset.content as Record<string, unknown>
+  const theme = typeof content.theme === 'string' ? content.theme : ''
+  if (!theme) return undefined
+
+  return {
+    theme,
+    headlines: Array.isArray(content.headlines)
+      ? content.headlines.filter((h): h is string => typeof h === 'string')
+      : [],
+    visual_direction:
+      typeof content.visual_direction === 'string' ? content.visual_direction : '',
+    key_message_link:
+      typeof content.key_message_link === 'string' ? content.key_message_link : undefined,
+  }
 }
 
 function extractColours(colours: unknown): { primary?: string; secondary?: string; accent?: string } {
@@ -197,13 +237,19 @@ export class AIOrchestrator {
     _userId?: string,
     brandId?: string,
     campaignId?: string,
-    conceptContext?: ConceptContextInput
+    conceptContext?: ConceptContextInput,
+    conceptAssetId?: string
   ): Promise<GenerationResult> {
     const generationMode = brand ? 'brand_grounded' : 'idea_first'
 
     try {
       const channelId = brief.channels?.[0] ?? format
       const copyBudget = getCopyPromptBudget(channelId)
+      const resolvedConcept = await resolveConceptContextForCopy(
+        campaignId,
+        conceptAssetId,
+        conceptContext
+      )
       let prompt: string
       let promptHash: string | undefined
       let lineage: { cco_version?: number; bio_version?: number; generation_timestamp?: string } | undefined
@@ -214,6 +260,7 @@ export class AIOrchestrator {
             brandId: brandId ?? null,
             track: 'copy',
             channelId,
+            conceptContext: resolvedConcept,
           })
         : null
 
@@ -226,7 +273,7 @@ export class AIOrchestrator {
             : undefined
       } else {
         if (campaignId) warnLegacyPromptFallback('copy', campaignId)
-        prompt = buildCopyPrompt(brand, brief, format, fallback, copyBudget)
+        prompt = buildCopyPrompt(brand, brief, format, fallback, copyBudget, resolvedConcept)
       }
 
       const response = await generateText({
@@ -236,7 +283,6 @@ export class AIOrchestrator {
         prompt,
         brand_context: brand ? convertBrandToApiFormat(brand) : undefined,
         seed_idea: fallback?.seed_idea,
-        concept_context: conceptContext,
         prompt_hash: promptHash,
         use_prompt_as_system: !!assembled?.prompt,
       })

@@ -256,7 +256,8 @@ async function generateAndSaveCopy(params: GenerateCopyParams) {
     userId,
     brandId,
     campaignId,
-    conceptContext
+    conceptContext,
+    conceptAssetId
   )
 
   const variants = result.data as CopyResult[]
