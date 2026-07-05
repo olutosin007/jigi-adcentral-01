@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { canSubmitAssetForReview } from '@/lib/status'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { formatCopyCharBudget, isCopyOverCharLimit } from '@/lib/copy-display'
 import { toast } from 'sonner'
 import type { CopyResult } from '@/lib/ai'
 
@@ -18,6 +19,8 @@ interface CopyDetailModalProps {
   variantLabel?: string
   /** Optional channel library hint for copy length (read-only) */
   channelMaxCharsHint?: number
+  /** Parent concept theme for compliance context */
+  parentConceptTheme?: string
   onDelete?: () => void
   /** Opens image flow anchored on this copy variant (GenerationPanel). */
   onGenerateImage?: () => void
@@ -36,6 +39,7 @@ export function CopyDetailModal({
   status = 'draft',
   variantLabel,
   channelMaxCharsHint,
+  parentConceptTheme,
   onDelete,
   onGenerateImage,
   isGeneratingImage = false,
@@ -81,7 +85,13 @@ export function CopyDetailModal({
     (copy.validation_warnings?.length ?? 0) > 0 ||
     !!copy.truncation_suggestion ||
     copy.exclusions_violated ||
+    isCopyOverCharLimit(copy, channelMaxCharsHint) ||
     (copy.brand_voice_score != null && copy.brand_voice_score < 50)
+
+  const mandatoryFailCount =
+    copy.mandatory_inclusions_check?.filter((row) => !row.present).length ?? 0
+  const exclusionFailCount = copy.exclusions_check?.filter((row) => row.violated).length ?? 0
+  const complianceDefaultOpen = mandatoryFailCount > 0 || exclusionFailCount > 0 || copy.exclusions_violated
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,6 +148,13 @@ export function CopyDetailModal({
             </div>
           )}
 
+          {parentConceptTheme?.trim() ? (
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+              {sectionLabel('Parent concept')}
+              <p className="text-sm font-medium text-foreground">{parentConceptTheme.trim()}</p>
+            </div>
+          ) : null}
+
           {copy.key_message_delivery?.trim() ? (
             <div>
               {sectionLabel('Key message')}
@@ -188,20 +205,20 @@ export function CopyDetailModal({
 
           {(charCount != null || channelMaxCharsHint != null || copy.tone_adherence != null) && (
             <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm space-y-1">
-              {charCount != null && (
+              {(charCount != null || channelMaxCharsHint != null) && (
                 <p>
                   <span className="text-muted-foreground">Character count: </span>
-                  <span className="font-medium tabular-nums">{charCount}</span>
+                  <span
+                    className={`font-medium tabular-nums ${
+                      isCopyOverCharLimit(copy, channelMaxCharsHint) ? 'text-destructive' : 'text-foreground'
+                    }`}
+                  >
+                    {formatCopyCharBudget(copy, channelMaxCharsHint)}
+                  </span>
                   {channelMaxCharsHint != null && (
-                    <span className="text-muted-foreground">
-                      {' '}
-                      · Channel guide: up to {channelMaxCharsHint.toLocaleString()} chars
-                    </span>
+                    <span className="text-muted-foreground"> (channel limit)</span>
                   )}
                 </p>
-              )}
-              {channelMaxCharsHint != null && charCount == null && (
-                <p className="text-muted-foreground">Channel guide: up to {channelMaxCharsHint.toLocaleString()} characters</p>
               )}
               {copy.tone_adherence != null && (
                 <p className="text-muted-foreground">
@@ -214,40 +231,56 @@ export function CopyDetailModal({
           )}
 
           {hasModelChecks ? (
-            <Collapsible defaultOpen={false}>
+            <Collapsible defaultOpen={complianceDefaultOpen}>
               <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 transition-colors [&[data-state=open]>svg]:rotate-180">
-                <span>Quality checks (generation)</span>
+                <span>
+                  Compliance summary
+                  {(mandatoryFailCount > 0 || exclusionFailCount > 0) && (
+                    <span className="ml-2 text-xs font-normal text-destructive">
+                      {mandatoryFailCount + exclusionFailCount} issue
+                      {mandatoryFailCount + exclusionFailCount === 1 ? '' : 's'}
+                    </span>
+                  )}
+                </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" aria-hidden />
               </CollapsibleTrigger>
               <CollapsibleContent className="px-4 pb-4 pt-2 space-y-3 border border-t-0 border-border rounded-b-lg bg-muted/20">
                 {copy.mandatory_inclusions_check && copy.mandatory_inclusions_check.length > 0 ? (
-                  <div role="list" aria-label="Mandatory inclusions">
+                  <div role="table" aria-label="Mandatory inclusions">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Mandatory inclusions</p>
-                    <ul className="space-y-1 text-sm">
+                    <div className="rounded-md border border-border overflow-hidden">
+                      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-xs bg-muted/40 font-medium text-muted-foreground">
+                        <span>Status</span>
+                        <span>Requirement</span>
+                      </div>
                       {copy.mandatory_inclusions_check.map((row, i) => (
-                        <li key={i} className="flex gap-2" role="listitem">
+                        <div key={i} className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-sm border-t border-border">
                           <span className={row.present ? 'text-success' : 'text-destructive'} aria-hidden>
                             {row.present ? '✓' : '✗'}
                           </span>
                           <span>{row.requirement || '—'}</span>
-                        </li>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ) : null}
                 {copy.exclusions_check && copy.exclusions_check.length > 0 ? (
-                  <div role="list" aria-label="Exclusions">
+                  <div role="table" aria-label="Exclusions">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Exclusions</p>
-                    <ul className="space-y-1 text-sm">
+                    <div className="rounded-md border border-border overflow-hidden">
+                      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-xs bg-muted/40 font-medium text-muted-foreground">
+                        <span>Status</span>
+                        <span>Exclusion</span>
+                      </div>
                       {copy.exclusions_check.map((row, i) => (
-                        <li key={i} className="flex gap-2" role="listitem">
+                        <div key={i} className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3 py-2 text-sm border-t border-border">
                           <span className={row.violated ? 'text-destructive' : 'text-muted-foreground'} aria-hidden>
                             {row.violated ? '!' : '○'}
                           </span>
                           <span>{row.exclusion || '—'}</span>
-                        </li>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ) : null}
                 {copy.legal_disclaimers_appended ? (

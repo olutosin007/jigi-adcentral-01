@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sparkles, RefreshCw, AlertCircle, Lightbulb, FileText, Image, Wand2, History } from 'lucide-react'
+import { Sparkles, RefreshCw, AlertCircle, Lightbulb, FileText, Image, Wand2, History, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Sheet,
@@ -137,6 +138,7 @@ export function GenerationPanel({
   const productionConceptAssetId = campaign.selected_concept_asset_id ?? null
   const productionCopyAssetId = campaign.selected_copy_asset_id ?? null
   const effectiveConceptAssetId = selectedConceptAssetId ?? productionConceptAssetId
+  const conceptSelectionLocked = !!productionConceptAssetId
 
   const activeMutation =
     activeTab === 'concepts'
@@ -706,7 +708,11 @@ export function GenerationPanel({
           {activeTab === 'copy' && (
             <p className="text-xs text-muted-foreground mt-2">
               {selectedConceptAsset
-                ? `Generating 2 variants for "${(selectedConceptAsset.content as ConceptResult).theme}".`
+                ? `Generating 2 variants for "${(selectedConceptAsset.content as ConceptResult).theme}".${
+                    copyCharBudgetHint
+                      ? ` Channel guide: ${copyCharBudgetHint.toLocaleString()} characters max.`
+                      : ''
+                  }`
                 : 'Select a concept first to generate copy variants.'}
             </p>
           )}
@@ -800,33 +806,46 @@ export function GenerationPanel({
               <>
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-foreground">Concept for copy generation</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {concepts.map((asset) => {
-                      const concept = asset.content as ConceptResult
-                      const isSelected = effectiveConceptAssetId === asset.id
-                      const isProduction = productionConceptAssetId === asset.id
-                      return (
-                        <Button
-                          key={asset.id}
-                          size="sm"
-                          variant={isSelected ? 'default' : 'outline'}
-                          onClick={() => {
-                            setSelectedConceptAssetId(asset.id)
-                            if (productionConceptAssetId !== asset.id) {
-                              void handleUseConceptForProduction(asset.id, { goToCopy: false })
-                            }
-                          }}
-                        >
-                          {concept.theme}
-                          {isProduction ? ' · In production' : ''}
-                        </Button>
-                      )
-                    })}
-                  </div>
+                  {conceptSelectionLocked && selectedConceptAsset ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="gap-1.5 text-xs font-medium py-1">
+                        <Lock className="w-3 h-3" aria-hidden />
+                        {(selectedConceptAsset.content as ConceptResult).theme}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">Production selection locked</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {concepts.map((asset) => {
+                        const concept = asset.content as ConceptResult
+                        const isSelected = effectiveConceptAssetId === asset.id
+                        const isProduction = productionConceptAssetId === asset.id
+                        return (
+                          <Button
+                            key={asset.id}
+                            size="sm"
+                            variant={isSelected ? 'default' : 'outline'}
+                            onClick={() => {
+                              setSelectedConceptAssetId(asset.id)
+                              if (productionConceptAssetId !== asset.id) {
+                                void handleUseConceptForProduction(asset.id, { goToCopy: false })
+                              }
+                            }}
+                          >
+                            {concept.theme}
+                            {isProduction ? ' · In production' : ''}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  )}
                   {selectedConceptAsset ? (
                     <p className="text-xs text-muted-foreground">
                       Generating variants for &ldquo;
                       {(selectedConceptAsset.content as ConceptResult).theme}&rdquo;.
+                      {copyCharBudgetHint
+                        ? ` Stay within ${copyCharBudgetHint.toLocaleString()} characters per channel guide.`
+                        : ''}
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
@@ -859,6 +878,7 @@ export function GenerationPanel({
                             assetId={asset.id}
                             status={asset.status}
                             driftStatus={asset.drift_status}
+                            channelMaxChars={copyCharBudgetHint}
                             variantLabel={
                               (asset.content as CopyResult).variant_label?.trim() ||
                               `Variant ${String.fromCharCode(65 + index)}`
@@ -1185,6 +1205,14 @@ export function GenerationPanel({
         copy={activeCopyForModal ? (activeCopyForModal.content as CopyResult) : null}
         status={activeCopyForModal?.status}
         channelMaxCharsHint={copyCharBudgetHint}
+        parentConceptTheme={
+          activeCopyForModal?.parent_asset_id
+            ? (concepts.find((c) => c.id === activeCopyForModal.parent_asset_id)?.content as ConceptResult | undefined)
+                ?.theme
+            : selectedConceptAsset
+              ? (selectedConceptAsset.content as ConceptResult).theme
+              : undefined
+        }
         variantLabel={
           activeCopyForModal
             ? (() => {

@@ -1,9 +1,14 @@
-import { Check, Copy, Trash2, MoreHorizontal, Edit, Send } from 'lucide-react'
+import { Check, Copy, Trash2, MoreHorizontal, Edit, Send, AlertTriangle } from 'lucide-react'
 import { DriftBadge } from './DriftBadge'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { canSubmitAssetForReview } from '@/lib/status'
+import {
+  formatCopyCharBudget,
+  getPrimaryCopyCardWarning,
+  isCopyOverCharLimit,
+} from '@/lib/copy-display'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +34,8 @@ interface CopyCardProps {
   onDelete?: () => void
   onSubmit?: () => void
   showActions?: boolean
+  /** Channel character budget for display (from getPrimaryCopyBudgetChars) */
+  channelMaxChars?: number
 }
 
 export function CopyCard({
@@ -46,6 +53,7 @@ export function CopyCard({
   onDelete,
   onSubmit,
   showActions = true,
+  channelMaxChars,
 }: CopyCardProps) {
   const handleCopyToClipboard = () => {
     const parts = [copy.headline, '', copy.body, '', `CTA: ${copy.cta}`]
@@ -58,6 +66,10 @@ export function CopyCard({
   const label = copy.variant_label?.trim() || variantLabel
   const metaChips = [copy.channel?.trim(), copy.deliverable_type?.trim()].filter(Boolean) as string[]
   const keyLine = copy.key_message_delivery?.trim()
+  const charBudgetLabel = formatCopyCharBudget(copy, channelMaxChars)
+  const overLimit = isCopyOverCharLimit(copy, channelMaxChars)
+  const cardWarning = getPrimaryCopyCardWarning(copy, channelMaxChars)
+  const hasComplianceFail = copy.exclusions_violated === true
 
   const handleCardOpen = onView || onSelect
 
@@ -92,6 +104,9 @@ export function CopyCard({
               ))}
             </div>
           )}
+          {copy.variant_intent?.trim() && (
+            <p className="text-xs text-muted-foreground line-clamp-2">{copy.variant_intent.trim()}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {inProduction && (
@@ -114,6 +129,27 @@ export function CopyCard({
       </div>
 
       <p className="text-base font-bold text-foreground mb-2 break-words">{copy.headline || '—'}</p>
+
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <span
+          className={`text-[11px] font-medium tabular-nums ${
+            overLimit ? 'text-destructive' : 'text-muted-foreground'
+          }`}
+          aria-label={overLimit ? 'Character count over channel limit' : 'Character count'}
+        >
+          {charBudgetLabel}
+        </span>
+        {(hasComplianceFail || cardWarning) && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden />
+            {hasComplianceFail ? 'Compliance fail' : 'Review warning'}
+          </span>
+        )}
+      </div>
+
+      {cardWarning && (
+        <p className="text-xs text-amber-800 dark:text-amber-200 mb-2 line-clamp-2">{cardWarning}</p>
+      )}
 
       {keyLine && (
         <p className="text-xs text-muted-foreground italic mb-2 line-clamp-2" title={keyLine}>
