@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import type { CampaignContextObject } from '@/lib/cco'
-import { compileBriefToCCO } from '@/lib/brief-compiler'
+import { compileBriefToCCO, hasCompilableBrief } from '@/lib/brief-compiler'
 
 /** Reference asset uploaded to brief (mood boards, competitor examples, etc.) */
 export interface BriefReferenceAsset {
@@ -248,11 +248,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
       const newCampaign = campaign as Campaign
 
-      // Compile brief to CCO when campaign is created with brief
-      if (insertPayload.brief && newCampaign.brand_id && Object.keys(insertPayload.brief).length > 0) {
+      // Compile brief to CCO when campaign is created with brief (brand-first or idea-first)
+      if (hasCompilableBrief(insertPayload.brief as CampaignBrief)) {
         compileBriefToCCO({
           campaignId: newCampaign.id,
-          brandId: newCampaign.brand_id,
+          brandId: newCampaign.brand_id ?? null,
           brief: insertPayload.brief as CampaignBrief,
         }).catch((err) => console.warn('Brief compiler failed:', err))
       }
@@ -312,11 +312,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
       const updatedCampaign = campaign as Campaign
 
-      // Compile brief to CCO when brief is updated
-      if (data.brief && updatedCampaign.brand_id) {
+      // Compile brief to CCO when brief is updated (brand-first or idea-first CCO-lite)
+      if (data.brief && hasCompilableBrief(data.brief)) {
         compileBriefToCCO({
           campaignId: id,
-          brandId: updatedCampaign.brand_id,
+          brandId: updatedCampaign.brand_id ?? null,
           brief: data.brief,
         }).catch((err) => console.warn('Brief compiler failed:', err))
       }

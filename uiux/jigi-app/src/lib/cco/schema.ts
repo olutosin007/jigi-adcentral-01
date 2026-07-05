@@ -158,7 +158,7 @@ export type ReferenceAsset = z.infer<typeof referenceAssetSchema>
 
 export const campaignContextObjectSchema = z.object({
   campaign_id: z.string().uuid(),
-  brand_id: z.string().uuid(),
+  brand_id: z.string().uuid().nullable(),
   compiled_at: z.string().datetime(),
   version: z.number().int().min(1),
   strategic_context: strategicContextSchema,

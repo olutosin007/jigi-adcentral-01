@@ -70,6 +70,13 @@ function convertBrandToApiFormat(brand: BrandConstraints) {
   }
 }
 
+function warnLegacyPromptFallback(track: string, campaignId?: string) {
+  if (!campaignId) return
+  console.warn(
+    `[PromptAssembly] Falling back to legacy ${track} prompt for campaign ${campaignId} — no assembled CCO prompt available`
+  )
+}
+
 export class AIOrchestrator {
   async generateConcepts(
     brand: BrandConstraints | undefined,
@@ -86,10 +93,9 @@ export class AIOrchestrator {
       let promptHash: string | undefined
       let lineage: { cco_version?: number; bio_version?: number; generation_timestamp?: string } | undefined
 
-      const assembled =
-        campaignId && brandId
-          ? await assemblePrompt({ campaignId, brandId, track: 'concept' })
-          : null
+      const assembled = campaignId
+        ? await assemblePrompt({ campaignId, brandId: brandId ?? null, track: 'concept' })
+        : null
 
       if (assembled?.prompt) {
         prompt = assembled.prompt
@@ -99,6 +105,7 @@ export class AIOrchestrator {
             ? buildAssetLineage(assembled.cco_version)
             : undefined
       } else {
+        if (campaignId) warnLegacyPromptFallback('concept', campaignId)
         prompt = buildConceptPrompt(brand, brief, fallback)
       }
 
@@ -141,7 +148,7 @@ export class AIOrchestrator {
           ? {
               // Brand-grounded (no CCO): the enriched prompt now emits alignment
               // fields, so run validation to surface low-alignment / missing links.
-              keyMessage: brief.requirements?.trim() || brief.objective,
+              keyMessage: brief.key_message?.trim() || brief.objective,
               selectedChannels: brief.channels,
             }
           : undefined
@@ -201,10 +208,14 @@ export class AIOrchestrator {
       let promptHash: string | undefined
       let lineage: { cco_version?: number; bio_version?: number; generation_timestamp?: string } | undefined
 
-      const assembled =
-        campaignId && brandId
-          ? await assemblePrompt({ campaignId, brandId, track: 'copy', channelId })
-          : null
+      const assembled = campaignId
+        ? await assemblePrompt({
+            campaignId,
+            brandId: brandId ?? null,
+            track: 'copy',
+            channelId,
+          })
+        : null
 
       if (assembled?.prompt) {
         prompt = assembled.prompt
@@ -214,6 +225,7 @@ export class AIOrchestrator {
             ? buildAssetLineage(assembled.cco_version)
             : undefined
       } else {
+        if (campaignId) warnLegacyPromptFallback('copy', campaignId)
         prompt = buildCopyPrompt(brand, brief, format, fallback, copyBudget)
       }
 
@@ -297,10 +309,14 @@ export class AIOrchestrator {
       const copyBlockRaw = copyAnchor ? buildCopyAnchorPromptBlock(copyAnchor) : ''
       const copyBlockSuffix = copyBlockRaw ? `\n\n${copyBlockRaw}` : ''
 
-      const assembled =
-        campaignId && brandId
-          ? await assemblePrompt({ campaignId, brandId, track: 'image', channelId: channelId ?? undefined })
-          : null
+      const assembled = campaignId
+        ? await assemblePrompt({
+            campaignId,
+            brandId: brandId ?? null,
+            track: 'image',
+            channelId: channelId ?? undefined,
+          })
+        : null
 
       if (assembled?.prompt) {
         prompt =
@@ -314,6 +330,7 @@ export class AIOrchestrator {
             ? buildAssetLineage(assembled.cco_version)
             : undefined
       } else {
+        if (campaignId) warnLegacyPromptFallback('image', campaignId)
         const composedDescription = copyBlockRaw
           ? `${copyBlockRaw}\n\nUSER VISUAL DIRECTION:\n${description}`
           : description

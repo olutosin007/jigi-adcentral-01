@@ -131,7 +131,7 @@ function processReferenceAsset(asset: BriefReferenceAsset): ReferenceAsset {
 
 export interface CompileBriefInput {
   campaignId: string
-  brandId: string
+  brandId: string | null
   brief: CampaignBrief
 }
 
@@ -139,6 +139,16 @@ export interface CompileBriefResult {
   success: boolean
   cco?: CampaignContextObject
   error?: string
+}
+
+export function hasCompilableBrief(brief: CampaignBrief | undefined): boolean {
+  if (!brief) return false
+  return Boolean(
+    brief.key_message?.trim() ||
+      brief.objective?.trim() ||
+      brief.audience?.trim() ||
+      (brief.channels?.length ?? 0) > 0
+  )
 }
 
 /**
@@ -149,7 +159,7 @@ export async function compileBriefToCCO(input: CompileBriefInput): Promise<Compi
   const { campaignId, brandId, brief } = input
 
   try {
-    const bio = await fetchBioStub(brandId)
+    const bio = brandId ? await fetchBioStub(brandId) : null
 
     // Strategic context
     const objectiveRaw = brief.objective ?? ''
