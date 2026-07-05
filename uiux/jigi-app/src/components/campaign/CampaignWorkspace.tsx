@@ -2,9 +2,11 @@ import type { ReactNode } from 'react'
 import { CampaignPipelineRail } from './CampaignPipelineRail'
 import type { PipelineStage } from '@/lib/campaign-workspace'
 import { isGenerationStage } from '@/lib/campaign-workspace'
+import type { StageGateMap } from '@/lib/pipeline-gates'
 
 interface CampaignWorkspaceProps {
   activeStage: PipelineStage
+  gateMap: StageGateMap
   onStageChange: (stage: PipelineStage) => void
   briefStage: ReactNode
   generationStage: ReactNode
@@ -13,6 +15,7 @@ interface CampaignWorkspaceProps {
 
 export function CampaignWorkspace({
   activeStage,
+  gateMap,
   onStageChange,
   briefStage,
   generationStage,
@@ -20,7 +23,7 @@ export function CampaignWorkspace({
 }: CampaignWorkspaceProps) {
   return (
     <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
-      <CampaignPipelineRail activeStage={activeStage} onStageChange={onStageChange} />
+      <CampaignPipelineRail activeStage={activeStage} gateMap={gateMap} onStageChange={onStageChange} />
       <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
         {activeStage === 'brief' && briefStage}
         {isGenerationStage(activeStage) && generationStage}

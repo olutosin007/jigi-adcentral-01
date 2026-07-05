@@ -203,7 +203,7 @@ export function CampaignCreate() {
         }
       }
       toast.success('Campaign created successfully')
-      navigate(`/app/campaigns/${result.campaign.id}`)
+      navigate(`/app/campaigns/${result.campaign.id}?stage=brief`)
     } else {
       toast.error(result.error || 'Failed to create campaign')
     }

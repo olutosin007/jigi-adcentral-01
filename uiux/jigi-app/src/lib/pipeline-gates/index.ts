@@ -1,3 +1,4 @@
+export { buildPipelineGateInput } from './build-input'
 export { isBriefComplete } from './brief-readiness'
 export {
   canGenerateConcepts,

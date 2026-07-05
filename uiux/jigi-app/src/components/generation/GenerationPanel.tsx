@@ -25,6 +25,8 @@ import {
   useCampaignAssets,
   useDeleteAsset,
   useBrand,
+  useSelectConcept,
+  useSelectCopy,
 } from '@/hooks/useCampaignQueries'
 import { UploadModal } from '@/components/upload/UploadModal'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -121,6 +123,11 @@ export function GenerationPanel({
   const generateCopy = useGenerateCopy()
   const generateImage = useGenerateImage()
   const deleteAsset = useDeleteAsset()
+  const selectConcept = useSelectConcept(campaign.id)
+  const selectCopy = useSelectCopy(campaign.id)
+
+  const productionConceptAssetId = campaign.selected_concept_asset_id ?? null
+  const productionCopyAssetId = campaign.selected_copy_asset_id ?? null
 
   const activeMutation =
     activeTab === 'concepts'
@@ -158,10 +165,16 @@ export function GenerationPanel({
     () => (activeTab === 'concepts' ? concepts : activeTab === 'copy' ? copyAssets : imageAssets),
     [activeTab, concepts, copyAssets, imageAssets]
   )
-  const selectedConceptAsset = useMemo(
-    () => concepts.find((asset) => asset.id === selectedConceptAssetId) || null,
-    [concepts, selectedConceptAssetId]
-  )
+  const selectedConceptAsset = useMemo(() => {
+    if (selectedConceptAssetId) {
+      const match = concepts.find((asset) => asset.id === selectedConceptAssetId)
+      if (match) return match
+    }
+    if (productionConceptAssetId) {
+      return concepts.find((asset) => asset.id === productionConceptAssetId) || null
+    }
+    return null
+  }, [concepts, selectedConceptAssetId, productionConceptAssetId])
   const copyGroups = useMemo(() => {
     const conceptsById = new Map(concepts.map((asset) => [asset.id, asset]))
     const grouped = new Map<string, { title: string; assets: CreativeAsset[] }>()
@@ -204,17 +217,6 @@ export function GenerationPanel({
     generateConcepts.reset()
     generateCopy.reset()
   }, [activeTab, generateConcepts, generateCopy, generateImage])
-
-  useEffect(() => {
-    if (!concepts.length) {
-      setSelectedConceptAssetId(null)
-      return
-    }
-
-    if (!selectedConceptAssetId || !concepts.some((asset) => asset.id === selectedConceptAssetId)) {
-      setSelectedConceptAssetId(concepts[0].id)
-    }
-  }, [concepts, selectedConceptAssetId])
 
   useEffect(() => {
     if (imageCopyAnchorId && !copyAssets.some((a) => a.id === imageCopyAnchorId)) {
@@ -355,6 +357,28 @@ export function GenerationPanel({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Image generation failed.')
       setShowPreview(false)
+    }
+  }
+
+  const handleUseConceptForProduction = async (assetId: string) => {
+    try {
+      await selectConcept.mutateAsync(assetId)
+      toast.success('Concept set for production')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to select concept')
+    }
+  }
+
+  const handleUseCopyForProduction = async (assetId: string) => {
+    if (!productionConceptAssetId) {
+      toast.error('Select a concept for production first')
+      return
+    }
+    try {
+      await selectCopy.mutateAsync(assetId)
+      toast.success('Copy set for key art')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to select copy')
     }
   }
 
@@ -697,7 +721,7 @@ export function GenerationPanel({
             ) : (
               <>
                 <p className="text-xs text-muted-foreground mb-4">{concepts.length} concepts generated</p>
-                <div className="grid grid-cols-2 gap-4">
+                <div id="production-selection" className="grid grid-cols-2 gap-4">
               {concepts.map((asset) => (
                 <ConceptCard
                   key={asset.id}
@@ -706,7 +730,8 @@ export function GenerationPanel({
                   status={asset.status}
                   driftStatus={asset.drift_status}
                   selected={selectedConceptAssetId === asset.id}
-                  onSelect={() => setSelectedConceptAssetId(asset.id)}
+                  inProduction={productionConceptAssetId === asset.id}
+                  onUseForProduction={() => handleUseConceptForProduction(asset.id)}
                   onView={() => setActiveConceptForModal(asset)}
                   onDelete={() => handleDelete(asset.id)}
                   onGenerateCopy={() => {
@@ -785,9 +810,16 @@ export function GenerationPanel({
                     copy={asset.content as CopyResult}
                     assetId={asset.id}
                     status={asset.status}
+                    driftStatus={asset.drift_status}
                     variantLabel={
                       (asset.content as CopyResult).variant_label?.trim() ||
                       `Variant ${String.fromCharCode(65 + index)}`
+                    }
+                    inProduction={productionCopyAssetId === asset.id}
+                    onUseForProduction={
+                      productionConceptAssetId
+                        ? () => handleUseCopyForProduction(asset.id)
+                        : undefined
                     }
                     onView={() => setActiveCopyForModal(asset)}
                     onDelete={() => handleDelete(asset.id)}
@@ -814,6 +846,14 @@ export function GenerationPanel({
         {/* Images Tab */}
         {activeTab === 'images' && !isGenerating && (
           <div>
+            {!productionCopyAssetId && (
+              <div
+                className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground mb-4"
+                data-testid="images-explore-banner"
+              >
+                For messaging-aligned key art, select copy first. You can still explore image generation.
+              </div>
+            )}
             {brandId && (
               <div className="mb-4">
                 <p className="text-xs text-foreground mb-2 font-medium">Include in image</p>

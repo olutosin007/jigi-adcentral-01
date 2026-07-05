@@ -97,10 +97,10 @@ describe('CampaignDetail page', () => {
     expect(screen.getByRole('heading', { name: 'Test Campaign' })).toBeInTheDocument()
   })
 
-  it('shows brand-grounded journey badge and primary generate CTA', () => {
+  it('shows brand-grounded journey badge and primary CTA from pipeline gates', () => {
     render(<CampaignDetail />, { wrapper: createWrapper() })
     expect(screen.getByText('Brand-grounded')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Generate concepts' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Complete brief' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Brief' })).not.toBeInTheDocument()
   })
 

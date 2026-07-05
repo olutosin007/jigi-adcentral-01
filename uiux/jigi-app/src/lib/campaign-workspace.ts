@@ -28,7 +28,7 @@ export function parsePipelineStage(value: string | null | undefined): PipelineSt
   ) {
     return value
   }
-  return 'concepts'
+  return 'brief'
 }
 
 export function parseLegacyTab(value: string | null | undefined): PipelineStage | null {
@@ -38,6 +38,9 @@ export function parseLegacyTab(value: string | null | undefined): PipelineStage 
   return null
 }
 
+/**
+ * @deprecated Use evaluateStageGates from pipeline-gates instead.
+ */
 export function isPipelineStageDone(stage: PipelineStage, active: PipelineStage): boolean {
   return STAGE_ORDER.indexOf(stage) < STAGE_ORDER.indexOf(active)
 }

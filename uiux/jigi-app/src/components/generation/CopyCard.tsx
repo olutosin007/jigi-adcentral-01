@@ -21,7 +21,9 @@ interface CopyCardProps {
   driftStatus?: 'none' | 'review_required' | null
   variantLabel?: string
   selected?: boolean
+  inProduction?: boolean
   onSelect?: () => void
+  onUseForProduction?: () => void
   onView?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -36,7 +38,9 @@ export function CopyCard({
   driftStatus,
   variantLabel,
   selected = false,
+  inProduction = false,
   onSelect,
+  onUseForProduction,
   onView,
   onEdit,
   onDelete,
@@ -60,8 +64,10 @@ export function CopyCard({
   return (
     <div
       className={`bg-background rounded-xl border-2 p-5 shadow-sm transition-all ${
-        selected
+        inProduction
           ? 'border-primary shadow-md'
+          : selected
+          ? 'border-primary/40 shadow-sm'
           : 'border-border hover:border-primary/60 hover:shadow-md'
       } ${handleCardOpen ? 'cursor-pointer' : ''}`}
       onClick={handleCardOpen}
@@ -88,6 +94,11 @@ export function CopyCard({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {inProduction && (
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-semibold">
+              In production
+            </Badge>
+          )}
           {driftStatus === 'review_required' && <DriftBadge />}
           {status && <StatusBadge status={status} />}
           {onSelect && (
@@ -141,7 +152,26 @@ export function CopyCard({
             Copy
           </Button>
 
-          {onSelect && (
+          {onUseForProduction && (
+            <Button
+              variant={inProduction ? 'default' : 'outline'}
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                onUseForProduction()
+              }}
+            >
+              {inProduction ? (
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                  In production
+                </>
+              ) : (
+                'Use for key art'
+              )}
+            </Button>
+          )}
+          {onSelect && !onUseForProduction && (
             <Button
               variant={selected ? 'default' : 'outline'}
               size="sm"

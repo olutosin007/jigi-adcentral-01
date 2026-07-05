@@ -1,5 +1,6 @@
 import { Check, Image, Sparkles, FileText, Trash2, MoreHorizontal, AlertTriangle, Send } from 'lucide-react'
 import { DriftBadge } from './DriftBadge'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { canSubmitAssetForReview } from '@/lib/status'
@@ -18,7 +19,9 @@ interface ConceptCardProps {
   /** PRD 10: Drift status when brief changed after asset generation */
   driftStatus?: 'none' | 'review_required' | null
   selected?: boolean
+  inProduction?: boolean
   onSelect?: () => void
+  onUseForProduction?: () => void
   onView?: () => void
   onGenerateCopy?: () => void
   onGenerateImage?: () => void
@@ -33,7 +36,9 @@ export function ConceptCard({
   status = 'draft',
   driftStatus,
   selected = false,
+  inProduction = false,
   onSelect,
+  onUseForProduction,
   onView,
   onGenerateCopy,
   onGenerateImage,
@@ -49,8 +54,10 @@ export function ConceptCard({
   return (
     <div
       className={`bg-background rounded-xl border-2 p-5 shadow-sm transition-all ${
-        selected
+        inProduction
           ? 'border-primary shadow-md'
+          : selected
+          ? 'border-primary/40 shadow-sm'
           : 'border-border hover:border-primary/60 hover:shadow-md'
       } ${handleCardOpen ? 'cursor-pointer' : ''}`}
       onClick={handleCardOpen}
@@ -67,6 +74,11 @@ export function ConceptCard({
           <h3 className="text-sm font-bold text-foreground mt-0.5 truncate">{concept.theme}</h3>
         </div>
         <div className="flex items-center gap-2">
+          {inProduction && (
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-semibold">
+              In production
+            </Badge>
+          )}
           {driftStatus === 'review_required' && <DriftBadge />}
           {status && <StatusBadge status={status} />}
           {onSelect && (
@@ -137,7 +149,27 @@ export function ConceptCard({
               Submit for Review
             </Button>
           )}
-          {onSelect && (
+          {onUseForProduction && (
+            <Button
+              variant={inProduction ? 'default' : 'outline'}
+              size="sm"
+              className="flex-1"
+              onClick={(e) => {
+                e.stopPropagation()
+                onUseForProduction()
+              }}
+            >
+              {inProduction ? (
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                  In production
+                </>
+              ) : (
+                'Use for copy & visuals'
+              )}
+            </Button>
+          )}
+          {onSelect && !onUseForProduction && (
             <Button
               variant={selected ? 'default' : 'outline'}
               size="sm"
