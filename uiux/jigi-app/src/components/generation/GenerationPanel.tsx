@@ -128,6 +128,7 @@ export function GenerationPanel({
 
   const productionConceptAssetId = campaign.selected_concept_asset_id ?? null
   const productionCopyAssetId = campaign.selected_copy_asset_id ?? null
+  const effectiveConceptAssetId = selectedConceptAssetId ?? productionConceptAssetId
 
   const activeMutation =
     activeTab === 'concepts'
@@ -166,15 +167,11 @@ export function GenerationPanel({
     [activeTab, concepts, copyAssets, imageAssets]
   )
   const selectedConceptAsset = useMemo(() => {
-    if (selectedConceptAssetId) {
-      const match = concepts.find((asset) => asset.id === selectedConceptAssetId)
-      if (match) return match
-    }
-    if (productionConceptAssetId) {
-      return concepts.find((asset) => asset.id === productionConceptAssetId) || null
+    if (effectiveConceptAssetId) {
+      return concepts.find((asset) => asset.id === effectiveConceptAssetId) || null
     }
     return null
-  }, [concepts, selectedConceptAssetId, productionConceptAssetId])
+  }, [concepts, effectiveConceptAssetId])
   const copyGroups = useMemo(() => {
     const conceptsById = new Map(concepts.map((asset) => [asset.id, asset]))
     const grouped = new Map<string, { title: string; assets: CreativeAsset[] }>()
@@ -224,6 +221,13 @@ export function GenerationPanel({
     }
   }, [copyAssets, imageCopyAnchorId])
 
+  useEffect(() => {
+    if (activeTab !== 'copy' || selectedConceptAssetId || !productionConceptAssetId) return
+    if (concepts.some((asset) => asset.id === productionConceptAssetId)) {
+      setSelectedConceptAssetId(productionConceptAssetId)
+    }
+  }, [activeTab, concepts, productionConceptAssetId, selectedConceptAssetId])
+
   const handleGenerate = async () => {
     if (!userId) {
       toast.error('Session still loading — wait a moment and try again.')
@@ -261,8 +265,8 @@ export function GenerationPanel({
           conceptAssetId: selectedConceptAsset.id,
           conceptContext: {
             theme: concept.theme,
-            headlines: concept.headlines,
-            visual_direction: concept.visual_direction,
+            headlines: concept.headlines ?? [],
+            visual_direction: concept.visual_direction ?? '',
           },
           userId,
         })
@@ -360,10 +364,17 @@ export function GenerationPanel({
     }
   }
 
-  const handleUseConceptForProduction = async (assetId: string) => {
+  const handleUseConceptForProduction = async (
+    assetId: string,
+    options?: { goToCopy?: boolean }
+  ) => {
+    setSelectedConceptAssetId(assetId)
     try {
       await selectConcept.mutateAsync(assetId)
-      toast.success('Concept set for production')
+      toast.success('Concept set for copy & visuals')
+      if (options?.goToCopy !== false) {
+        setActiveTab('copy')
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to select concept')
     }
@@ -734,10 +745,7 @@ export function GenerationPanel({
                   onUseForProduction={() => handleUseConceptForProduction(asset.id)}
                   onView={() => setActiveConceptForModal(asset)}
                   onDelete={() => handleDelete(asset.id)}
-                  onGenerateCopy={() => {
-                    setSelectedConceptAssetId(asset.id)
-                    setActiveTab('copy')
-                  }}
+                  onGenerateCopy={() => handleUseConceptForProduction(asset.id)}
                   onGenerateImage={() => handleGenerateImageFromConcept(asset)}
                   onSubmit={() => handleSubmitAsset(asset.id)}
                   showActions={true}
@@ -759,7 +767,7 @@ export function GenerationPanel({
         {/* Copy Tab */}
         {activeTab === 'copy' && !isGenerating && (
           <div className="space-y-4">
-            {copyAssets.length === 0 && concepts.length === 0 ? (
+            {concepts.length === 0 ? (
               <EmptyState
                 icon={FileText}
                 title="Concepts come first"
@@ -767,77 +775,97 @@ export function GenerationPanel({
                 action={{ label: 'Go to concepts', onClick: () => setActiveTab('concepts') }}
                 className="py-12"
               />
-            ) : copyAssets.length === 0 && concepts.length > 0 ? (
-              <EmptyState
-                icon={FileText}
-                title="Generate your first copy"
-                description="Select a concept above and generate copy variants."
-                action={
-                  selectedConceptAsset
-                    ? { label: 'Generate copy', onClick: handleGenerate }
-                    : undefined
-                }
-                className="py-12"
-              />
             ) : (
               <>
-            {concepts.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {concepts.map((asset) => {
-                  const concept = asset.content as ConceptResult
-                  const isSelected = selectedConceptAssetId === asset.id
-                  return (
-                    <Button
-                      key={asset.id}
-                      size="sm"
-                      variant={isSelected ? 'default' : 'outline'}
-                      className={isSelected ? '' : ''}
-                      onClick={() => setSelectedConceptAssetId(asset.id)}
-                    >
-                      {concept.theme}
-                    </Button>
-                  )
-                })}
-              </div>
-            )}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-foreground">Concept for copy generation</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {concepts.map((asset) => {
+                      const concept = asset.content as ConceptResult
+                      const isSelected = effectiveConceptAssetId === asset.id
+                      const isProduction = productionConceptAssetId === asset.id
+                      return (
+                        <Button
+                          key={asset.id}
+                          size="sm"
+                          variant={isSelected ? 'default' : 'outline'}
+                          onClick={() => {
+                            setSelectedConceptAssetId(asset.id)
+                            if (productionConceptAssetId !== asset.id) {
+                              void handleUseConceptForProduction(asset.id, { goToCopy: false })
+                            }
+                          }}
+                        >
+                          {concept.theme}
+                          {isProduction ? ' · In production' : ''}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  {selectedConceptAsset ? (
+                    <p className="text-xs text-muted-foreground">
+                      Generating variants for &ldquo;
+                      {(selectedConceptAsset.content as ConceptResult).theme}&rdquo;.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Select a concept to generate copy variants.
+                    </p>
+                  )}
+                </div>
 
-            {copyGroups.map((group) => (
-              <div key={group.parentId} className="space-y-3">
-                <p className="text-xs text-muted-foreground">{group.title}</p>
-                {group.assets.map((asset, index) => (
-                  <CopyCard
-                    key={asset.id}
-                    copy={asset.content as CopyResult}
-                    assetId={asset.id}
-                    status={asset.status}
-                    driftStatus={asset.drift_status}
-                    variantLabel={
-                      (asset.content as CopyResult).variant_label?.trim() ||
-                      `Variant ${String.fromCharCode(65 + index)}`
-                    }
-                    inProduction={productionCopyAssetId === asset.id}
-                    onUseForProduction={
-                      productionConceptAssetId
-                        ? () => handleUseCopyForProduction(asset.id)
+                {copyAssets.length === 0 ? (
+                  <EmptyState
+                    icon={FileText}
+                    title="Generate your first copy"
+                    description="Choose a concept above, then generate two copy variants."
+                    action={
+                      selectedConceptAsset
+                        ? { label: 'Generate copy', onClick: handleGenerate }
                         : undefined
                     }
-                    onView={() => setActiveCopyForModal(asset)}
-                    onDelete={() => handleDelete(asset.id)}
-                    onSubmit={() => handleSubmitAsset(asset.id)}
-                    showActions={true}
+                    className="py-12"
                   />
-                ))}
-              </div>
-            ))}
-            {copyAssets.length > 0 && (
-              <button
-                onClick={handleGenerate}
-                className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Generate 2 more variants
-              </button>
-            )}
+                ) : (
+                  <>
+                    {copyGroups.map((group) => (
+                      <div key={group.parentId} className="space-y-3">
+                        <p className="text-xs text-muted-foreground">{group.title}</p>
+                        {group.assets.map((asset, index) => (
+                          <CopyCard
+                            key={asset.id}
+                            copy={asset.content as CopyResult}
+                            assetId={asset.id}
+                            status={asset.status}
+                            driftStatus={asset.drift_status}
+                            variantLabel={
+                              (asset.content as CopyResult).variant_label?.trim() ||
+                              `Variant ${String.fromCharCode(65 + index)}`
+                            }
+                            inProduction={productionCopyAssetId === asset.id}
+                            onUseForProduction={
+                              productionConceptAssetId
+                                ? () => handleUseCopyForProduction(asset.id)
+                                : undefined
+                            }
+                            onView={() => setActiveCopyForModal(asset)}
+                            onDelete={() => handleDelete(asset.id)}
+                            onSubmit={() => handleSubmitAsset(asset.id)}
+                            showActions={true}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                    <button
+                      onClick={handleGenerate}
+                      disabled={!selectedConceptAsset}
+                      className="flex items-center gap-2 text-sm font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Generate 2 more variants
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>

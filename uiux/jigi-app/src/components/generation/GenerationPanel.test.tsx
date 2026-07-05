@@ -169,6 +169,24 @@ describe('GenerationPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /use for copy & visuals/i }))
     expect(mockSelectConceptMutate).toHaveBeenCalledWith('concept-1')
+    expect(screen.getByText('Concept for copy generation')).toBeInTheDocument()
+  })
+
+  it('shows concept selector on copy tab before any copy exists', async () => {
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+    const user = userEvent.setup()
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" stage="copy" />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByText('Concept for copy generation')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Summer Launch' })).toBeInTheDocument()
+    expect(screen.getByText('Generate your first copy')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Summer Launch' }))
+    expect(screen.getByRole('button', { name: 'Generate copy' })).toBeInTheDocument()
   })
 
   it('U6: shows explore banner on Images tab when no copy selection', async () => {

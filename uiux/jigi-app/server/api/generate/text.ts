@@ -152,10 +152,11 @@ function buildUserPrompt(request: GenerateTextRequest): string {
   }
 
   if (request.concept_context) {
+    const headlines = request.concept_context.headlines ?? []
     prompt += `\n\nConcept Context:
 - Theme: ${request.concept_context.theme}
-- Headlines: ${request.concept_context.headlines.join(', ')}
-- Visual Direction: ${request.concept_context.visual_direction}`
+- Headlines: ${headlines.length ? headlines.join(', ') : 'None provided'}
+- Visual Direction: ${request.concept_context.visual_direction || 'Not specified'}`
   }
 
   return prompt
