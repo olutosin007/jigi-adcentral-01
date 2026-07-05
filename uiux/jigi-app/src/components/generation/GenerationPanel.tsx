@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Sparkles, RefreshCw, AlertCircle, Lightbulb, FileText, Image, Wand2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -29,7 +30,9 @@ import {
   useSelectCopy,
 } from '@/hooks/useCampaignQueries'
 import { UploadModal } from '@/components/upload/UploadModal'
+import { BrandIncompleteBanner } from '@/components/brands/BrandIncompleteBanner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { deriveBrandEssentials } from '@/lib/brand-profile-status'
 import { generateText } from '@/lib/api-client'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
 import type { BrandIncludeFlags, ConceptResult, CopyImageAnchor, CopyResult, ImageResult } from '@/lib/ai'
@@ -71,6 +74,7 @@ export function GenerationPanel({
   stage,
   onStageChange,
 }: GenerationPanelProps) {
+  const navigate = useNavigate()
   const [internalTab, setInternalTab] = useState<GenerationType>('concepts')
   const isControlled = stage !== undefined
   const activeTab = isControlled ? stage : internalTab
@@ -103,6 +107,10 @@ export function GenerationPanel({
   const refinedPromptStorageKey = `jigi-refined-image-prompt-${campaign.id}`
 
   const { data: brand } = useBrand(brandId)
+  const brandEssentials = useMemo(
+    () => (brand ? deriveBrandEssentials(brand.identity, brand.voice) : null),
+    [brand]
+  )
 
   useEffect(() => {
     try {
@@ -518,6 +526,13 @@ export function GenerationPanel({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             {activeTab === 'concepts' ? 'Concepts' : activeTab === 'copy' ? 'Copy' : 'Images'}
           </p>
+        )}
+
+        {brandId && brandEssentials && brandEssentials.status !== 'complete' && (
+          <BrandIncompleteBanner
+            essentials={brandEssentials}
+            onCompleteBrandKit={() => navigate(`/app/brands/${brandId}`)}
+          />
         )}
 
         {activeTab === 'copy' && selectedConceptAsset && (

@@ -42,11 +42,28 @@ const mockDraftConceptAsset = {
   updated_at: '2024-01-01',
 }
 
-const { mockCampaignAssetsData, mockSelectConceptMutate, mockSelectCopyMutate } = vi.hoisted(() => ({
+const { mockCampaignAssetsData, mockSelectConceptMutate, mockSelectCopyMutate, mockBrandData } = vi.hoisted(() => ({
   mockCampaignAssetsData: { current: [] as typeof mockDraftConceptAsset[] },
   mockSelectConceptMutate: vi.fn().mockResolvedValue({}),
   mockSelectCopyMutate: vi.fn().mockResolvedValue({}),
+  mockBrandData: {
+    current: undefined as
+      | {
+          id: string
+          identity: { colours: { primary: string }; fonts: { heading: string; body: string } }
+          voice: { tone: string[]; preferred_words: string[]; avoided_words: string[] }
+        }
+      | undefined,
+  },
 }))
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  }
+})
 
 vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useCampaignQueries')>()
@@ -72,7 +89,7 @@ vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
     }),
     useCampaignAssets: () => ({ data: mockCampaignAssetsData.current }),
     useDeleteAsset: () => ({ mutateAsync: vi.fn() }),
-    useBrand: () => ({ data: undefined }),
+    useBrand: () => ({ data: mockBrandData.current }),
     useSelectConcept: () => ({
       mutateAsync: mockSelectConceptMutate,
       isPending: false,
@@ -108,6 +125,7 @@ describe('GenerationPanel', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockCampaignAssetsData.current = []
+    mockBrandData.current = undefined
     mockSelectConceptMutate.mockClear()
     mockSelectCopyMutate.mockClear()
   })
@@ -213,5 +231,24 @@ describe('GenerationPanel', () => {
     )
     await user.click(screen.getByText('Images'))
     expect(screen.getByRole('button', { name: /generate image/i })).toBeInTheDocument()
+  })
+
+  it('G4: shows brand incomplete banner when brand kit is not on-brand ready', () => {
+    mockBrandData.current = {
+      id: 'brand-1',
+      identity: {
+        colours: { primary: '#1a1a1a' },
+        fonts: { heading: 'Fraunces', body: 'Inter' },
+      },
+      voice: { tone: [], preferred_words: [], avoided_words: [] },
+    }
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByText(/Brand profile incomplete — results may drift/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /complete brand kit/i })).toBeInTheDocument()
   })
 })
