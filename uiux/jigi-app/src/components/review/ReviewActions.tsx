@@ -62,13 +62,13 @@ export function ReviewActions({ onReview, isReviewing, disabled, approveBlocked,
           <AlertDescription>{approveBlockedReason}</AlertDescription>
         </Alert>
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex items-stretch gap-2 sm:gap-3" data-tour="review-actions">
         {/* Approve Button - Primary */}
         <Button
           onClick={() => handleAction('approve')}
           disabled={isReviewing || disabled || approveBlocked}
           title={approveBlocked ? approveBlockedReason : undefined}
-          className="bg-success hover:bg-success/90 text-primary-foreground flex-1 transition-colors"
+          className="bg-success hover:bg-success/90 text-primary-foreground flex-1 min-h-11 transition-colors"
         >
           {isReviewing ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -86,7 +86,7 @@ export function ReviewActions({ onReview, isReviewing, disabled, approveBlocked,
           variant="outline"
           onClick={() => handleAction('request_changes')}
           disabled={isReviewing || disabled}
-          className="border-warning/30 text-warning hover:bg-warning/10 flex-1 transition-colors"
+          className="border-warning/30 text-warning hover:bg-warning/10 flex-1 min-h-11 transition-colors"
         >
           <REVIEW_ACTIONS.request_changes.icon className="mr-2 h-4 w-4" />
           Request Changes
@@ -100,7 +100,7 @@ export function ReviewActions({ onReview, isReviewing, disabled, approveBlocked,
           variant="destructive"
           onClick={() => handleAction('reject')}
           disabled={isReviewing || disabled}
-          className="flex-1 transition-colors"
+          className="flex-1 min-h-11 transition-colors"
         >
           <REVIEW_ACTIONS.reject.icon className="mr-2 h-4 w-4" />
           Reject

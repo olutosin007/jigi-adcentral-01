@@ -62,11 +62,26 @@ export function isConceptOutputSchema(obj: unknown): obj is ConceptOutputSchema 
  */
 export function normalizeConceptToDisplay(raw: Record<string, unknown>): ConceptDisplayFormat {
   if (isConceptOutputSchema(raw)) {
+    // Prefer richer display fields when the model supplies them (hybrid schema:
+    // full PRD-06 fields + display headlines/visual_direction). Falls back to the
+    // canonical PRD-06 mapping when they're absent (e.g. the CCO template path).
+    const richHeadlines =
+      Array.isArray(raw.headlines) && raw.headlines.length > 0
+        ? (raw.headlines as string[])
+        : [raw.headline_direction]
+    const richVisual =
+      typeof raw.visual_direction === 'string' && raw.visual_direction.trim()
+        ? raw.visual_direction
+        : raw.creative_territory
+    const richRationale =
+      typeof raw.rationale === 'string' && raw.rationale.trim()
+        ? (raw.rationale as string)
+        : `${raw.strategic_insight}\n\nKey message link: ${raw.key_message_link}`
     return {
-      theme: raw.concept_name,
-      headlines: [raw.headline_direction],
-      visual_direction: raw.creative_territory,
-      rationale: `${raw.strategic_insight}\n\nKey message link: ${raw.key_message_link}`,
+      theme: (typeof raw.theme === 'string' && raw.theme.trim() ? (raw.theme as string) : raw.concept_name),
+      headlines: richHeadlines,
+      visual_direction: richVisual,
+      rationale: richRationale,
       concept_name: raw.concept_name,
       strategic_insight: raw.strategic_insight,
       creative_territory: raw.creative_territory,

@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import {
-  SearchIcon,
   PlusIcon,
   ClipboardCheckIcon,
   MenuIcon,
@@ -9,7 +8,11 @@ import {
   LogOutIcon,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { isReviewerRole } from '@/lib/roles'
+import { useEffectiveRole } from '@/hooks/useEffectiveRole'
 import { UserAvatar } from '@/components/layout/UserAvatar'
+import { ViewAsSwitcher } from '@/components/tour/ViewAsSwitcher'
+import { TourLaunchButton } from '@/components/tour/TourLaunchButton'
 import { NotificationBell } from '@/components/notifications'
 import {
   DropdownMenu,
@@ -21,6 +24,7 @@ import {
 
 interface HeaderProps {
   title: string
+  hideTitle?: boolean
   showCTAs?: boolean
   isMobile?: boolean
   onMenuClick?: () => void
@@ -29,6 +33,7 @@ interface HeaderProps {
 
 export function Header({
   title,
+  hideTitle = false,
   showCTAs = false,
   isMobile = false,
   onMenuClick,
@@ -36,6 +41,7 @@ export function Header({
 }: HeaderProps) {
   const navigate = useNavigate()
   const { user, profile, signOut } = useAuthStore()
+  const effectiveRole = useEffectiveRole()
 
   const displayName =
     profile?.name ?? user?.user_metadata?.full_name ?? (user?.email?.split('@')[0] || 'User')
@@ -65,33 +71,23 @@ export function Header({
       )}
       {/* Page Title */}
       <div className="flex-1 min-w-0">
-        <h1 className="text-base font-semibold text-foreground">{title}</h1>
-      </div>
-
-      {/* Search */}
-      <div className="relative hidden md:flex items-center">
-        <SearchIcon className="absolute left-3 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-        <input
-          type="search"
-          placeholder="Search assets, campaigns..."
-          className="pl-9 pr-10 py-1.5 text-sm bg-muted border border-transparent rounded-lg w-56 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-primary focus-visible:bg-background transition-all duration-200 placeholder:text-muted-foreground motion-reduce:transition-none"
-          aria-label="Search"
-        />
-        <kbd className="absolute right-3 hidden sm:inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-          <span className="text-xs">⌘</span>K
-        </kbd>
+        {!hideTitle && title ? (
+          <h1 className="text-base font-semibold text-foreground">{title}</h1>
+        ) : null}
       </div>
 
       {/* CTAs */}
       {showCTAs && (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/app/review')}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent hover:border-accent transition-all duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <ClipboardCheckIcon className="w-3.5 h-3.5" />
-            Review Queue
-          </button>
+          {isReviewerRole(effectiveRole) && (
+            <button
+              onClick={() => navigate('/app/review')}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent hover:border-accent transition-all duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <ClipboardCheckIcon className="w-3.5 h-3.5" />
+              Review Queue
+            </button>
+          )}
           <button
             onClick={() => navigate('/app/campaigns/new')}
             className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-all duration-200 active:scale-[0.98] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -101,6 +97,10 @@ export function Header({
           </button>
         </div>
       )}
+
+      {/* Manual tour entry + demo persona switcher (carries the role-switch anchor) */}
+      <TourLaunchButton />
+      <ViewAsSwitcher />
 
       {/* Notifications */}
       {user?.id ? (

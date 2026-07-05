@@ -1,0 +1,414 @@
+{
+  "generated_at": "2026-07-01T10:14:20.829Z",
+  "api_base": "http://localhost:3000",
+  "judge_model": null,
+  "image_enabled": false,
+  "brand": "Coca-Cola",
+  "thresholds": {
+    "avoidedWordPenalty": 25,
+    "conceptAlignmentMin": 75,
+    "copyToneMin": 80,
+    "compositePass": 75,
+    "imageOnBrandPass": 75
+  },
+  "overall_composite": 94,
+  "results": [
+    {
+      "id": "summer_refresh",
+      "label": "Summer refreshment",
+      "errors": [],
+      "concepts": [
+        {
+          "theme": "Summer Togetherness",
+          "headlines": [
+            "Refresh Your Summer Moments",
+            "Share the Joy of Ice-Cold Coca-Cola",
+            "Together is Where the Magic Happens"
+          ],
+          "visual_direction": "Visuals feature young adults enjoying outdoor activities, like picnics and beach outings, with vibrant scenes of laughter and shared Coca-Cola bottles. The primary red and white colors dominate the visuals, creating a bright and inviting atmosphere, with ice-cold bottles prominently displayed.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "refreshing",
+              "share",
+              "happiness",
+              "together",
+              "ice-cold",
+              "enjoy"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        },
+        {
+          "theme": "Chill Vibes Only",
+          "headlines": [
+            "Beat the Heat with Coca-Cola",
+            "Ice-Cold Refreshment Awaits",
+            "Sip, Smile, and Share the Magic"
+          ],
+          "visual_direction": "Imagery showcases sun-drenched gatherings, highlighting friends clinking Coca-Cola bottles in a toast. The visuals incorporate bright sunlight filtering through green trees, with droplets of condensation on the bottles to evoke the feeling of refreshment and chill.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "share",
+              "ice-cold",
+              "enjoy"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        }
+      ],
+      "conceptScore": 100,
+      "copy": [
+        {
+          "headline": "Refresh Your Summer Moments",
+          "body": "Gather your friends and enjoy the real magic of summer with ice-cold Coca-Cola. Make every moment memorable together!",
+          "cta": "Share the refreshment!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "real magic",
+              "share",
+              "together",
+              "ice-cold",
+              "enjoy"
+            ],
+            "charCount": 168,
+            "channelCharLimit": 125,
+            "withinLimit": false,
+            "overBy": 43,
+            "charPenalty": 14,
+            "modelTone": 95,
+            "score": 91
+          }
+        },
+        {
+          "headline": "Together is Where the Magic Happens",
+          "body": "Experience refreshing happiness this summer! Enjoy classic Coca-Cola with friends and create unforgettable memories.",
+          "cta": "Enjoy together!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "refreshing",
+              "happiness",
+              "together",
+              "enjoy",
+              "classic"
+            ],
+            "charCount": 168,
+            "channelCharLimit": 125,
+            "withinLimit": false,
+            "overBy": 43,
+            "charPenalty": 14,
+            "modelTone": 90,
+            "score": 88
+          }
+        }
+      ],
+      "copyScore": 90,
+      "composite": 95,
+      "pass": true
+    },
+    {
+      "id": "holiday_togetherness",
+      "label": "Holiday togetherness",
+      "errors": [],
+      "concepts": [
+        {
+          "theme": "Moments of Magic",
+          "headlines": [
+            "Share the Magic of Togetherness",
+            "Refresh Your Holidays with Coca-Cola",
+            "Celebrate Every Sip Together"
+          ],
+          "visual_direction": "Visuals should showcase diverse groups of families and friends joyfully sharing Coca-Cola during festive gatherings, with warm lighting and cozy settings. Emphasize ice-cold bottles or cans being passed around, laughter, and moments of connection.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "share",
+              "together",
+              "ice-cold"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        },
+        {
+          "theme": "Cheers to Togetherness",
+          "headlines": [
+            "Raise a Toast to Joyful Moments",
+            "Together, We Celebrate Happiness",
+            "Ice-Cold Refreshment for Every Gathering"
+          ],
+          "visual_direction": "Create visuals that depict festive tables filled with food and Coca-Cola, surrounded by friends and family toasting with their drinks. Use vibrant colors and a mix of traditional and modern holiday decorations to evoke a sense of celebration.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "happiness",
+              "together",
+              "ice-cold"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        }
+      ],
+      "conceptScore": 100,
+      "copy": [
+        {
+          "headline": "Share the Magic of Togetherness",
+          "body": "This festive season, enjoy the moments that bring us closer. With every ice-cold sip of Coca-Cola, share happiness and create real magic together!",
+          "cta": "Raise a bottle to joy!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "real magic",
+              "share",
+              "happiness",
+              "together",
+              "ice-cold",
+              "enjoy",
+              "classic"
+            ],
+            "charCount": 201,
+            "channelCharLimit": 125,
+            "withinLimit": false,
+            "overBy": 76,
+            "charPenalty": 30,
+            "modelTone": 90,
+            "score": 80
+          }
+        },
+        {
+          "headline": "Refresh Your Holidays with Coca-Cola",
+          "body": "Join friends and family this holiday season! Every ice-cold sip of Coca-Cola is a moment to enjoy and share the joy of togetherness.",
+          "cta": "Sip and celebrate!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "share",
+              "happiness",
+              "together",
+              "ice-cold",
+              "enjoy"
+            ],
+            "charCount": 188,
+            "channelCharLimit": 125,
+            "withinLimit": false,
+            "overBy": 63,
+            "charPenalty": 24,
+            "modelTone": 85,
+            "score": 81
+          }
+        }
+      ],
+      "copyScore": 81,
+      "composite": 91,
+      "pass": true
+    },
+    {
+      "id": "ramadan_iftar",
+      "label": "Ramadan iftar (cultural)",
+      "errors": [],
+      "concepts": [
+        {
+          "theme": "Moments of Togetherness",
+          "headlines": [
+            "Share the Magic of Iftar",
+            "Together, We Celebrate Happiness",
+            "Ice-Cold Refreshment for Every Family"
+          ],
+          "visual_direction": "Visuals should depict diverse Muslim families gathered around a beautifully set iftar table, with glowing lanterns and traditional dishes. Coca-Cola bottles should be prominently featured, glistening with condensation to emphasize the refreshment and joy.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "share",
+              "happiness",
+              "together",
+              "ice-cold"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        },
+        {
+          "theme": "Refresh Your Ramadan",
+          "headlines": [
+            "Experience Real Magic at Iftar",
+            "Enjoy Every Sip Together",
+            "Celebrate with Classic Refreshment"
+          ],
+          "visual_direction": "Imagery should focus on close-up shots of families joyfully breaking their fast, with Coca-Cola in hand. The use of warm lighting and rich colors will evoke a sense of nostalgia and joy, highlighting the refreshing aspect of the drink.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "refreshing",
+              "real magic",
+              "together",
+              "enjoy",
+              "classic"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        }
+      ],
+      "conceptScore": 100,
+      "copy": [
+        {
+          "headline": "Share the Magic of Iftar",
+          "body": "Gather your loved ones around the table. Enjoy ice-cold Coca-Cola and create joyful memories together this Ramadan.",
+          "cta": "Join the Celebration!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "share",
+              "together",
+              "ice-cold",
+              "enjoy"
+            ],
+            "charCount": 162,
+            "channelCharLimit": 150,
+            "withinLimit": false,
+            "overBy": 12,
+            "charPenalty": 0,
+            "modelTone": 95,
+            "score": 98
+          }
+        },
+        {
+          "headline": "Ice-Cold Refreshment Awaits",
+          "body": "As the sun sets, gather your family for iftar. Enjoy the real magic of happiness with refreshing Coca-Cola by your side.",
+          "cta": "Taste the Joy!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "refreshing",
+              "real magic",
+              "happiness",
+              "ice-cold",
+              "enjoy"
+            ],
+            "charCount": 163,
+            "channelCharLimit": 150,
+            "withinLimit": false,
+            "overBy": 13,
+            "charPenalty": 0,
+            "modelTone": 90,
+            "score": 95
+          }
+        }
+      ],
+      "copyScore": 97,
+      "composite": 99,
+      "pass": true
+    },
+    {
+      "id": "genz_music",
+      "label": "Gen-Z music festival (tone-drift risk)",
+      "errors": [],
+      "concepts": [
+        {
+          "theme": "Festival Moments Together",
+          "headlines": [
+            "Share the Magic of Refreshment",
+            "Celebrate Togetherness, Sip by Sip",
+            "Find Your Happiness in Every Sip"
+          ],
+          "visual_direction": "Vibrant, high-energy visuals capturing diverse groups of young people enjoying Coca-Cola at a festival. Bright colors and dynamic shots of people dancing, sharing bottles, and laughing together, with close-ups of the refreshing drink in hand.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "refreshing",
+              "share",
+              "happiness",
+              "together",
+              "enjoy"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        },
+        {
+          "theme": "Taste the Joy",
+          "headlines": [
+            "Taste the Real Magic of Togetherness",
+            "Refreshment That Brings Us Together",
+            "Enjoy Every Moment with Coca-Cola"
+          ],
+          "visual_direction": "Energetic and colorful videos showcasing Gen Z enjoying live music with Coca-Cola in hand. Shots of ice-cold bottles being opened, smiles, and spontaneous moments of friendship, all set against the backdrop of a lively festival atmosphere.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "real magic",
+              "together",
+              "ice-cold",
+              "enjoy"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        }
+      ],
+      "conceptScore": 100,
+      "copy": [
+        {
+          "headline": "Share the Magic of Refreshment",
+          "body": "Celebrate the joy of every sip with friends! Together, let’s make memories that sparkle with happiness. Grab an ice-cold Coca-Cola and enjoy the festival vibes!",
+          "cta": "Join the fun!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "share",
+              "happiness",
+              "together",
+              "ice-cold",
+              "enjoy"
+            ],
+            "charCount": 205,
+            "channelCharLimit": 100,
+            "withinLimit": false,
+            "overBy": 105,
+            "charPenalty": 30,
+            "modelTone": 90,
+            "score": 80
+          }
+        },
+        {
+          "headline": "Celebrate Togetherness",
+          "body": "Find your happiness in every sip! Enjoy the classic taste of Coca-Cola that brings us all together at the festival. Let’s create unforgettable moments!",
+          "cta": "Taste the joy!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "happiness",
+              "together",
+              "enjoy",
+              "classic"
+            ],
+            "charCount": 189,
+            "channelCharLimit": 100,
+            "withinLimit": false,
+            "overBy": 89,
+            "charPenalty": 30,
+            "modelTone": 85,
+            "score": 78
+          }
+        }
+      ],
+      "copyScore": 79,
+      "composite": 90,
+      "pass": true
+    }
+  ]
+}

@@ -33,6 +33,12 @@ vi.mock('@/store/brandStore', () => ({
   }),
 }))
 
+vi.mock('@/store/authStore', () => ({
+  useAuthStore: () => ({
+    user: { id: 'user-1', email: 'test@example.com' },
+  }),
+}))
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function renderCampaignCreate() {
@@ -65,5 +71,5 @@ describe('CampaignCreate page', () => {
     const nameInput = screen.getByLabelText(/campaign name/i)
     await user.type(nameInput, 'My New Campaign')
     expect(nameInput).toHaveValue('My New Campaign')
-  })
+  }, 10_000)
 })

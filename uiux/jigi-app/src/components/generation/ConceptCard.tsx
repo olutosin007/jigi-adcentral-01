@@ -1,7 +1,8 @@
-import { Check, Image, Sparkles, FileText, Trash2, MoreHorizontal, AlertTriangle } from 'lucide-react'
+import { Check, Image, Sparkles, FileText, Trash2, MoreHorizontal, AlertTriangle, Send } from 'lucide-react'
 import { DriftBadge } from './DriftBadge'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { canSubmitAssetForReview } from '@/lib/status'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,17 +23,8 @@ interface ConceptCardProps {
   onGenerateCopy?: () => void
   onGenerateImage?: () => void
   onDelete?: () => void
+  onSubmit?: () => void
   showActions?: boolean
-}
-
-const statusStyles: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  agency_review: 'bg-purple-100 text-purple-800',
-  submitted: 'bg-primary/10 text-primary',
-  brand_review: 'bg-amber-100 text-amber-800',
-  changes_requested: 'bg-warning/10 text-warning',
-  approved: 'bg-success/10 text-success',
-  rejected: 'bg-destructive/10 text-destructive',
 }
 
 export function ConceptCard({
@@ -46,6 +38,7 @@ export function ConceptCard({
   onGenerateCopy,
   onGenerateImage,
   onDelete,
+  onSubmit,
   showActions = true,
 }: ConceptCardProps) {
   const headlines = concept.headlines || []
@@ -75,11 +68,7 @@ export function ConceptCard({
         </div>
         <div className="flex items-center gap-2">
           {driftStatus === 'review_required' && <DriftBadge />}
-          {status && (
-            <Badge variant="secondary" className={`text-[10px] ${statusStyles[status] || statusStyles.draft}`}>
-              {status.replace('_', ' ')}
-            </Badge>
-          )}
+          {status && <StatusBadge status={status} />}
           {onSelect && (
             <div
               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
@@ -134,7 +123,20 @@ export function ConceptCard({
       ) : null}
 
       {showActions && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {onSubmit && canSubmitAssetForReview(status) && (
+            <Button
+              size="sm"
+              className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSubmit()
+              }}
+            >
+              <Send className="w-3.5 h-3.5 mr-1" aria-hidden />
+              Submit for Review
+            </Button>
+          )}
           {onSelect && (
             <Button
               variant={selected ? 'default' : 'outline'}
@@ -165,15 +167,31 @@ export function ConceptCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {onGenerateCopy && (
-                  <DropdownMenuItem onClick={onGenerateCopy}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Generate Copy
+                  <DropdownMenuItem
+                    onClick={onGenerateCopy}
+                    className="flex flex-col items-stretch gap-0.5 py-2.5"
+                  >
+                    <span className="flex items-center text-sm">
+                      <FileText className="w-4 h-4 mr-2 shrink-0" />
+                      Generate copy
+                    </span>
+                    <span className="text-[10px] text-muted-foreground pl-6 leading-snug">
+                      Opens Copy tab with this concept selected
+                    </span>
                   </DropdownMenuItem>
                 )}
                 {onGenerateImage && (
-                  <DropdownMenuItem onClick={onGenerateImage}>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Image
+                  <DropdownMenuItem
+                    onClick={onGenerateImage}
+                    className="flex flex-col items-stretch gap-0.5 py-2.5"
+                  >
+                    <span className="flex items-center text-sm">
+                      <Sparkles className="w-4 h-4 mr-2 shrink-0" />
+                      Generate image
+                    </span>
+                    <span className="text-[10px] text-muted-foreground pl-6 leading-snug">
+                      Optional now; often stronger after copy is set
+                    </span>
                   </DropdownMenuItem>
                 )}
                 {onDelete && status === 'draft' && (

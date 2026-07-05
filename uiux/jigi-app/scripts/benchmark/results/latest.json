@@ -1,0 +1,277 @@
+{
+  "generated_at": "2026-07-01T11:32:03.688Z",
+  "api_base": "http://localhost:3000",
+  "judge_model": "openai/gpt-4o-mini",
+  "image_enabled": true,
+  "brand": "Ìtàn",
+  "thresholds": {
+    "avoidedWordPenalty": 25,
+    "conceptAlignmentMin": 75,
+    "copyToneMin": 80,
+    "compositePass": 75,
+    "imageOnBrandPass": 75
+  },
+  "overall_composite": 88,
+  "results": [
+    {
+      "id": "flagship_launch",
+      "label": "Flagship launch",
+      "errors": [],
+      "concepts": [
+        {
+          "theme": "Handmade Boldness",
+          "headlines": [
+            "Taste the Fire of Heritage",
+            "Bold Flavors, Handcrafted Stories",
+            "Your Kitchen, Our Heritage"
+          ],
+          "visual_direction": "Capture a bustling West African market with vibrant colors, showcasing fresh ingredients and the process of hand-blending hot sauce. Include elements that represent the rich culture and tradition of the craft, such as artisans at work.",
+          "brand_alignment_score": 90,
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "handmade",
+              "heritage",
+              "bold",
+              "story"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": 90,
+            "score": 95
+          }
+        },
+        {
+          "theme": "Savor the Story",
+          "headlines": [
+            "Crafted with Soul, Spiced with Stories",
+            "Heat that Speaks Heritage",
+            "Add Boldness, Share Your Story"
+          ],
+          "visual_direction": "Feature close-ups of diverse home cooks using the hot sauce, with stories visually represented through vibrant illustrations or handwritten notes that accompany each bottle. The backgrounds should be earthy tones that reflect warmth and authenticity.",
+          "brand_alignment_score": 85,
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "fiery",
+              "handmade",
+              "heritage",
+              "bold",
+              "story"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": 85,
+            "score": 93
+          }
+        }
+      ],
+      "conceptScore": 94,
+      "copy": [
+        {
+          "headline": "Taste the Fire of Heritage",
+          "body": "Dive into bold flavors with our handmade scotch-bonnet hot sauce. Crafted with love, every drop tells a story of market-fresh ingredients and slow-cooked tradition.",
+          "cta": "Get Yours Today!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "handmade",
+              "heritage",
+              "bold",
+              "slow-cooked",
+              "market-fresh",
+              "story"
+            ],
+            "charCount": 208,
+            "channelCharLimit": 125,
+            "withinLimit": false,
+            "overBy": 83,
+            "charPenalty": 30,
+            "modelTone": 95,
+            "score": 83
+          }
+        },
+        {
+          "headline": "Bold Flavors Await You!",
+          "body": "Ignite your culinary adventures with our fiery scotch-bonnet hot sauce. Handmade with market-fresh ingredients, it's the perfect addition to any dish for those who dare to be bold.",
+          "cta": "Spice Up Your Cooking!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "fiery",
+              "handmade",
+              "bold",
+              "market-fresh"
+            ],
+            "charCount": 227,
+            "channelCharLimit": 125,
+            "withinLimit": false,
+            "overBy": 102,
+            "charPenalty": 30,
+            "modelTone": 90,
+            "score": 80
+          }
+        }
+      ],
+      "copyScore": 82,
+      "image": {
+        "url": "https://beoannnizmvoeixumbpo.supabase.co/storage/v1/object/public/generated-images/0863a1ed-c3d5-4684-b1d3-8607b514c51a/1782905482471.webp",
+        "provider": "replicate",
+        "model": "black-forest-labs/flux-schnell",
+        "prompt": "Capture a bustling West African market with vibrant colors, showcasing fresh ingredients and the process of hand-blending hot sauce. Include elements that represent the rich culture and tradition of the craft, such as artisans at work.\n\nStyle guidance:\n- Brand visual style: Bold, hand-painted West-African market aesthetic. Rustic wooden stalls, clay bowls and kraft textures, warm terracotta and deep chili-red palette, sun-drenched natural light, real produce with honest imperfections. Vibrant, earthy and characterful — never sleek, minimalist, monochrome, or corporate-clean.\n- Color palette: #B71C1C, #F5A623, #241C1C\n- Brand tone: bold, earthy, proud, characterful, warm\n- Professional quality, advertising-ready"
+      },
+      "textJudge": {
+        "brand_fit": 90,
+        "tone_fit": 95,
+        "strategy_fit": 85,
+        "distinctiveness": 80,
+        "overall": 87,
+        "issues": [
+          "Copy exceeds character limit for channels",
+          "Some headlines could be more unique"
+        ],
+        "rationale": "The creative aligns well with the brand's artisanal and heritage-focused positioning, showcasing boldness and handmade qualities. However, the copy's length exceeds the recommended character limit, which could hinder its effectiveness in certain channels."
+      },
+      "imageJudge": {
+        "brand_fit": 85,
+        "color_fit": 75,
+        "coke_red_dominant": true,
+        "aesthetic_fit": 90,
+        "overall": 83,
+        "issues": [
+          "Label text is slightly generic",
+          "Color palette could be more aligned with specified brand colors"
+        ],
+        "rationale": "The image captures the vibrant, earthy aesthetic of a West-African market, aligning well with the brand's tone. However, the label's text feels somewhat generic and the color palette, while strong, could better reflect the specified brand colors."
+      },
+      "composite": 88,
+      "pass": true
+    },
+    {
+      "id": "festive_gifting",
+      "label": "Festive gifting",
+      "errors": [],
+      "concepts": [
+        {
+          "theme": "Handmade Warmth",
+          "headlines": [
+            "Gift the Flame of Flavor",
+            "A Taste of Heritage for Every Table",
+            "Celebrate with Soulful Spice"
+          ],
+          "visual_direction": "Imagery should feature rustic wooden tables set for a festive meal, surrounded by vibrant peppers and sauces in artisanal bottles. Close-ups of hands pouring sauce over dishes convey a sense of warmth and connection.",
+          "brand_alignment_score": 92,
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "fiery",
+              "handmade",
+              "heritage",
+              "story"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": 92,
+            "score": 96
+          }
+        },
+        {
+          "theme": "Story-Driven Gifting",
+          "headlines": [
+            "A Gift of Heritage, A Taste of Home",
+            "Unlock Flavors, Share Stories",
+            "Savor the Spirit of West Africa"
+          ],
+          "visual_direction": "Visuals should depict vibrant market scenes with people sharing meals and stories, bottles of Ìtàn prominently displayed. Use warm, earthy tones and textures that reflect the handmade quality of the sauces.",
+          "brand_alignment_score": 88,
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "handmade",
+              "heritage",
+              "story"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": 88,
+            "score": 94
+          }
+        }
+      ],
+      "conceptScore": 95,
+      "copy": [
+        {
+          "headline": "Gift the Flame of Flavor",
+          "body": "Ignite taste buds with our handmade, slow-cooked sauces. Each jar tells a story of heritage and passion, perfect for sharing this season.",
+          "cta": "Shop Handmade Flavors",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "fiery",
+              "handmade",
+              "heritage",
+              "slow-cooked",
+              "story"
+            ],
+            "charCount": 184,
+            "channelCharLimit": 150,
+            "withinLimit": false,
+            "overBy": 34,
+            "charPenalty": 8,
+            "modelTone": 90,
+            "score": 91
+          }
+        },
+        {
+          "headline": "A Taste of Heritage for Every Table",
+          "body": "This festive season, share the warmth of our fiery sauces. Handmade with love, they're the perfect gift for food lovers ready to savor every bite.",
+          "cta": "Explore Our Sauces",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "fiery",
+              "handmade",
+              "heritage",
+              "story"
+            ],
+            "charCount": 201,
+            "channelCharLimit": 150,
+            "withinLimit": false,
+            "overBy": 51,
+            "charPenalty": 14,
+            "modelTone": 95,
+            "score": 91
+          }
+        }
+      ],
+      "copyScore": 91,
+      "image": {
+        "url": "https://beoannnizmvoeixumbpo.supabase.co/storage/v1/object/public/generated-images/0863a1ed-c3d5-4684-b1d3-8607b514c51a/1782905513594.webp",
+        "provider": "replicate",
+        "model": "black-forest-labs/flux-schnell",
+        "prompt": "Imagery should feature rustic wooden tables set for a festive meal, surrounded by vibrant peppers and sauces in artisanal bottles. Close-ups of hands pouring sauce over dishes convey a sense of warmth and connection.\n\nStyle guidance:\n- Brand visual style: Bold, hand-painted West-African market aesthetic. Rustic wooden stalls, clay bowls and kraft textures, warm terracotta and deep chili-red palette, sun-drenched natural light, real produce with honest imperfections. Vibrant, earthy and characterful — never sleek, minimalist, monochrome, or corporate-clean.\n- Color palette: #B71C1C, #F5A623, #241C1C\n- Brand tone: bold, earthy, proud, characterful, warm\n- Professional quality, advertising-ready"
+      },
+      "textJudge": {
+        "brand_fit": 90,
+        "tone_fit": 92,
+        "strategy_fit": 88,
+        "distinctiveness": 85,
+        "overall": 88,
+        "issues": [
+          "Some copy exceeds character limits, which may affect clarity in certain channels."
+        ],
+        "rationale": "The creative aligns well with the brand's artisanal and heritage-focused positioning, using preferred language and visuals that evoke warmth and connection. However, minor issues with character limits in the copy could hinder effectiveness in specific formats."
+      },
+      "imageJudge": {
+        "brand_fit": 85,
+        "color_fit": 75,
+        "coke_red_dominant": true,
+        "aesthetic_fit": 90,
+        "overall": 82,
+        "issues": [
+          "Missing primary brand color #B71C1C",
+          "Label design does not reflect the artisanal and heritage aspect"
+        ],
+        "rationale": "The image captures a warm, earthy aesthetic with a focus on vibrant produce, aligning well with the brand's tone. However, it lacks the primary brand color and the label design does not fully convey the artisanal heritage of the product."
+      },
+      "composite": 88,
+      "pass": true
+    }
+  ]
+}

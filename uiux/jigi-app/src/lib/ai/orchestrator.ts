@@ -1,16 +1,23 @@
 import { generateText, generateImage as generateImageApi } from '@/lib/api-client'
-import { buildConceptPrompt, buildCopyPrompt, buildCompliancePrompt, buildImagePrompt } from './prompts'
+import { buildConceptPrompt, buildCopyPrompt, buildCompliancePrompt, buildImagePrompt, buildCopyAnchorPromptBlock } from './prompts'
 import { assemblePrompt } from '@/lib/prompt-assembly'
 import { buildAssetLineage } from '@/lib/cco'
 import { isConceptOutputSchema, normalizeConceptToDisplay, validateConcept } from '@/lib/concept-enforcement'
-import { normalizeCopyToDisplay, validateCopy } from '@/lib/copy-enforcement'
+import {
+  coerceValidationWarnings,
+  mergeCopyValidationWarnings,
+  normalizeCopyToDisplay,
+  validateCopy,
+} from '@/lib/copy-enforcement'
 import { validateImage } from '@/lib/image-enforcement'
+import { getCopyPromptBudget } from '@/lib/channel-constraints'
 import type {
   GenerationRequest,
   GenerationResult,
   ConceptResult,
   CopyResult,
   ImageResult,
+  CopyImageAnchor,
   ComplianceResult,
   BrandConstraints,
   BrandIncludeFlags,
@@ -130,7 +137,14 @@ export class AIOrchestrator {
             selectedChannels: cco.channel_constraints?.map((c) => c.channel_id),
             psychographicTraits: cco.audience_context?.psychographic_traits,
           }
-        : undefined
+        : brand
+          ? {
+              // Brand-grounded (no CCO): the enriched prompt now emits alignment
+              // fields, so run validation to surface low-alignment / missing links.
+              keyMessage: brief.requirements?.trim() || brief.objective,
+              selectedChannels: brief.channels,
+            }
+          : undefined
 
       const schemaMismatch =
         usingAssembledPrompt && rawConcepts.length > 0 && !rawConcepts.every((r) => isConceptOutputSchema(r))
@@ -160,6 +174,7 @@ export class AIOrchestrator {
           generation_mode: generationMode,
           prompt_hash: promptHash,
           lineage,
+          saved_assets: response.saved_assets,
         },
       }
     } catch (error) {
@@ -181,6 +196,7 @@ export class AIOrchestrator {
 
     try {
       const channelId = brief.channels?.[0] ?? format
+      const copyBudget = getCopyPromptBudget(channelId)
       let prompt: string
       let promptHash: string | undefined
       let lineage: { cco_version?: number; bio_version?: number; generation_timestamp?: string } | undefined
@@ -198,7 +214,7 @@ export class AIOrchestrator {
             ? buildAssetLineage(assembled.cco_version)
             : undefined
       } else {
-        prompt = buildCopyPrompt(brand, brief, format, fallback)
+        prompt = buildCopyPrompt(brand, brief, format, fallback, copyBudget)
       }
 
       const response = await generateText({
@@ -219,19 +235,24 @@ export class AIOrchestrator {
       const channelConstraint = cco?.channel_constraints?.find((c) => c.channel_id === channelId)
       const validationContext = cco
         ? {
-            maxChars: channelConstraint?.copy_limits?.max_chars,
+            maxChars: channelConstraint?.copy_limits?.max_chars ?? copyBudget?.primaryMax,
             parsedRequirements: cco.hard_constraints?.parsed_requirements,
             parsedExclusions: cco.hard_constraints?.parsed_exclusions,
             legalDisclaimers: cco.hard_constraints?.legal_disclaimers,
           }
-        : undefined
+        : { maxChars: copyBudget?.primaryMax }
 
       const variants: CopyResult[] = rawVariants.map((raw) => {
         const normalized = normalizeCopyToDisplay(raw)
-        const validation = validationContext ? validateCopy(normalized, validationContext) : validateCopy(normalized, {})
+        const aiWarnings = coerceValidationWarnings(raw.validation_warnings)
+        const forRules = { ...normalized, validation_warnings: undefined }
+        const validation = validationContext
+          ? validateCopy(forRules, validationContext)
+          : validateCopy(forRules, {})
+        const merged = mergeCopyValidationWarnings(aiWarnings, validation.warnings)
         return {
           ...normalized,
-          validation_warnings: validation.warnings.length > 0 ? validation.warnings : undefined,
+          validation_warnings: merged.length > 0 ? merged : undefined,
           truncation_suggestion: validation.truncation_suggestion,
           exclusions_violated: validation.exclusions_violated,
         } as CopyResult
@@ -263,7 +284,8 @@ export class AIOrchestrator {
     imageTier: 'draft' | 'refine' | 'final' = 'draft',
     conceptId?: string,
     brandInclude?: BrandIncludeFlags,
-    channelId?: string
+    channelId?: string,
+    copyAnchor?: CopyImageAnchor
   ): Promise<GenerationResult> {
     const generationMode = brand ? 'brand_grounded' : 'idea_first'
 
@@ -272,20 +294,30 @@ export class AIOrchestrator {
       let promptHash: string | undefined
       let lineage: { cco_version?: number; bio_version?: number; generation_timestamp?: string } | undefined
 
+      const copyBlockRaw = copyAnchor ? buildCopyAnchorPromptBlock(copyAnchor) : ''
+      const copyBlockSuffix = copyBlockRaw ? `\n\n${copyBlockRaw}` : ''
+
       const assembled =
         campaignId && brandId
           ? await assemblePrompt({ campaignId, brandId, track: 'image', channelId: channelId ?? undefined })
           : null
 
       if (assembled?.prompt) {
-        prompt = assembled.prompt + '\n\nUSER VISUAL DIRECTION:\n' + description
+        prompt =
+          assembled.prompt +
+          copyBlockSuffix +
+          '\n\nUSER VISUAL DIRECTION:\n' +
+          description
         promptHash = assembled.hash
         lineage =
           assembled.cco_version != null
             ? buildAssetLineage(assembled.cco_version)
             : undefined
       } else {
-        prompt = buildImagePrompt(brand, description, fallback, brandInclude)
+        const composedDescription = copyBlockRaw
+          ? `${copyBlockRaw}\n\nUSER VISUAL DIRECTION:\n${description}`
+          : description
+        prompt = buildImagePrompt(brand, composedDescription, fallback, brandInclude)
       }
 
       const brandContext = brand ? (() => {
@@ -329,6 +361,10 @@ export class AIOrchestrator {
         brand_context: brandContext,
         prompt_hash: promptHash,
         lineage,
+        ...(copyAnchor?.copy_asset_id && { copy_asset_id: copyAnchor.copy_asset_id }),
+        ...(copyAnchor?.headline?.trim() && { copy_headline_anchor: copyAnchor.headline.trim() }),
+        ...(copyAnchor?.key_message?.trim() && { copy_key_message: copyAnchor.key_message.trim() }),
+        ...(copyAnchor?.body_snippet?.trim() && { copy_body_snippet: copyAnchor.body_snippet.trim() }),
       })
 
       const brandColours =
@@ -364,6 +400,9 @@ export class AIOrchestrator {
         provider_model: response.model,
         channel: channelId,
         dimensions: expectedDimensions,
+        ...(copyAnchor?.copy_asset_id && { copy_asset_id: copyAnchor.copy_asset_id }),
+        ...(copyAnchor?.headline?.trim() && { copy_headline_anchor: copyAnchor.headline.trim() }),
+        ...(copyAnchor?.key_message?.trim() && { copy_key_message: copyAnchor.key_message.trim() }),
         ...(validationResult && {
           colour_compliance: validationResult.colour_compliance,
           composition_check: validationResult.composition_check,

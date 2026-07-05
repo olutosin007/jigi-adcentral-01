@@ -55,7 +55,7 @@ export function JourneyChoice() {
         <span className="font-medium text-foreground">Step 2 of 2</span>
         <span>— Journey choice</span>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="journey-choice">
         <button
           type="button"
           onClick={() => setSelectedJourney('brand_first')}

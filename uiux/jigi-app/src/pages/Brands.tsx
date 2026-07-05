@@ -14,6 +14,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DeleteBrandDialog } from '@/components/brands/DeleteBrandDialog'
+import { QuickCreateBrandDialog } from '@/components/brands/QuickCreateBrandDialog'
 import { useBrandStore, type Brand } from '@/store/brandStore'
 import { toast } from 'sonner'
 
@@ -53,6 +54,7 @@ export function Brands() {
   const [showArchived, setShowArchived] = useState(false)
   const [deleteDialogBrand, setDeleteDialogBrand] = useState<Brand | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
 
   const { brands, isLoading, error, fetchBrands, deleteBrand, archiveBrand, unarchiveBrand } = useBrandStore()
@@ -68,6 +70,10 @@ export function Brands() {
   }, [brands, debouncedSearch])
 
   const handleCreateBrand = () => {
+    setQuickCreateOpen(true)
+  }
+
+  const handleFullWizard = () => {
     navigate('/app/onboarding')
   }
 
@@ -174,7 +180,7 @@ export function Brands() {
           }
           action={
             !showArchived ? (
-              <Button onClick={handleCreateBrand}>
+              <Button onClick={handleCreateBrand} data-tour="brand-create">
                 <Plus className="mr-2 h-4 w-4" />
                 Create brand
               </Button>
@@ -192,10 +198,15 @@ export function Brands() {
           <h1 className="text-2xl font-semibold text-foreground">Brands</h1>
           <p className="text-muted-foreground">Manage your brand profiles and guidelines</p>
         </div>
-        <Button onClick={handleCreateBrand} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Add brand
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button onClick={handleCreateBrand} className="w-full sm:w-auto" data-tour="brand-create">
+            <Plus className="mr-2 h-4 w-4" />
+            Add brand
+          </Button>
+          <Button variant="outline" onClick={handleFullWizard} className="w-full sm:w-auto">
+            Full setup wizard
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -257,6 +268,8 @@ export function Brands() {
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
       />
+
+      <QuickCreateBrandDialog open={quickCreateOpen} onOpenChange={setQuickCreateOpen} />
     </div>
   )
 }

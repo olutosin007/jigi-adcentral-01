@@ -125,6 +125,7 @@ export function SubmitModal({
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="bg-primary hover:bg-primary/90"
+            data-tour="submit-action"
           >
             {isSubmitting ? (
               <>

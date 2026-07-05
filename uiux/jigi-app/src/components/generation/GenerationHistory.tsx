@@ -5,6 +5,8 @@ import { formatDistanceToNow } from 'date-fns'
 
 interface GenerationHistoryProps {
   campaignId: string
+  /** Hide the internal heading when the parent provides chrome (drawer/sheet). */
+  hideHeading?: boolean
 }
 
 const typeIcons = {
@@ -19,7 +21,7 @@ const typeLabels = {
   image: 'Image',
 }
 
-export function GenerationHistory({ campaignId }: GenerationHistoryProps) {
+export function GenerationHistory({ campaignId, hideHeading = false }: GenerationHistoryProps) {
   const { data: history = [], isLoading } = useGenerationHistory(campaignId)
 
   if (isLoading) {
@@ -41,8 +43,10 @@ export function GenerationHistory({ campaignId }: GenerationHistoryProps) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-foreground mb-3">Generation History</h3>
-      
+      {!hideHeading && (
+        <h3 className="text-sm font-semibold text-foreground mb-3">Generation History</h3>
+      )}
+
       <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
         {history.map((entry) => {
           const Icon = typeIcons[entry.type as keyof typeof typeIcons] || Lightbulb

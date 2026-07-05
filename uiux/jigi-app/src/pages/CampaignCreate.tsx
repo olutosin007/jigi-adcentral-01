@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, Sparkles, Building2, Wand2, Lightbulb, Loader2, ChevronRight, Check } from 'lucide-react'
@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useCampaignStore } from '@/store/campaignStore'
 import { useBrandStore } from '@/store/brandStore'
+import { useAuthStore } from '@/store/authStore'
 import { BriefForm } from '@/components/campaigns/BriefForm'
 import { uploadCampaignReference } from '@/lib/brief-reference-upload'
 import { z } from 'zod'
@@ -92,14 +93,17 @@ function ReadinessChecklist({
 export function CampaignCreate() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const state = location.state as LocationState | null
+  const modeParam = searchParams.get('mode')
 
   const { createCampaign, updateCampaign, isLoading } = useCampaignStore()
   const { brands, fetchBrands } = useBrandStore()
+  const { user } = useAuthStore()
   const [pendingReferenceFiles, setPendingReferenceFiles] = useState<File[]>([])
   
   const [journeyMode, setJourneyMode] = useState<'brand_first' | 'idea_first'>(
-    state?.journeyMode || 'brand_first'
+    state?.journeyMode || (modeParam === 'idea_first' ? 'idea_first' : 'brand_first')
   )
 
   const methods = useForm<FormData>({
@@ -107,7 +111,7 @@ export function CampaignCreate() {
     defaultValues: {
       name: '',
       brand_id: undefined,
-      journey_mode: state?.journeyMode || 'brand_first',
+      journey_mode: state?.journeyMode || (modeParam === 'idea_first' ? 'idea_first' : 'brand_first'),
       seed_idea: state?.idea || '',
       objective: '',
       audience: '',
@@ -132,6 +136,13 @@ export function CampaignCreate() {
     }
   }, [state?.idea, methods])
 
+  useEffect(() => {
+    if (modeParam === 'idea_first' && !state?.journeyMode) {
+      setJourneyMode('idea_first')
+      methods.setValue('journey_mode', 'idea_first')
+    }
+  }, [modeParam, state?.journeyMode, methods])
+
   const handleJourneyModeChange = (mode: 'brand_first' | 'idea_first') => {
     setJourneyMode(mode)
     methods.setValue('journey_mode', mode)
@@ -152,13 +163,25 @@ export function CampaignCreate() {
   })
 
   const onSubmit = async (data: FormData) => {
+    if (data.journey_mode === 'brand_first' && !data.brand_id) {
+      toast.error('Select a brand for brand-first campaigns')
+      methods.setError('brand_id', { type: 'manual', message: 'Brand is required' })
+      return
+    }
+
     const brief = buildBrief(data)
     const campaignData = {
       name: data.name,
       brand_id: data.brand_id || undefined,
+      created_by: user?.id,
       journey_mode: data.journey_mode,
       seed_idea: data.seed_idea,
       brief: { ...brief, reference_assets: brief.reference_assets ?? [] },
+    }
+
+    if (!user?.id) {
+      toast.error('You must be signed in to create a campaign')
+      return
     }
 
     const result = await createCampaign(campaignData)
@@ -192,9 +215,15 @@ export function CampaignCreate() {
     const campaignData = {
       name: data.name || 'Untitled Campaign',
       brand_id: data.brand_id || undefined,
+      created_by: user?.id,
       journey_mode: data.journey_mode,
       seed_idea: data.seed_idea,
       brief: { ...brief, reference_assets: brief.reference_assets ?? [] },
+    }
+
+    if (!user?.id) {
+      toast.error('You must be signed in to save a draft')
+      return
     }
 
     const result = await createCampaign(campaignData)

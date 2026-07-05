@@ -42,7 +42,7 @@ const statusConfig = {
 export function ComplianceDisplay({ result, isLoading, onRecheck }: ComplianceDisplayProps) {
   if (isLoading) {
     return (
-      <div className="bg-muted rounded-xl border border-border p-4">
+      <div className="bg-muted rounded-xl border border-border p-4" data-tour="compliance-panel">
         <div className="flex items-center gap-2">
           <Loader2 className="w-4 h-4 text-primary animate-spin" />
           <span className="text-sm text-muted-foreground">Checking compliance...</span>
@@ -53,7 +53,7 @@ export function ComplianceDisplay({ result, isLoading, onRecheck }: ComplianceDi
 
   if (!result) {
     return (
-      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4" data-tour="compliance-panel">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-gray-400" />
@@ -75,7 +75,7 @@ export function ComplianceDisplay({ result, isLoading, onRecheck }: ComplianceDi
   const OverallIcon = overallConfig.icon
 
   return (
-    <div className={`rounded-xl border ${overallConfig.borderColor} ${overallConfig.bgColor} p-4`}>
+    <div className={`rounded-xl border ${overallConfig.borderColor} ${overallConfig.bgColor} p-4`} data-tour="compliance-panel">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <OverallIcon className={`w-5 h-5 ${overallConfig.color}`} />

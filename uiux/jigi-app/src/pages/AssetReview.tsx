@@ -5,8 +5,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ArrowLeft,
   Keyboard,
+  FileQuestion,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,7 @@ import { AssetPreviewArea } from '@/components/review/AssetPreviewArea'
 import { AssetDetailsSidebar } from '@/components/review/AssetDetailsSidebar'
 import { ReviewActions } from '@/components/review/ReviewActions'
 import { ApproveModal, RejectModal, RequestChangesModal } from '@/components/review'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   useAssetWithReviewContext,
   useReviewAsset,
@@ -33,6 +34,7 @@ import {
 } from '@/hooks/useCampaignQueries'
 import { useAuthStore } from '@/store/authStore'
 import { getStatusConfig, isPendingReview, type ReviewAction } from '@/lib/status'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 export function AssetReview() {
@@ -281,12 +283,13 @@ export function AssetReview() {
 
   if (assetError || !asset) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <p className="text-muted-foreground">Asset not found</p>
-        <Button variant="outline" onClick={goToQueue}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Queue
-        </Button>
+      <div className="flex flex-col items-center justify-center h-full px-6">
+        <EmptyState
+          icon={FileQuestion}
+          title="Asset not found"
+          description="This asset may have been removed or you don’t have access."
+          action={{ label: 'Back to queue', onClick: goToQueue }}
+        />
       </div>
     )
   }
@@ -302,7 +305,12 @@ export function AssetReview() {
       : 'Image Asset'
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div
+      className={cn(
+        'flex flex-col h-[calc(100vh-4rem)]',
+        canReview && 'pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0'
+      )}
+    >
       {/* Top Navigation Bar - Breadcrumb */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-3 border-b bg-background">
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm">
@@ -469,22 +477,29 @@ export function AssetReview() {
         isLoading={reviewMutation.isPending}
       />
 
-      {/* Bottom Action Bar */}
+      {/* Bottom action bar — fixed on mobile, in-flow on lg+ */}
       {canReview && (
-        <div className="flex-shrink-0 bg-background border-t px-4 sm:px-6 py-4 shadow-[0_-1px_8px_rgba(0,0,0,0.06)]">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div
+          className={cn(
+            'flex-shrink-0 bg-background border-t px-4 sm:px-6 py-3 shadow-[0_-1px_8px_rgba(0,0,0,0.06)]',
+            'fixed bottom-0 inset-x-0 z-40 pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+            'lg:static lg:z-auto lg:pb-4'
+          )}
+          data-tour="review-mobile-bar"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-[1400px] mx-auto">
+            <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">
                 Asset {currentIndex + 1} of {totalAssets}
               </span>
               {asset.campaign && (
                 <>
                   <span>·</span>
-                  <span>{asset.campaign.name}</span>
+                  <span className="truncate max-w-[200px]">{asset.campaign.name}</span>
                 </>
               )}
             </div>
-            <div className="w-full sm:w-1/2">
+            <div className="w-full sm:w-auto sm:min-w-[min(100%,28rem)] sm:flex-1 lg:flex-none lg:w-1/2">
               <ReviewActions
                 onReview={openModalForAction}
                 isReviewing={reviewMutation.isPending}

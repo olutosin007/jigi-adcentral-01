@@ -205,7 +205,7 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
   )
 
   return (
-    <div className="p-8 overflow-y-auto h-full">
+    <div className="p-8 overflow-y-auto h-full" data-tour="asset-preview">
       {/* Generation Mode Badge */}
       {generationMode && (
         <div className="mb-6">

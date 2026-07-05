@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/form'
 import { useAuthStore } from '@/store/authStore'
 import { signupSchema, type SignupFormData } from '@/lib/validations/auth'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 
 export function Signup() {
   const navigate = useNavigate()
@@ -144,6 +145,17 @@ export function Signup() {
           </Button>
         </form>
       </Form>
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">or</span>
+        </div>
+      </div>
+
+      <GoogleSignInButton label="Sign up with Google" />
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{' '}

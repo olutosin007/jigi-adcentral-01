@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Download, RefreshCw, Save, ExternalLink, Loader2 } from 'lucide-react'
+import { X, Download, RefreshCw, Save, ExternalLink, Loader2, Send } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { canSubmitAssetForReview } from '@/lib/status'
 import type { ImageResult } from '@/lib/ai'
 
 interface ImagePreviewModalProps {
@@ -21,6 +23,8 @@ interface ImagePreviewModalProps {
   onSave?: () => void
   onDiscard?: () => void
   isSaved?: boolean
+  status?: string
+  onSubmit?: () => void
 }
 
 export function ImagePreviewModal({
@@ -33,6 +37,8 @@ export function ImagePreviewModal({
   onSave,
   onDiscard,
   isSaved = false,
+  status,
+  onSubmit,
 }: ImagePreviewModalProps) {
   const [isLoading, setIsLoading] = useState(true)
 
@@ -111,7 +117,8 @@ export function ImagePreviewModal({
           </div>
 
           {image && !isGenerating && (
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              {status && <StatusBadge status={status} />}
               <Badge variant="secondary" className="text-xs">
                 {image.image_provider ? image.image_provider.replace('_', ' ') : image.model || 'unknown model'}
               </Badge>
@@ -175,6 +182,16 @@ export function ImagePreviewModal({
           </div>
 
           <div className="flex items-center gap-2">
+            {onSubmit && status && canSubmitAssetForReview(status) && (
+              <Button
+                size="sm"
+                className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                onClick={onSubmit}
+              >
+                <Send className="w-4 h-4 mr-1.5" aria-hidden />
+                Submit for Review
+              </Button>
+            )}
             {onRegenerate && (
                 <Button
                   variant="outline"

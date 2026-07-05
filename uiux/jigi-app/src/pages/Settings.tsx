@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { User, Bell, Shield, Palette, Key, Users, Camera, Loader2 } from 'lucide-react'
+import { User, Bell, Shield, Palette, Key, Users, Camera, Loader2, Compass } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -22,6 +22,8 @@ import { useThemeStore } from '@/store/themeStore'
 import { useAuthStore } from '@/store/authStore'
 import { USER_ROLES } from '@/lib/validations/brand'
 import { uploadAvatar, isAllowedAvatarType } from '@/lib/avatar-upload'
+import { useTourLauncher } from '@/hooks/useTourLauncher'
+import { useTourStore } from '@/store/tourStore'
 
 function getProfileInitial(name: string | null, email: string): string {
   const first = (name?.trim() || email?.[0] || 'U').toUpperCase().slice(0, 1)
@@ -31,6 +33,8 @@ function getProfileInitial(name: string | null, email: string): string {
 export function Settings() {
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
+  const { startCreativeTour, startApproverTour } = useTourLauncher()
+  const resetTours = useTourStore((s) => s.resetAll)
   const { profile, updateProfile, user } = useAuthStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -72,7 +76,13 @@ export function Settings() {
   const handleSaveProfile = async () => {
     setIsSaving(true)
     try {
-      const result = await updateProfile({ name: nameInput || null, role: roleInput as 'admin' | 'approver' | 'reviewer' | 'creator' })
+      const payload: { name: string | null; role?: 'admin' | 'approver' | 'reviewer' | 'creator' } = {
+        name: nameInput || null,
+      }
+      if (profile?.role === 'admin') {
+        payload.role = roleInput as 'admin' | 'approver' | 'reviewer' | 'creator'
+      }
+      const result = await updateProfile(payload)
       if (result.success) {
         toast.success('Profile updated successfully')
       } else {
@@ -188,25 +198,42 @@ export function Settings() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="role">Role</Label>
-                        <Select
-                          value={roleInput}
-                          onValueChange={setRoleInput}
-                          aria-label="User role"
-                        >
-                          <SelectTrigger id="role" className="h-10 w-full sm:w-[280px]">
-                            <SelectValue placeholder="Select role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {USER_ROLES.map((role) => (
-                              <SelectItem key={role.value} value={role.value}>
-                                {role.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          {USER_ROLES.find((r) => r.value === roleInput)?.description}
-                        </p>
+                        {profile.role === 'admin' ? (
+                          <>
+                            <Select
+                              value={roleInput}
+                              onValueChange={setRoleInput}
+                              aria-label="User role"
+                            >
+                              <SelectTrigger id="role" className="h-10 w-full sm:w-[280px]">
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {USER_ROLES.map((role) => (
+                                  <SelectItem key={role.value} value={role.value}>
+                                    {role.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              {USER_ROLES.find((r) => r.value === roleInput)?.description}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <Input
+                              id="role"
+                              value={USER_ROLES.find((r) => r.value === profile.role)?.label ?? profile.role}
+                              readOnly
+                              className="h-10 w-full sm:w-[280px] bg-muted"
+                              aria-label="User role"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Role is assigned by your organisation admin.
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -245,6 +272,45 @@ export function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Compass className="h-5 w-5" />
+                Product walkthrough
+              </CardTitle>
+              <CardDescription>Replay a guided tour of the key journeys</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button variant="outline" onClick={() => void startCreativeTour()}>
+                  <Compass className="mr-2 h-4 w-4" />
+                  Agency creative tour
+                </Button>
+                <Button variant="outline" onClick={() => void startApproverTour()}>
+                  <Compass className="mr-2 h-4 w-4" />
+                  Brand approver tour
+                </Button>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Each tour previews that persona&apos;s view. The creative tour hands off to the
+                approver flow at the end; use "View as" in the top bar to switch anytime.
+              </p>
+              <div className="mt-4 border-t border-border pt-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => {
+                    resetTours()
+                    toast.success('Walkthroughs reset — they\u2019ll auto-start again next visit')
+                  }}
+                >
+                  Reset walkthroughs
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
@@ -256,31 +322,14 @@ export function Settings() {
               </CardTitle>
               <CardDescription>Configure how you receive notifications</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-1">
-              <div className="flex items-center justify-between gap-4 rounded-lg p-3 transition-colors hover:bg-muted/50">
-                <div>
-                  <p className="font-medium">Email Notifications</p>
-                  <p className="text-sm text-muted-foreground">Receive updates via email</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between gap-4 rounded-lg p-3 transition-colors hover:bg-muted/50">
-                <div>
-                  <p className="font-medium">Asset Approval Alerts</p>
-                  <p className="text-sm text-muted-foreground">
-                    Get notified when assets need review
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between gap-4 rounded-lg p-3 transition-colors hover:bg-muted/50">
-                <div>
-                  <p className="font-medium">Generation Complete</p>
-                  <p className="text-sm text-muted-foreground">
-                    Alert when asset generation finishes
-                  </p>
-                </div>
-                <Switch defaultChecked />
+            <CardContent>
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/25 bg-muted/30 py-12 text-center">
+                <Bell className="mb-3 h-10 w-10 text-muted-foreground/50" />
+                <p className="text-sm font-medium text-muted-foreground">Coming soon</p>
+                <p className="mt-1 max-w-sm text-sm text-muted-foreground/80">
+                  Email and in-app notification preferences will be available in a future update.
+                  You still receive review alerts via the notification bell today.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -340,16 +389,13 @@ export function Settings() {
               <CardDescription>Two-factor authentication and security settings</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between gap-4 rounded-lg p-3 transition-colors hover:bg-muted/50">
-                <div>
-                  <p className="font-medium">Two-Factor Authentication</p>
-                  <p className="text-sm text-muted-foreground">
-                    Add an extra layer of security
-                  </p>
-                </div>
-                <Button variant="outline" className="transition-colors hover:bg-muted">
-                  Enable
-                </Button>
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/25 bg-muted/30 py-12 text-center">
+                <Shield className="mb-3 h-10 w-10 text-muted-foreground/50" />
+                <p className="text-sm font-medium text-muted-foreground">Coming soon</p>
+                <p className="mt-1 max-w-sm text-sm text-muted-foreground/80">
+                  Two-factor authentication will be added when we enable social sign-in. Password
+                  changes are available via Forgot password on the login page.
+                </p>
               </div>
             </CardContent>
           </Card>

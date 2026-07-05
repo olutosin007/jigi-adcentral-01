@@ -6,8 +6,8 @@
 import { fetchCCO } from '@/lib/cco'
 import { buildBioFromBrand } from '@/lib/prompt-assembly/bio-builder'
 import { supabase } from '@/lib/supabase'
-import { normalizeCopyToDisplay, type CopyDisplayFormat } from './schema'
-import { validateCopy } from './validation'
+import { coerceValidationWarnings, normalizeCopyToDisplay, type CopyDisplayFormat } from './schema'
+import { mergeCopyValidationWarnings, validateCopy } from './validation'
 
 export interface ValidateImportedCopyResult {
   normalized: CopyDisplayFormat
@@ -70,6 +70,7 @@ export async function validateImportedCopy(
   campaignId: string
 ): Promise<ValidateImportedCopyResult> {
   const normalized = normalizeCopyToDisplay(copyContent)
+  const aiWarnings = coerceValidationWarnings(copyContent.validation_warnings)
   const copyText = `${normalized.headline} ${normalized.body} ${normalized.cta}`.trim()
 
   const { success, cco } = await fetchCCO(campaignId)
@@ -87,20 +88,21 @@ export async function validateImportedCopy(
         }
       : undefined
 
-  const validation = validationContext ? validateCopy(normalized, validationContext) : validateCopy(normalized, {})
+  const forRules: CopyDisplayFormat = { ...normalized, validation_warnings: undefined }
+  const validation = validationContext
+    ? validateCopy(forRules, validationContext)
+    : validateCopy(forRules, {})
 
-  const out: CopyDisplayFormat = {
-    ...normalized,
-    validation_warnings: validation.warnings.length > 0 ? validation.warnings : undefined,
-    truncation_suggestion: validation.truncation_suggestion,
-    exclusions_violated: validation.exclusions_violated,
-  }
+  let mergedWarnings = mergeCopyValidationWarnings(aiWarnings, validation.warnings)
 
   const { data: campaign } = await supabase
     .from('campaigns')
     .select('brand_id')
     .eq('id', campaignId)
     .single()
+
+  let brand_voice_score: number | undefined
+  let brand_tune_suggestion: string | undefined
 
   if (campaign?.brand_id) {
     const { data: brand } = await supabase
@@ -116,17 +118,29 @@ export async function validateImportedCopy(
       bio?.approved_vocabulary,
       bio?.banned_phrases
     )
-    out.brand_voice_score = score
+    brand_voice_score = score
     if (score < 50 && suggestion) {
-      out.brand_tune_suggestion = suggestion
+      brand_tune_suggestion = suggestion
+      mergedWarnings = mergeCopyValidationWarnings(mergedWarnings, [
+        `Brand voice (${score}/100): ${suggestion}`,
+      ])
     }
+  }
+
+  const out: CopyDisplayFormat = {
+    ...normalized,
+    validation_warnings: mergedWarnings.length > 0 ? mergedWarnings : undefined,
+    truncation_suggestion: validation.truncation_suggestion,
+    exclusions_violated: validation.exclusions_violated,
+    ...(brand_voice_score !== undefined ? { brand_voice_score } : {}),
+    ...(brand_tune_suggestion ? { brand_tune_suggestion } : {}),
   }
 
   return {
     normalized: out,
     validation: {
       valid: validation.valid,
-      warnings: validation.warnings,
+      warnings: mergedWarnings,
       exclusions_violated: validation.exclusions_violated,
     },
   }

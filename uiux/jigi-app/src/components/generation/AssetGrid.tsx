@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { AssetCard } from './AssetCard'
 import { toast } from 'sonner'
 import type { CreativeAsset } from '@/store/campaignStore'
+import { getValidTransitions, type AssetStatus } from '@/lib/status'
 
 interface AssetGridProps {
   assets: CreativeAsset[]
@@ -96,7 +97,20 @@ export function AssetGrid({
   }
 
   const handleBulkSubmit = () => {
-    selectedIds.forEach((id) => onSubmitAsset?.(id))
+    const submittable = [...selectedIds].filter((id) => {
+      const asset = assets.find((a) => a.id === id)
+      if (!asset) return false
+      return getValidTransitions(asset.status as AssetStatus).length > 0
+    })
+    const skipped = selectedIds.size - submittable.length
+    if (submittable.length === 0) {
+      toast.error('None of the selected assets can be submitted in their current status.')
+      return
+    }
+    if (skipped > 0) {
+      toast(`Submitting ${submittable.length} of ${selectedIds.size} selected assets.`)
+    }
+    submittable.forEach((id) => onSubmitAsset?.(id))
     clearSelection()
   }
 

@@ -100,6 +100,7 @@ async function runValidation(
       warnings: validation.warnings,
       scores: {
         brand_voice: normalized.brand_voice_score,
+        tone_adherence: normalized.tone_adherence,
       },
       checklists: {
         mandatory_inclusions: normalized.mandatory_inclusions_check,

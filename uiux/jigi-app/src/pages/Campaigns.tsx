@@ -52,7 +52,14 @@ export function Campaigns() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
 
-  const { campaigns, isLoading, fetchCampaigns, updateCampaign, deleteCampaign } = useCampaignStore()
+  const {
+    campaigns,
+    isLoading,
+    error: campaignsError,
+    fetchCampaigns,
+    updateCampaign,
+    deleteCampaign,
+  } = useCampaignStore()
   const { brands, fetchBrands } = useBrandStore()
   const [deleteTargetCampaign, setDeleteTargetCampaign] = useState<Campaign | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -112,11 +119,26 @@ export function Campaigns() {
     )
   }
 
+  if (campaignsError && campaigns.length === 0) {
+    return (
+      <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
+        <EmptyState
+          icon={Sparkles}
+          title="Couldn’t load campaigns"
+          description={campaignsError}
+          action={{ label: 'Try again', onClick: () => void fetchCampaigns() }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Campaigns</h1>
+          <h1 className="text-2xl font-serif font-semibold tracking-tight text-foreground">
+            Campaigns
+          </h1>
           <p className="text-muted-foreground">View and manage your creative campaigns</p>
         </div>
         <Button
@@ -193,21 +215,26 @@ export function Campaigns() {
 
       {campaigns.length === 0 ? (
         <EmptyState
-          icon={<Sparkles className="h-12 w-12 text-primary" />}
+          icon={Sparkles}
           title="No campaigns yet"
           description="Create your first campaign to start generating creative assets."
-          action={
-            <Button onClick={() => navigate('/app/campaigns/new')}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create campaign
-            </Button>
-          }
+          action={{
+            label: 'Create campaign',
+            onClick: () => navigate('/app/campaigns/new'),
+          }}
         />
       ) : filteredAndSortedCampaigns.length === 0 ? (
         <EmptyState
-          icon={<Search className="h-12 w-12 text-muted-foreground" />}
+          icon={Search}
           title="No campaigns found"
           description="Try adjusting your search or filter."
+          action={{
+            label: 'Clear filters',
+            onClick: () => {
+              setSearchQuery('')
+              setStatusFilter('all')
+            },
+          }}
         />
       ) : (
         <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3'}>

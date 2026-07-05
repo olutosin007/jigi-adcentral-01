@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Download,
   Search,
@@ -17,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { buildApprovedAssetsZip, triggerBlobDownload } from '@/lib/export-approved-zip'
 import { useApprovedAssets } from '@/hooks/useDashboardQueries'
 import { ApprovedAssetCard, AssetDetailModal } from '@/components/approved'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -71,14 +73,22 @@ function getContentText(asset: CreativeAsset): string {
 }
 
 export function ApprovedAssets() {
+  const navigate = useNavigate()
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('date')
   const [selectedAsset, setSelectedAsset] = useState<CreativeAsset | null>(null)
   const [isDownloading, setIsDownloading] = useState<string | null>(null)
+  const [isExportingZip, setIsExportingZip] = useState(false)
 
-  const { data: groupedAssets, isLoading } = useApprovedAssets()
+  const {
+    data: groupedAssets,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useApprovedAssets()
 
   const filteredGroups = useMemo(() => {
     if (!groupedAssets) return []
@@ -163,14 +173,28 @@ export function ApprovedAssets() {
   }
 
   const handleExportAll = async () => {
-    toast.info('Preparing download...', { duration: 2000 })
-    for (const group of filteredGroups) {
-      for (const asset of group.assets) {
-        await handleDownload(asset)
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      }
+    if (totalAssets === 0) return
+    setIsExportingZip(true)
+    toast.info('Building zip archive…', { duration: 3000 })
+    try {
+      const items = filteredGroups.flatMap((group) =>
+        group.assets.map((asset) => ({
+          campaignName: group.campaignName,
+          asset,
+          fileName: getAssetName(asset),
+          getContentText,
+          getFileExtension,
+        }))
+      )
+      const blob = await buildApprovedAssetsZip(items)
+      const stamp = new Date().toISOString().slice(0, 10)
+      triggerBlobDownload(blob, `jigi-approved-assets-${stamp}.zip`)
+      toast.success('Zip download started')
+    } catch {
+      toast.error('Export failed — try downloading individual assets')
+    } finally {
+      setIsExportingZip(false)
     }
-    toast.success('All assets exported')
   }
 
   const getSelectedCampaignName = () => {
@@ -193,18 +217,43 @@ export function ApprovedAssets() {
     )
   }
 
+  if (isError) {
+    return (
+      <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
+        <EmptyState
+          icon={FolderOpen}
+          title="Couldn’t load approved assets"
+          description={
+            error instanceof Error
+              ? error.message
+              : 'Check your connection and try again.'
+          }
+          action={{ label: 'Try again', onClick: () => void refetch() }}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6" data-tour="approved-assets">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Approved Assets</h1>
+          <h1 className="text-2xl font-serif font-semibold tracking-tight">Approved Assets</h1>
           <p className="text-muted-foreground">
             {totalAssets} approved asset{totalAssets !== 1 ? 's' : ''} ready for use
           </p>
         </div>
-        <Button variant="outline" onClick={handleExportAll} disabled={totalAssets === 0}>
-          <Download className="mr-2 h-4 w-4" />
+        <Button
+          variant="outline"
+          onClick={handleExportAll}
+          disabled={totalAssets === 0 || isExportingZip}
+        >
+          {isExportingZip ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-2 h-4 w-4" />
+          )}
           Export all
         </Button>
       </div>
@@ -271,12 +320,17 @@ export function ApprovedAssets() {
       {/* Empty State */}
       {totalAssets === 0 && (
         <EmptyState
-          icon={<CheckCircle className="h-12 w-12 text-primary" />}
+          icon={<CheckCircle className="h-7 w-7 text-primary" />}
           title={searchQuery ? 'No assets found' : 'No approved assets yet'}
           description={
             searchQuery
               ? 'No assets match your search. Try a different term.'
               : "Assets will appear here once they've been approved in the review queue."
+          }
+          action={
+            searchQuery
+              ? { label: 'Clear search', onClick: () => setSearchQuery('') }
+              : { label: 'Browse campaigns', onClick: () => navigate('/app/campaigns') }
           }
         />
       )}

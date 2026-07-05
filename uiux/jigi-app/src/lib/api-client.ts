@@ -1,10 +1,15 @@
-import { supabase } from './supabase'
+import { useAuthStore } from '@/store/authStore'
+import { getSupabaseSessionSingleFlight } from './supabase-session'
 
 const API_BASE = '/api'
+const API_TIMEOUT_MS = 90_000
 
 async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
+  const fromStore = useAuthStore.getState().session?.access_token ?? null
+  if (fromStore) return fromStore
+
+  const { session } = await getSupabaseSessionSingleFlight()
+  return session?.access_token ?? null
 }
 
 async function apiRequest<T>(
@@ -19,17 +24,30 @@ async function apiRequest<T>(
     ...options.headers,
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.error || `API error: ${response.status}`)
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `API error: ${response.status}`)
+    }
+
+    return response.json()
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Generation timed out after 90 seconds. Please try again.')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return response.json()
 }
 
 export interface GenerateTextRequest {
@@ -66,6 +84,7 @@ export interface GenerateTextResponse {
   model: string
   latency_ms: number
   tokens_used: number
+  saved_assets?: Record<string, unknown>[]
 }
 
 export async function generateText(
@@ -97,6 +116,11 @@ export interface GenerateImageRequest {
   prompt_hash?: string
   /** Asset lineage (CCO version, etc.) for drift detection */
   lineage?: { cco_version?: number; bio_version?: number; generation_timestamp?: string }
+  /** Copy variant used as messaging anchor for the image prompt */
+  copy_asset_id?: string
+  copy_headline_anchor?: string
+  copy_key_message?: string
+  copy_body_snippet?: string
 }
 
 export interface GenerateImageResponse {

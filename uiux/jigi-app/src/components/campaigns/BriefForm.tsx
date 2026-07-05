@@ -44,7 +44,7 @@ export function BriefForm({ showChannels = true, campaignId, onPendingReferenceF
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-tour="brief-form">
       <div className="space-y-2">
         <Label htmlFor="objective">
           Campaign Objective <span className="text-destructive">*</span>

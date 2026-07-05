@@ -4,4 +4,11 @@
  */
 
 export { CHANNEL_CONSTRAINTS_LIBRARY } from './config'
-export { getChannelConstraints, getChannelConstraint, hasChannelConstraints } from './services'
+export {
+  getChannelConstraints,
+  getChannelConstraint,
+  hasChannelConstraints,
+  getPrimaryCopyBudgetChars,
+  getCopyPromptBudget,
+} from './services'
+export type { CopyPromptBudget } from './services'

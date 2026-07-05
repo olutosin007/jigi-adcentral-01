@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Download, ExternalLink, Trash2, MoreHorizontal, RefreshCw, Check, ZoomIn } from 'lucide-react'
+import { Download, ExternalLink, Trash2, MoreHorizontal, RefreshCw, Check, ZoomIn, Send } from 'lucide-react'
 import { DriftBadge } from './DriftBadge'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { canSubmitAssetForReview } from '@/lib/status'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,17 +24,8 @@ interface ImageCardProps {
   onRegenerate?: () => void
   onDelete?: () => void
   onView?: () => void
+  onSubmit?: () => void
   showActions?: boolean
-}
-
-const statusStyles: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  agency_review: 'bg-primary/10 text-primary',
-  submitted: 'bg-primary/10 text-primary',
-  brand_review: 'bg-warning/10 text-warning',
-  changes_requested: 'bg-warning/10 text-warning',
-  approved: 'bg-success/10 text-success',
-  rejected: 'bg-destructive/10 text-destructive',
 }
 
 export function ImageCard({
@@ -46,6 +38,7 @@ export function ImageCard({
   onRegenerate,
   onDelete,
   onView,
+  onSubmit,
   showActions = true,
 }: ImageCardProps) {
   const [isLoading, setIsLoading] = useState(true)
@@ -119,11 +112,9 @@ export function ImageCard({
           </div>
         )}
         {status && (
-          <Badge
-            className={`absolute top-2 right-2 text-[10px] ${statusStyles[status] || statusStyles.draft}`}
-          >
-            {status.replace('_', ' ')}
-          </Badge>
+          <div className="absolute top-2 right-2">
+            <StatusBadge status={status} />
+          </div>
         )}
 
         {onView && (
@@ -145,12 +136,25 @@ export function ImageCard({
             {image.prompt_used?.slice(0, 60)}...
           </p>
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-[10px] text-muted-foreground">
               {image.size || '1024×1024'}
             </span>
             
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
+              {onSubmit && canSubmitAssetForReview(status) && (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSubmit()
+                  }}
+                >
+                  <Send className="w-3 h-3 mr-1" aria-hidden />
+                  Submit
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

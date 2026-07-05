@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Sparkles, RefreshCw, AlertCircle, Lightbulb, FileText, Image, Wand2 } from 'lucide-react'
+import { Sparkles, RefreshCw, AlertCircle, Lightbulb, FileText, Image, Wand2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ConceptCard } from './ConceptCard'
 import { CopyCard } from './CopyCard'
 import { ImageCard } from './ImageCard'
@@ -22,26 +30,64 @@ import { UploadModal } from '@/components/upload/UploadModal'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { generateText } from '@/lib/api-client'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
-import type { BrandIncludeFlags, ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
+import type { BrandIncludeFlags, ConceptResult, CopyImageAnchor, CopyResult, ImageResult } from '@/lib/ai'
 import { DEFAULT_BRAND_INCLUDE } from '@/lib/ai'
 import { cn } from '@/lib/utils'
+import { getPrimaryCopyBudgetChars } from '@/lib/channel-constraints'
 import { toast } from 'sonner'
+import type { GenerationStage } from '@/lib/campaign-workspace'
 
-type GenerationType = 'concepts' | 'copy' | 'images'
+type GenerationType = GenerationStage
 type ImageTier = 'draft' | 'refine' | 'final'
+
+function copyAssetToImageAnchor(assetId: string, copy: CopyResult): CopyImageAnchor {
+  const body = copy.body?.trim() || ''
+  return {
+    copy_asset_id: assetId,
+    headline: copy.headline?.trim() || undefined,
+    key_message: copy.key_message_delivery?.trim() || undefined,
+    body_snippet: body ? body.slice(0, 280) : undefined,
+  }
+}
 
 interface GenerationPanelProps {
   campaign: Campaign
   brandId?: string
   userId?: string
+  onSubmitAsset?: (assetId: string) => void
+  embeddedInWorkspace?: boolean
+  stage?: GenerationStage
+  onStageChange?: (stage: GenerationStage) => void
 }
 
-export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelProps) {
-  const [activeTab, setActiveTab] = useState<GenerationType>('concepts')
+export function GenerationPanel({
+  campaign,
+  brandId,
+  userId,
+  onSubmitAsset,
+  embeddedInWorkspace = false,
+  stage,
+  onStageChange,
+}: GenerationPanelProps) {
+  const [internalTab, setInternalTab] = useState<GenerationType>('concepts')
+  const isControlled = stage !== undefined
+  const activeTab = isControlled ? stage : internalTab
+
+  const setActiveTab = (tab: GenerationType) => {
+    if (isControlled) {
+      onStageChange?.(tab)
+    } else {
+      setInternalTab(tab)
+    }
+  }
+
+  const [activityOpen, setActivityOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [selectedConceptAssetId, setSelectedConceptAssetId] = useState<string | null>(null)
   const [imageTier, setImageTier] = useState<ImageTier>('draft')
   const [previewImage, setPreviewImage] = useState<ImageResult | null>(null)
+  const [previewAssetId, setPreviewAssetId] = useState<string | null>(null)
+  const [previewAssetStatus, setPreviewAssetStatus] = useState<string | undefined>(undefined)
   const [showPreview, setShowPreview] = useState(false)
   const [activeConceptForModal, setActiveConceptForModal] = useState<CreativeAsset | null>(null)
   const [activeCopyForModal, setActiveCopyForModal] = useState<CreativeAsset | null>(null)
@@ -50,6 +96,7 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
   const [isRefining, setIsRefining] = useState(false)
   const [refinedPrompt, setRefinedPrompt] = useState<string | null>(null)
   const [brandInclude, setBrandInclude] = useState<BrandIncludeFlags>(() => ({ ...DEFAULT_BRAND_INCLUDE }))
+  const [imageCopyAnchorId, setImageCopyAnchorId] = useState('')
 
   const refinedPromptStorageKey = `jigi-refined-image-prompt-${campaign.id}`
 
@@ -105,6 +152,8 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
     () => (imageAssets.length ? (imageAssets[0].content as ImageResult) : null),
     [imageAssets]
   )
+  const leadChannelId = campaign.brief?.channels?.[0]
+  const copyCharBudgetHint = useMemo(() => getPrimaryCopyBudgetChars(leadChannelId), [leadChannelId])
   const activeAssets = useMemo(
     () => (activeTab === 'concepts' ? concepts : activeTab === 'copy' ? copyAssets : imageAssets),
     [activeTab, concepts, copyAssets, imageAssets]
@@ -167,7 +216,18 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
     }
   }, [concepts, selectedConceptAssetId])
 
+  useEffect(() => {
+    if (imageCopyAnchorId && !copyAssets.some((a) => a.id === imageCopyAnchorId)) {
+      setImageCopyAnchorId('')
+    }
+  }, [copyAssets, imageCopyAnchorId])
+
   const handleGenerate = async () => {
+    if (!userId) {
+      toast.error('Session still loading — wait a moment and try again.')
+      return
+    }
+
     const brief = {
       ...campaign.brief,
       objective: prompt || campaign.brief?.objective || campaign.seed_idea,
@@ -206,23 +266,36 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
         })
         toast.success('Copy generated successfully!')
       } else if (activeTab === 'images') {
+        const anchorAsset = imageCopyAnchorId
+          ? copyAssets.find((a) => a.id === imageCopyAnchorId)
+          : undefined
+        const copyAnchor = anchorAsset
+          ? copyAssetToImageAnchor(anchorAsset.id, anchorAsset.content as CopyResult)
+          : undefined
+        const conceptIdForImage = anchorAsset?.parent_asset_id ?? undefined
+
         const result = await generateImage.mutateAsync({
           campaignId: campaign.id,
           brandId,
+          conceptId: conceptIdForImage,
           imageTier,
           visualDirection: prompt || campaign.brief?.objective || 'Professional advertising image',
           seedIdea: campaign.seed_idea,
           userId,
           brandInclude,
           channelId: campaign.brief?.channels?.[0],
+          copyAnchor,
         })
         setPreviewImage(result.image)
+        setPreviewAssetId(null)
+        setPreviewAssetStatus(undefined)
         setShowPreview(true)
         toast.success('Image generated successfully!')
       }
       setPrompt('')
     } catch (err) {
-      toast.error('Generation failed. Please try again.')
+      const msg = err instanceof Error ? err.message : 'Generation failed. Please try again.'
+      toast.error(msg)
     }
   }
 
@@ -231,6 +304,8 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
     try {
       setShowPreview(true)
       setPreviewImage(null)
+      setPreviewAssetId(null)
+      setPreviewAssetStatus(undefined)
       const result = await generateImage.mutateAsync({
         campaignId: campaign.id,
         brandId,
@@ -244,8 +319,41 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
       })
       setPreviewImage(result.image)
       toast.success('Image generated from concept!')
-    } catch {
-      toast.error('Image generation failed.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Image generation failed.')
+      setShowPreview(false)
+    }
+  }
+
+  const handleGenerateImageFromCopyAsset = async (copyAsset: CreativeAsset) => {
+    const copy = copyAsset.content as CopyResult
+    const copyAnchor = copyAssetToImageAnchor(copyAsset.id, copy)
+    try {
+      setActiveTab('images')
+      setShowPreview(true)
+      setPreviewImage(null)
+      setPreviewAssetId(null)
+      setPreviewAssetStatus(undefined)
+      const result = await generateImage.mutateAsync({
+        campaignId: campaign.id,
+        brandId,
+        conceptId: copyAsset.parent_asset_id ?? undefined,
+        imageTier,
+        visualDirection:
+          prompt.trim() ||
+          campaign.brief?.objective ||
+          campaign.seed_idea ||
+          'Professional advertising image',
+        seedIdea: campaign.seed_idea,
+        userId,
+        brandInclude,
+        channelId: campaign.brief?.channels?.[0],
+        copyAnchor,
+      })
+      setPreviewImage(result.image)
+      toast.success('Image generated from copy variant!')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Image generation failed.')
       setShowPreview(false)
     }
   }
@@ -266,6 +374,17 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
     } catch {
       toast.error('Failed to delete asset')
     }
+  }
+
+  const handleOpenImagePreview = (asset: CreativeAsset) => {
+    setPreviewImage(asset.content as ImageResult)
+    setPreviewAssetId(asset.id)
+    setPreviewAssetStatus(asset.status)
+    setShowPreview(true)
+  }
+
+  const handleSubmitAsset = (assetId: string) => {
+    onSubmitAsset?.(assetId)
   }
 
   const handleOpenUpload = () => {
@@ -305,8 +424,8 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
       } else {
         toast.error('Could not refine prompt. Please try again.')
       }
-    } catch {
-      toast.error('Could not refine prompt. Please try again.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not refine prompt. Please try again.')
     } finally {
       setIsRefining(false)
     }
@@ -319,33 +438,69 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
   ]
 
   return (
-    <div className="flex h-full">
+    <div
+      className={cn('flex h-full', embeddedInWorkspace ? 'flex-col xl:flex-row' : '')}
+      data-tour="generation-panel"
+    >
       {/* Main Generation Area */}
-      <div className="flex-1 overflow-y-auto p-6 border-r border-border">
-        {/* Tab Selector */}
-        <div className="flex items-center gap-1.5 mb-6 bg-muted p-1.5 rounded-lg w-fit">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md transition-all',
-                  activeTab === tab.id
-                    ? 'bg-background text-foreground shadow-sm border border-border'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
+      <div
+        className={cn(
+          'flex-1 overflow-y-auto p-6 min-h-0',
+          !embeddedInWorkspace && 'border-r border-border'
+        )}
+      >
+        {/* Tab Selector — hidden when pipeline rail controls stage */}
+        {!embeddedInWorkspace && (
+          <div className="flex items-center gap-1.5 mb-6 bg-muted p-1.5 rounded-lg w-fit">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md transition-all',
+                    activeTab === tab.id
+                      ? 'bg-background text-foreground shadow-sm border border-border'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {embeddedInWorkspace && (
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            {activeTab === 'concepts' ? 'Concepts' : activeTab === 'copy' ? 'Copy' : 'Images'}
+          </p>
+        )}
+
+        {activeTab === 'copy' && selectedConceptAsset && (
+          <div
+            className="mb-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm"
+            role="status"
+            aria-live="polite"
+          >
+            <p className="text-foreground">
+              <span className="font-medium">Generating from: </span>
+              <span className="text-foreground">
+                &quot;{(selectedConceptAsset.content as ConceptResult).theme}&quot;
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              Typical flow: <span className="text-foreground/90">concept</span> →{' '}
+              <span className="text-foreground/90">copy</span> →{' '}
+              <span className="text-foreground/90">image</span>. You can still create images anytime from the Images tab or this concept&apos;s detail view.
+            </p>
+          </div>
+        )}
 
         {/* Prompt Input */}
-        <div className="bg-background rounded-xl border border-border p-4 mb-6 shadow-sm">
+        <div className="bg-card rounded-[10px] border border-border p-3.5 mb-6 shadow-sm">
           <div className="flex items-start gap-3">
             <Textarea
               id="generation-prompt"
@@ -354,13 +509,13 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
               onChange={(e) => setPrompt(e.target.value)}
               placeholder={
                 activeTab === 'concepts'
-                  ? 'Describe your campaign direction, target audience, and key themes...'
+                  ? 'Describe your campaign direction, target audience, and key themes…'
                   : activeTab === 'copy'
-                  ? 'Describe the tone, message, and format for your copy...'
-                  : 'Describe the visual style, subject, and mood for your image...'
+                  ? 'Describe the tone, message, and format for your copy…'
+                  : 'Describe the visual style, subject, and mood for your image…'
               }
               rows={2}
-              className="flex-1 border-0 focus-visible:ring-0 resize-none"
+              className="flex-1 border-0 focus-visible:ring-0 resize-none font-mono text-[13px]"
             />
             <div className="flex flex-col items-end gap-2">
               {activeTab === 'images' && (
@@ -388,12 +543,12 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
               )}
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || (activeTab === 'copy' && !selectedConceptAsset)}
+                disabled={isGenerating || !userId || (activeTab === 'copy' && !selectedConceptAsset)}
                 className="flex-shrink-0"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 {isGenerating
-                  ? 'Generating...'
+                  ? 'Generating…'
                   : `Generate ${activeTab === 'images' ? 'Image' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
               </Button>
               <Button
@@ -420,10 +575,38 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
               )}
             </div>
           </div>
+          {activeTab === 'images' && copyAssets.length > 0 && (
+            <div className="mt-3 max-w-md">
+              <label htmlFor="image-copy-anchor" className="text-xs font-medium text-foreground block mb-1.5">
+                Messaging anchor (optional)
+              </label>
+              <select
+                id="image-copy-anchor"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                value={imageCopyAnchorId}
+                onChange={(e) => setImageCopyAnchorId(e.target.value)}
+              >
+                <option value="">None — brief / prompt only</option>
+                {copyAssets.map((a, index) => {
+                  const c = a.content as CopyResult
+                  const fallback = `Variant ${String.fromCharCode(65 + index)}`
+                  const label = (c.variant_label?.trim() || c.headline?.trim() || fallback).slice(0, 72)
+                  return (
+                    <option key={a.id} value={a.id}>
+                      {label}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
           {activeTab === 'images' && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Free-tier-first routing is enabled. Tier selection maps to draft/refine/final model lanes.
-            </p>
+            <div className="text-xs text-muted-foreground mt-2 space-y-1">
+              <p>
+                For messaging-aligned key art, generate or pick copy first when you can—you can still produce visuals from the brief or concept alone.
+              </p>
+              <p>Free-tier-first routing is enabled. Tier selection maps to draft/refine/final model lanes.</p>
+            </div>
           )}
           {activeTab === 'images' && refinedPrompt && (
             <div className="mt-4 pt-4 border-t border-border">
@@ -449,7 +632,7 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
                   Dismiss
                 </Button>
               </div>
-              <div className="rounded-lg bg-muted p-3 text-sm text-foreground max-h-32 overflow-y-auto mb-3">
+              <div className="rounded-md bg-muted p-3 text-[13px] font-mono text-foreground max-h-32 overflow-y-auto mb-3">
                 {refinedPrompt}
               </div>
               <Button
@@ -504,22 +687,13 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
         {activeTab === 'concepts' && !isGenerating && (
           <div>
             {concepts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Lightbulb className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No concepts yet</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Describe your campaign direction above and generate concepts to get started.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={handleGenerate}
-                >
-                  Generate concepts
-                </Button>
-              </div>
+              <EmptyState
+                icon={Lightbulb}
+                title="Generate your first concept"
+                description="Describe your campaign direction above and generate concepts to get started."
+                action={{ label: 'Generate concepts', onClick: handleGenerate }}
+                className="py-12"
+              />
             ) : (
               <>
                 <p className="text-xs text-muted-foreground mb-4">{concepts.length} concepts generated</p>
@@ -535,7 +709,12 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
                   onSelect={() => setSelectedConceptAssetId(asset.id)}
                   onView={() => setActiveConceptForModal(asset)}
                   onDelete={() => handleDelete(asset.id)}
+                  onGenerateCopy={() => {
+                    setSelectedConceptAssetId(asset.id)
+                    setActiveTab('copy')
+                  }}
                   onGenerateImage={() => handleGenerateImageFromConcept(asset)}
+                  onSubmit={() => handleSubmitAsset(asset.id)}
                   showActions={true}
                 />
               ))}
@@ -556,31 +735,25 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
         {activeTab === 'copy' && !isGenerating && (
           <div className="space-y-4">
             {copyAssets.length === 0 && concepts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileText className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No copy yet</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Generate concepts first, then select one to generate copy variants.
-                </p>
-              </div>
+              <EmptyState
+                icon={FileText}
+                title="Concepts come first"
+                description="Generate concepts first, then select one to generate copy variants."
+                action={{ label: 'Go to concepts', onClick: () => setActiveTab('concepts') }}
+                className="py-12"
+              />
             ) : copyAssets.length === 0 && concepts.length > 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileText className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No copy yet</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Select a concept above and generate copy variants.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={handleGenerate}
-                  disabled={!selectedConceptAsset}
-                >
-                  Generate copy
-                </Button>
-              </div>
+              <EmptyState
+                icon={FileText}
+                title="Generate your first copy"
+                description="Select a concept above and generate copy variants."
+                action={
+                  selectedConceptAsset
+                    ? { label: 'Generate copy', onClick: handleGenerate }
+                    : undefined
+                }
+                className="py-12"
+              />
             ) : (
               <>
             {concepts.length > 0 && (
@@ -612,9 +785,13 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
                     copy={asset.content as CopyResult}
                     assetId={asset.id}
                     status={asset.status}
-                    variantLabel={`Variant ${String.fromCharCode(65 + index)}`}
+                    variantLabel={
+                      (asset.content as CopyResult).variant_label?.trim() ||
+                      `Variant ${String.fromCharCode(65 + index)}`
+                    }
                     onView={() => setActiveCopyForModal(asset)}
                     onDelete={() => handleDelete(asset.id)}
+                    onSubmit={() => handleSubmitAsset(asset.id)}
                     showActions={true}
                   />
                 ))}
@@ -715,39 +892,73 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
                   status={asset.status}
                   driftStatus={asset.drift_status}
                   onDelete={() => handleDelete(asset.id)}
-                  onView={() => {
-                    setPreviewImage(asset.content as ImageResult)
-                    setShowPreview(true)
-                  }}
+                  onView={() => handleOpenImagePreview(asset)}
+                  onSubmit={() => handleSubmitAsset(asset.id)}
                   onRegenerate={handleGenerate}
                   showActions={true}
                 />
               ))}
             </div>
             {imageAssets.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Image className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground">No images yet</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Generate images from the prompt above or upload existing campaign visuals to review alongside AI
-                  work.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={handleOpenUpload}
-                >
-                  Upload image
-                </Button>
-              </div>
+              <EmptyState
+                icon={Image}
+                title="Generate your first image"
+                description="Generate images from the prompt above or upload existing campaign visuals."
+                action={{ label: 'Upload image', onClick: handleOpenUpload }}
+                className="py-12"
+              />
             )}
+          </div>
+        )}
+
+        {embeddedInWorkspace && (
+          <div className="xl:hidden mt-6 border-t border-border pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setActivityOpen(true)}
+            >
+              <History className="w-4 h-4" />
+              Activity
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Sidebar */}
+      {/* Activity drawer — xl+ persistent rail */}
+      {embeddedInWorkspace && (
+        <aside
+          className="hidden xl:flex w-72 flex-shrink-0 flex-col border-l border-border bg-muted/40 overflow-hidden"
+          aria-label="Generation activity"
+        >
+          <div className="px-4 py-3 border-b border-border flex-shrink-0">
+            <h3 className="text-sm font-semibold text-foreground">Activity</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Generation history</p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3">
+            <GenerationHistory campaignId={campaign.id} hideHeading />
+          </div>
+        </aside>
+      )}
+
+      {/* Activity sheet — below xl */}
+      {embeddedInWorkspace && (
+        <Sheet open={activityOpen} onOpenChange={setActivityOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-sm p-0 gap-0">
+            <SheetHeader className="px-4 py-3 border-b border-border text-left">
+              <SheetTitle>Activity</SheetTitle>
+              <SheetDescription>Generation history for this campaign</SheetDescription>
+            </SheetHeader>
+            <div className="flex-1 overflow-y-auto p-4">
+              <GenerationHistory campaignId={campaign.id} hideHeading />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Sidebar — standalone mode only */}
+      {!embeddedInWorkspace && (
       <div className="w-72 flex-shrink-0 flex flex-col bg-background overflow-hidden">
         <div className="px-4 py-4 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">Campaign Assets</h3>
@@ -765,8 +976,7 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
                 className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
                 onClick={() => {
                   if (asset.type === 'image') {
-                    setPreviewImage(asset.content as ImageResult)
-                    setShowPreview(true)
+                    handleOpenImagePreview(asset)
                   }
                   if (asset.type === 'concept') {
                     setActiveConceptForModal(asset)
@@ -809,6 +1019,7 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
           <GenerationHistory campaignId={campaign.id} />
         </div>
       </div>
+      )}
 
       <UploadModal
         open={showUploadModal}
@@ -821,11 +1032,21 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
       {/* Image Preview Modal */}
       <ImagePreviewModal
         open={showPreview}
-        onOpenChange={setShowPreview}
+        onOpenChange={(open) => {
+          setShowPreview(open)
+          if (!open) {
+            setPreviewAssetId(null)
+            setPreviewAssetStatus(undefined)
+          }
+        }}
         image={previewImage}
+        status={previewAssetStatus}
         isGenerating={generateImage.isPending && !previewImage}
         onRegenerate={handleGenerate}
         isSaved={true}
+        onSubmit={
+          previewAssetId ? () => handleSubmitAsset(previewAssetId) : undefined
+        }
       />
 
       <ConceptDetailModal
@@ -835,6 +1056,15 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
         }}
         concept={activeConceptForModal ? (activeConceptForModal.content as ConceptResult) : null}
         status={activeConceptForModal?.status}
+        onGoToCopy={
+          activeConceptForModal
+            ? () => {
+                setSelectedConceptAssetId(activeConceptForModal.id)
+                setActiveTab('copy')
+                setActiveConceptForModal(null)
+              }
+            : undefined
+        }
         onGenerateImage={
           activeConceptForModal
             ? () => {
@@ -851,6 +1081,11 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
               }
             : undefined
         }
+        onSubmit={
+          activeConceptForModal
+            ? () => handleSubmitAsset(activeConceptForModal.id)
+            : undefined
+        }
       />
 
       <CopyDetailModal
@@ -860,17 +1095,20 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
         }}
         copy={activeCopyForModal ? (activeCopyForModal.content as CopyResult) : null}
         status={activeCopyForModal?.status}
+        channelMaxCharsHint={copyCharBudgetHint}
         variantLabel={
           activeCopyForModal
-            ? `Variant ${
-                String.fromCharCode(
-                  65 +
-                    Math.max(
-                      0,
-                      copyAssets.filter((asset) => asset.parent_asset_id === activeCopyForModal.parent_asset_id).findIndex((asset) => asset.id === activeCopyForModal.id)
-                    )
+            ? (() => {
+                const content = activeCopyForModal.content as CopyResult
+                if (content.variant_label?.trim()) return content.variant_label.trim()
+                const idx = Math.max(
+                  0,
+                  copyAssets
+                    .filter((asset) => asset.parent_asset_id === activeCopyForModal.parent_asset_id)
+                    .findIndex((asset) => asset.id === activeCopyForModal.id)
                 )
-              }`
+                return `Variant ${String.fromCharCode(65 + idx)}`
+              })()
             : undefined
         }
         onDelete={
@@ -879,6 +1117,20 @@ export function GenerationPanel({ campaign, brandId, userId }: GenerationPanelPr
                 handleDelete(activeCopyForModal.id)
                 setActiveCopyForModal(null)
               }
+            : undefined
+        }
+        onGenerateImage={
+          activeCopyForModal
+            ? () => {
+                handleGenerateImageFromCopyAsset(activeCopyForModal)
+                setActiveCopyForModal(null)
+              }
+            : undefined
+        }
+        isGeneratingImage={generateImage.isPending}
+        onSubmit={
+          activeCopyForModal
+            ? () => handleSubmitAsset(activeCopyForModal.id)
             : undefined
         }
       />

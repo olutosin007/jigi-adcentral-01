@@ -15,6 +15,7 @@ describe('campaign validations', () => {
         audience: 'Young professionals 25-35',
         channels: ['instagram_post'],
         requirements: 'Bold colors',
+        key_message: 'Fresh flavour for your summer',
       }
       expect(campaignBriefSchema.parse(valid)).toEqual(valid)
     })
@@ -115,6 +116,7 @@ describe('campaign validations', () => {
         objective: 'Launch summer campaign',
         audience: 'Young professionals',
         channels: ['instagram_post'],
+        key_message: 'Beat the heat with us',
       }
       expect(fullBriefSchema.parse(valid)).toEqual(valid)
     })
