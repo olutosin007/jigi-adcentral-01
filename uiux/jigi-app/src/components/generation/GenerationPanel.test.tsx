@@ -282,4 +282,22 @@ describe('GenerationPanel', () => {
 
     expect(mockSelectConceptMutate).toHaveBeenCalledWith('concept-1')
   })
+
+  it('I8: Images tab shows composite badge and pre-fills from concept', () => {
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+
+    render(
+      <GenerationPanel
+        campaign={{ ...mockCampaign, selected_concept_asset_id: 'concept-1' }}
+        brandId="brand-1"
+        userId="user-1"
+        stage="images"
+      />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByTestId('image-composite-badge')).toHaveTextContent(/Built from: Summer Launch/i)
+    const prompt = screen.getByLabelText('Generation prompt') as HTMLTextAreaElement
+    expect(prompt.value).toContain('Bright')
+  })
 })
