@@ -30,6 +30,7 @@ import { AuthCallback } from '@/pages/auth/AuthCallback'
 import { OrganisationSetup } from '@/pages/setup/OrganisationSetup'
 import { JourneyChoice } from '@/pages/setup/JourneyChoice'
 import { ReviewerRoute } from '@/components/auth/ReviewerRoute'
+import { GuestDecide } from '@/pages/GuestDecide'
 
 import { useAuthStore } from '@/store/authStore'
 
@@ -79,6 +80,7 @@ export function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/r/:token" element={<GuestDecide />} />
           
           {/* Setup routes (require auth but not full setup) */}
           <Route
