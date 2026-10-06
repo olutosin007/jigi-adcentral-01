@@ -13,12 +13,18 @@ The bridge artifact. Every tour step, every doc step, and (later) every E2E sele
 
 | Anchor id | Route | Component file | Attach to | Tour step |
 |-----------|-------|----------------|-----------|-----------|
+| `work-home` | `/app/work` | `src/pages/Work.tsx` | Page root | Orientation: what needs you |
+| `job-stage-rail` | `/app/campaigns/:id` | `src/components/campaign/CampaignPipelineRail.tsx` | Rail root | Job stages |
+| `job-context-rail` | `/app/campaigns/:id` (xl) | `src/components/campaign/JobContextRail.tsx` | Rail root | Brand + brief context |
+| `send-stage` | `/app/campaigns/:id?stage=send` | `src/components/job/JobSendStage.tsx` | Stage root | Pick what to send |
+| `decisions-stage` | `/app/campaigns/:id?stage=decisions` | `src/components/job/JobDecisionsStage.tsx` | Stage root | Track decisions / fix notes |
+| `approved-stage` | `/app/campaigns/:id?stage=approved` | `src/components/job/JobApprovedStage.tsx` | Stage root | Approved for this job |
 | `journey-choice` | `/setup/journey` | `src/pages/setup/JourneyChoice.tsx` | The two journey option cards (wrapper) | Pick journey |
 | `brand-create` | `/app/brands` | `src/pages/Brands.tsx` + `src/components/brands/QuickCreateBrandDialog.tsx` | "Create brand" trigger | Create/confirm brand |
 | `brief-form` | `/app/campaigns/new` | `src/components/campaigns/BriefForm.tsx` | Brief form container | Enter brief |
 | `generation-panel` | `/app/campaigns/:id` | `src/components/generation/GenerationPanel.tsx` | Panel root | Generate concept/copy/image |
 | `compliance-panel` | `/app/campaigns/:id` | `src/components/generation/ComplianceDisplay.tsx` | Compliance/drift block | Check compliance |
-| `submit-action` | `/app/campaigns/:id` | `src/components/review/SubmitModal.tsx` | Confirm **Submit** button inside the modal (the tour opens the modal for this step; per-asset openers are dynamic) | Submit for review |
+| `submit-action` | `/app/campaigns/:id` | `src/components/job/JobSendStage.tsx` (primary) + `src/components/review/SubmitModal.tsx` | **Send** button in the Send stage aside; also the confirm button inside the single-asset modal (never both on screen) | Send for approval |
 | `approved-assets` | `/app/approved` | `src/pages/ApprovedAssets.tsx` | Approved grid / first card | See approved result |
 
 ## Brand Approver
@@ -26,7 +32,7 @@ The bridge artifact. Every tour step, every doc step, and (later) every E2E sele
 | Anchor id | Route | Component file | Attach to | Tour step |
 |-----------|-------|----------------|-----------|-----------|
 | `notification-bell` | any `/app/*` | `src/components/notifications/NotificationBell.tsx` | Bell button | Open notification |
-| `review-queue` | `/app/review` | `src/pages/ReviewQueue.tsx` + `src/components/review/ReviewQueueCard.tsx` | Queue list / first card | Open review queue |
+| `review-queue` | `/app/review` (Inbox) | `src/pages/ReviewQueue.tsx` + `src/components/review/ReviewQueueCard.tsx` | Queue list / first card | Open review queue |
 | `asset-preview` | `/app/review/:assetId` | `src/components/review/AssetPreviewArea.tsx` | Preview area root | Inspect the asset |
 | `asset-details` | `/app/review/:assetId` | `src/components/review/AssetDetailsSidebar.tsx` | Details sidebar root | Review brief + compliance + history |
 | `comments-sidebar` | `/app/review/:assetId` | `src/components/comments/CommentsSidebar.tsx` | Comments panel root | Discuss (optional) |

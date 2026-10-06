@@ -15,7 +15,8 @@
 - **Authenticated** and belongs to an organisation (`ProtectedRoute requireOrganisation`).
 - Has chosen a journey at `/setup/journey` (`brand_first` or `idea_first`).
 - For `brand_first`: at least one brand exists (or is created inline).
-- Lands on **`/app/dashboard`**; the creator-first dashboard surfaces "start a campaign".
+- Lands on **`/app/work`** (Work home, anchor `work-home`): one row per job with a single next action ("Send for approval", "Fix 2 notes", "3 waiting on client"). `/app/dashboard` redirects here; the old dashboard lives at `/app/overview`.
+- Each job opens at `/app/campaigns/:id?stage=…` with the stage rail **Brief → Creative (Concepts · Copy · Images · All candidates) → Send → Decisions → Approved** (anchor `job-stage-rail`) and, on wide screens, the brand + brief context rail (anchor `job-context-rail`).
 
 ## 3. Ideal (happy) path — brand-first
 
@@ -30,7 +31,7 @@ The shortest path from nothing to a submitted asset.
 | 5 | Generate copy | `/app/campaigns/:id` | `GenerationPanel`, `CopyCard` | Copy within channel length limits | `draft` | `generation-panel` |
 | 6 | Generate image | `/app/campaigns/:id` | `GenerationPanel`, `ImageCard` | Image using brand palette + visual style | `draft` | `generation-panel` |
 | 7 | Check compliance | `/app/campaigns/:id` | `ComplianceDisplay`, `DriftBadge` | Compliance / drift feedback shown | `draft` | `compliance-panel` |
-| 8 | Submit for brand review | `/app/campaigns/:id` | `SubmitModal` → `POST /api/assets/submit` (`target=brand_review`) | Status set; approvers notified | `submitted` | `submit-action` |
+| 8 | Send for approval | `/app/campaigns/:id?stage=send` | `JobSendStage` (multi-select, *Send to client* / *Internal check first*, optional message) → `POST /api/assets/submit` per asset. Single-asset sends from a card still use `SubmitModal` | Status set; approvers notified; job jumps to **Decisions** | `submitted` → shown as *Waiting on client* | `submit-action` |
 
 ## 4. Decision branches
 
@@ -59,20 +60,21 @@ The most-missed cycle. When a Brand Approver requests changes:
 
 ```mermaid
 flowchart LR
-    A[Notification: changes requested] --> B[Open campaign /app/campaigns/:id]
-    B --> C[Read review notes + comments]
+    A[Work row: Fix N notes] --> B[Job ?stage=decisions]
+    B --> C[Read client notes under Fix & resend]
     C --> D[Regenerate / edit asset]
-    D --> E[Resubmit via SubmitModal]
+    D --> E[Resend from Decisions or Send stage]
     E --> F[status = submitted]
 ```
 
-- Entry: `NotificationBell` → notification of type `changes_requested`, deep-links to `/app/campaigns/:id`.
+- Entry: Work home next action (*Fix N notes*) or `NotificationBell` → `changes_requested`, deep-links to the job.
+- `JobDecisionsStage` groups work as **Fix & resend** (client notes inline), **Waiting on client**, **Internal check**, **Not moving forward**.
 - Asset is back in `changes_requested`; editing returns it toward `draft`, resubmitting sets `submitted` again.
 
 ## 6. Terminal / success state
 
 - Asset reaches `approved` (see Brand Approver flow).
-- Creator sees it in **`/app/approved`** (`ApprovedAssets`, `ApprovedAssetCard`, `AssetDetailModal`) and can open/export it.
+- Creator sees it on the job's **Approved** stage (`JobApprovedStage`, download per asset) and globally in **`/app/approved`** (`ApprovedAssets`, `ApprovedAssetCard`, `AssetDetailModal`) and can open/export it.
 
 ## 7. Moments that matter
 
@@ -82,4 +84,17 @@ flowchart LR
 
 ## 8. Anchor inventory (this persona)
 
-See [anchor-inventory.md](./anchor-inventory.md) for the full table. Anchors used here: `journey-choice`, `brand-create`, `brief-form`, `generation-panel`, `compliance-panel`, `submit-action`, `notification-bell`, `approved-assets`.
+See [anchor-inventory.md](./anchor-inventory.md) for the full table. Anchors used here: `work-home`, `job-stage-rail`, `job-context-rail`, `journey-choice`, `brand-create`, `brief-form`, `generation-panel`, `compliance-panel`, `submit-action`, `notification-bell`, `approved-assets`.
+
+## 9. Status language (UI)
+
+Raw statuses never appear in creator UI. `src/lib/handoff/human-status.ts` maps them:
+
+| Status | Creator sees | Client sees |
+|---|---|---|
+| `draft` | Working | Working |
+| `agency_review` | Internal check | Internal check |
+| `submitted` / `brand_review` | Waiting on client | Needs your decision |
+| `changes_requested` | Fix & resend | You asked for changes |
+| `approved` | Approved | Approved |
+| `rejected` | Not moving forward | Declined |

@@ -58,9 +58,9 @@ export function SubmitModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Submit for Review</DialogTitle>
+          <DialogTitle>Send for approval</DialogTitle>
           <DialogDescription>
-            Submit this {assetType} for review and approval.
+            Send this {assetType} for a decision.
           </DialogDescription>
         </DialogHeader>
 
@@ -77,7 +77,7 @@ export function SubmitModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="target">Submit to</Label>
+            <Label htmlFor="target">Send to</Label>
             <Select value={target} onValueChange={(v) => setTarget(v as AssetStatus)}>
               <SelectTrigger id="target">
                 <SelectValue />
@@ -85,18 +85,18 @@ export function SubmitModal({
               <SelectContent>
                 {allowAgencyReview && (
                   <SelectItem value="agency_review">
-                    Agency Review (internal)
+                    Internal check first
                   </SelectItem>
                 )}
                 <SelectItem value="submitted">
-                  Brand Review (external)
+                  Client / brand
                 </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
               {target === 'agency_review'
-                ? 'Asset will be reviewed internally by your team before going to the brand.'
-                : 'Asset will be sent directly to the brand for approval.'}
+                ? 'Your team reviews it before the client sees anything.'
+                : 'The client gets notified and can approve, request changes or decline.'}
             </p>
           </div>
 
@@ -130,12 +130,12 @@ export function SubmitModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
+                Sending…
               </>
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" />
-                Submit
+                Send
               </>
             )}
           </Button>
