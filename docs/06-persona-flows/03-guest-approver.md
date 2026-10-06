@@ -33,6 +33,9 @@
 - **Already decided** (by this link, or in-app by a member) → shows the recorded decision; no second decision.
 - **Creator revokes** from Decisions → further opens fail closed.
 
+- **Round 2+** → chip reads *Round N · Needs your decision*; **Compare to previous** shows the last round side-by-side (images) or as a field diff (copy). Payload: `round`, `previous_content` (sanitised).
+- **On-brand check** → same `OnBrandCheckPanel` as in-app, fed by `brand_kit` (level only) + `compliance_check` / `validation_scores`. Prompts, model and provider keys are stripped from guest content.
+
 ## 5. What the creator sees
 
 - **Decisions → Waiting on client** shows link status: *Link sent → Link opened → {Name} approved / asked for changes / declined*, or *Link expired / revoked*. **Revoke** and **New link** controls live on the row.

@@ -1,6 +1,6 @@
 # 02 — Handoff OS
 
-**Status:** Ready for sprint execution  
+**Status:** Implemented (P1–P4 merged, October 2026) — see [DEMO.md](./DEMO.md)  
 **Version:** 1.0  
 **Created:** October 2026  
 **Design system:** [`DESIGN.md`](../../../DESIGN.md) (refined utilitarian — asset-first review, teal decide, amber pending)  
@@ -111,6 +111,25 @@ Status machine in `src/lib/status.ts` stays authoritative. **UI language** maps 
 | [06-persona-flows](../../06-persona-flows/) | Update after P1–P3 ship (persona contracts) |
 | [03-human-review-in-app.md](../../02-creativegen-mvp/03-human-review-in-app.md) | Review API contracts |
 | [UI-IMPROVEMENT-PHASES.md](../../UI-IMPROVEMENT-PHASES.md) | Legacy screen inventory (superseded for creator/approver IA by this suite) |
+
+---
+
+## Delivery log
+
+| Sprint | PR |
+|--------|----|
+| P1 · 1.1–1.3 | IA, Work home, job stages, human status language (#34–#36) |
+| P2 · 2.1–2.2 | Generate \| Upload parity, brand-check honesty (#37, #38) |
+| P3 · 3.1–3.3 | Guest review links API, `/r/:token` Decide, Inbox + link UX (#39–#41) |
+| P4 · 4.1 | On-brand check on Decide (#42) |
+| P4 · 4.2 | Rounds & compare to previous (#43) |
+| P4 · 4.3 | Fix & resend, stale nudge, north-star metrics, QA, docs |
+
+**Migrations to apply (root `supabase/migrations/`):** `032_review_links.sql`, `033_review_round_snapshots.sql`, `034_handoff_metrics_view.sql`.
+
+**North-star query:** `handoff_decision_metrics` view (034) — e.g. `SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY hours_to_decision) FROM handoff_decision_metrics WHERE round = 1;` and `SELECT avg(approved_first_round::int) FROM handoff_decision_metrics WHERE round = 1;`. Client events: `decide_completed { decide_via, round, hours_to_decision, approved_first_round, candidate_source }`, `assets_sent { candidate_source }`, `asset_resent { round, revised }`.
+
+**Follow-ups (filed, not in scope):** image pin comments (#44), guest comments (#45), multi-asset guest packs (#46), billing & seats (#47), review endpoint org check (#48), shared rate limiting for guest links (#49).
 
 ---
 

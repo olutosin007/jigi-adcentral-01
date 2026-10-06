@@ -54,7 +54,9 @@ Every action writes to `asset_status_history` **and** `approval_actions` for a f
 
 ## 5. Loop-back / re-review
 
-After `changes_requested`, the creative reworks and resubmits (`submitted` again). The asset reappears in the approver's **Inbox** (`/app/review`, formerly Review Queue) (step 2). `StatusHistoryTimeline` shows the prior round so the approver has context on the second pass.
+After `changes_requested`, the creative reworks and resubmits (`submitted` again). The asset reappears in the approver's **Inbox** (`/app/review`, formerly Review Queue) (step 2). The header reads *Round N · Waiting on you* (amber) and **Compare to previous** swaps the preview for a side-by-side (images) or field diff (copy/concept) against the last round's snapshot, so the second pass is about the change. `StatusHistoryTimeline` keeps the full history.
+
+The **On-brand check** panel (`OnBrandCheckPanel`, `data-tour="on-brand-check"`) sits at the top of the details sidebar: verdict chip, checklist from drift / compliance / validation, *Guidance only* when the brand kit is incomplete (never a full pass), and *Run check* when unchecked.
 
 ## 6. Terminal / success state
 

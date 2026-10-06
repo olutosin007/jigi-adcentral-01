@@ -5,6 +5,7 @@ import { evaluateBriefReadiness } from '@/lib/brief-readiness'
 import {
   countJobAssets,
   getJobNextAction,
+  oldestWaitingAt,
   type JobAssetCounts,
   type JobNextAction,
 } from '@/lib/handoff'
@@ -30,7 +31,7 @@ interface WorkJobRow {
   seed_idea?: string | null
   brief?: Record<string, unknown> | null
   brands?: { id: string; name: string } | { id: string; name: string }[] | null
-  creative_assets?: { id: string; status: string }[] | null
+  creative_assets?: { id: string; status: string; updated_at?: string | null }[] | null
 }
 
 export function toWorkJob(row: WorkJobRow): WorkJob {
@@ -51,7 +52,12 @@ export function toWorkJob(row: WorkJobRow): WorkJob {
     updatedAt: row.updated_at,
     counts,
     briefReady,
-    nextAction: getJobNextAction({ counts, briefReady, archived: row.status === 'archived' }),
+    nextAction: getJobNextAction({
+      counts,
+      briefReady,
+      archived: row.status === 'archived',
+      oldestWaitingAt: oldestWaitingAt(row.creative_assets ?? []),
+    }),
   }
 }
 
@@ -68,7 +74,7 @@ async function fetchWorkJobs(): Promise<WorkJob[]> {
       seed_idea,
       brief,
       brands(id, name),
-      creative_assets(id, status)
+      creative_assets(id, status, updated_at)
     `
     )
     .order('updated_at', { ascending: false })

@@ -53,3 +53,34 @@ export function trackGenerateImagePath(
 ): void {
   trackEvent('generate_image', { path, ...props })
 }
+
+export type DecideVia = 'guest' | 'app'
+
+/**
+ * North-star decision event. `hours_to_decision` is measured from the last
+ * send; `approved_first_round` feeds approved_first_round_rate.
+ */
+export function trackDecision(input: {
+  via: DecideVia
+  action: 'approve' | 'request_changes' | 'reject'
+  round: number
+  sentAt?: string | null
+  assetType?: string
+  candidateSource?: string | null
+  now?: Date
+}): void {
+  const sent = input.sentAt ? new Date(input.sentAt).getTime() : NaN
+  const hours = Number.isNaN(sent)
+    ? null
+    : Math.max(0, Math.round((((input.now ?? new Date()).getTime() - sent) / 3_600_000) * 10) / 10)
+  trackEvent('decide_completed', {
+    via: input.via,
+    decide_via: input.via,
+    action: input.action,
+    round: input.round,
+    hours_to_decision: hours,
+    approved_first_round: input.action === 'approve' && input.round <= 1,
+    asset_type: input.assetType,
+    candidate_source: input.candidateSource ?? 'ai',
+  })
+}

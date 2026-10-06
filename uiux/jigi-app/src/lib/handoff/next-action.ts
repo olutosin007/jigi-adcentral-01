@@ -62,6 +62,28 @@ export function jobStageHref(campaignId: string, stage: JobStageTarget): string 
   return `/app/campaigns/${campaignId}?stage=${stage}`
 }
 
+/** Waiting longer than this nudges the creator to chase the client. */
+export const STALE_WAITING_DAYS = 3
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Oldest updated_at among assets waiting on the client (submitted / brand_review). */
+export function oldestWaitingAt(assets: { status: string; updated_at?: string | null }[]): string | null {
+  let oldest: string | null = null
+  for (const a of assets) {
+    if ((a.status === 'submitted' || a.status === 'brand_review') && a.updated_at) {
+      if (!oldest || a.updated_at < oldest) oldest = a.updated_at
+    }
+  }
+  return oldest
+}
+
+export function waitingDays(since: string | null | undefined, now: Date = new Date()): number {
+  if (!since) return 0
+  const t = new Date(since).getTime()
+  if (Number.isNaN(t)) return 0
+  return Math.max(0, Math.floor((now.getTime() - t) / DAY_MS))
+}
+
 function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`
 }
@@ -74,8 +96,11 @@ export function getJobNextAction(input: {
   counts: JobAssetCounts
   briefReady: boolean
   archived?: boolean
+  oldestWaitingAt?: string | null
+  now?: Date
 }): JobNextAction {
   const { counts, briefReady, archived } = input
+  const staleDays = counts.waiting > 0 ? waitingDays(input.oldestWaitingAt, input.now) : 0
 
   if (archived) {
     return { label: 'View approved', stage: 'approved', tone: 'muted', hint: 'Archived' }
@@ -95,6 +120,15 @@ export function getJobNextAction(input: {
       return { label: 'Complete brief', stage: 'brief', tone: 'primary' }
     }
     return { label: 'Add creative', stage: 'creative', tone: 'primary' }
+  }
+
+  if (staleDays >= STALE_WAITING_DAYS) {
+    return {
+      label: 'Nudge client',
+      stage: 'decisions',
+      tone: 'pending',
+      hint: `${plural(counts.waiting, 'asset')} waiting ${plural(staleDays, 'day')}`,
+    }
   }
 
   if (counts.draft > 0) {

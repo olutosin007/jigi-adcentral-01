@@ -54,6 +54,8 @@ import {
 import { JobContextRail } from '@/components/campaign/JobContextRail'
 import { JobSendStage, type SendRecipient, type SendTarget } from '@/components/job/JobSendStage'
 import { ShareReviewLinkDialog } from '@/components/job/ShareReviewLinkDialog'
+import { FixAndResendDialog, type FixAndResendPayload } from '@/components/job/FixAndResendDialog'
+import { useReviseAsset } from '@/hooks/useReviseAsset'
 import { useReviewLinks, useRevokeReviewLink } from '@/hooks/useReviewLinks'
 import { createReviewLink } from '@/lib/api-client'
 import { JobDecisionsStage } from '@/components/job/JobDecisionsStage'
@@ -111,6 +113,7 @@ export function CampaignDetail() {
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [viewAsset, setViewAsset] = useState<CreativeAsset | null>(null)
+  const [fixAssetId, setFixAssetId] = useState<string | null>(null)
   const [shareAsset, setShareAsset] = useState<CreativeAsset | null>(null)
   const [submitModalAsset, setSubmitModalAsset] = useState<{
     id: string
@@ -139,6 +142,11 @@ export function CampaignDetail() {
     [allAssets]
   )
   const { data: roundsByAsset } = useCampaignRounds(inFlightAssets)
+  const reviseAsset = useReviseAsset()
+  const fixAsset = useMemo(
+    () => allAssets.find((a) => a.id === fixAssetId && a.status === 'changes_requested') ?? null,
+    [allAssets, fixAssetId]
+  )
 
   const gateInput = useMemo(
     () => (campaign ? buildPipelineGateInput(campaign, allAssets) : null),
@@ -301,7 +309,63 @@ export function CampaignDetail() {
     }
   }
 
+  useEffect(() => {
+    const fix = searchParams.get('fix')
+    if (!fix) return
+    setFixAssetId(fix)
+    const next = new URLSearchParams(searchParams)
+    next.delete('fix')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  const handleFixResend = async (asset: CreativeAsset, payload: FixAndResendPayload) => {
+    if (!id || !user) return
+    const round = (roundsByAsset?.get(asset.id) ?? 1) + 1
+    const revised = !!payload.fields || !!payload.file
+    try {
+      if (revised) await reviseAsset.mutateAsync({ asset, fields: payload.fields, file: payload.file })
+      await submitAsset.mutateAsync({
+        assetId: asset.id,
+        campaignId: id,
+        userId: user.id,
+        targetStatus: 'submitted',
+        note: payload.note,
+      })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not resend')
+      return
+    }
+
+    const previousLink = reviewLinks.find((l) => l.asset_id === asset.id && l.recipient_email)
+    let emailed = false
+    if (previousLink?.recipient_email) {
+      try {
+        const result = await createReviewLink({
+          asset_id: asset.id,
+          recipient_email: previousLink.recipient_email,
+          recipient_name: previousLink.recipient_name ?? undefined,
+          send_email: true,
+          message: payload.note,
+        })
+        emailed = result.email_sent
+      } catch {
+        // Resent either way; the creator can share a fresh link from Decisions.
+      }
+      void refetchLinks()
+    }
+
+    trackEvent('asset_resent', { round, revised, candidate_source: asset.source ?? 'ai', relinked: emailed })
+    toast.success(
+      emailed ? `Sent as Round ${round} — new link emailed to ${previousLink?.recipient_email}` : `Sent as Round ${round}`
+    )
+    setFixAssetId(null)
+  }
+
   const handleViewAsset = (asset: CreativeAsset) => {
+    if (asset.status === 'changes_requested' && !shouldOpenAssetReview(profile?.role, asset.status as AssetStatus)) {
+      setFixAssetId(asset.id)
+      return
+    }
     if (shouldOpenAssetReview(profile?.role, asset.status as AssetStatus)) {
       navigate(`/app/review/${asset.id}`)
       return
@@ -384,6 +448,11 @@ export function CampaignDetail() {
       trackEvent('assets_sent', {
         count: sent,
         target: targetStatus,
+        candidate_source: sentAssets.every((a) => a.source === 'uploaded')
+          ? 'uploaded'
+          : sentAssets.every((a) => a.source !== 'uploaded')
+            ? 'ai'
+            : 'mixed',
         send_mixed_sources:
           sentAssets.some((a) => a.source === 'uploaded') &&
           sentAssets.some((a) => a.source !== 'uploaded'),
@@ -641,7 +710,7 @@ export function CampaignDetail() {
           <JobDecisionsStage
             assets={allAssets}
             onOpenAsset={handleViewAsset}
-            onResend={(asset) => handleSubmitAsset(asset.id)}
+            onResend={(asset) => setFixAssetId(asset.id)}
             brandKit={brandKit}
             links={linksByAsset}
             rounds={roundsByAsset}
@@ -773,6 +842,14 @@ export function CampaignDetail() {
           }}
         />
       )}
+
+      <FixAndResendDialog
+        asset={fixAsset}
+        round={fixAsset ? roundsByAsset?.get(fixAsset.id) ?? 1 : 1}
+        onOpenChange={(open) => !open && setFixAssetId(null)}
+        onResend={handleFixResend}
+        isSending={reviseAsset.isPending || submitAsset.isPending}
+      />
 
       <DeleteCampaignDialog
         open={showDeleteDialog}

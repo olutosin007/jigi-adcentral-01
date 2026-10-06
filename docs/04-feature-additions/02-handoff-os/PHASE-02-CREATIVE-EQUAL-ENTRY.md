@@ -1,7 +1,7 @@
 # Phase 2 — Creative Equal Entry (Generate | Upload)
 
 **Initiative:** [Handoff OS](./README.md)  
-**Status:** Ready  
+**Status:** Implemented  
 **Duration:** 2 sprints (~2 weeks)  
 **Depends on:** P1 Sprint 1.2 (Job Creative stage shell)  
 **Unlocks:** Strong Archetype 1 path; feeds P3/P4 with unified candidates

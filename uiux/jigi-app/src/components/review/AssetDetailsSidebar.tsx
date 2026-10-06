@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ExternalLink, Calendar, User, Folder, Tag, MessageSquare, RefreshCw, GitBranch, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -86,9 +87,7 @@ export function AssetDetailsSidebar({
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={`${statusConfig.bgColor} ${statusConfig.color}`}>
-                    {statusConfig.label}
-                  </Badge>
+                  <StatusBadge status={asset.status} audience="client" />
                   {asset.drift_status === 'review_required' && (
                     <DriftBadge tooltip="Brief updated after this asset was generated. Re-validate to update scores and clear this flag." />
                   )}
