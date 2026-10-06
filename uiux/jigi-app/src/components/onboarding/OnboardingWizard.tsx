@@ -197,7 +197,7 @@ export function OnboardingWizard({ brandId, initialData, onComplete }: Onboardin
     }
     
     toast.info('You can complete your brand profile later')
-    navigate('/app/dashboard')
+    navigate('/app/work')
   }
 
   const handleComplete = async () => {

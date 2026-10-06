@@ -19,7 +19,7 @@ const PERSONA_LABEL: Record<'creator' | 'approver', string> = {
 }
 
 const PERSONA_HOME: Record<'creator' | 'approver', string> = {
-  creator: '/app/dashboard',
+  creator: '/app/work',
   approver: '/app/review',
 }
 
@@ -47,7 +47,7 @@ export function ViewAsSwitcher() {
 
   const resetToReal = () => {
     setViewAsRole(null)
-    navigate('/app/dashboard')
+    navigate('/app/work')
   }
 
   const isSelected = (role: UserRole | null) =>

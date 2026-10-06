@@ -47,7 +47,7 @@ export function AuthCallback() {
           } else if (!profile.journey_mode) {
             navigate('/setup/journey', { replace: true })
           } else {
-            navigate('/app/dashboard', { replace: true })
+            navigate('/app/work', { replace: true })
           }
         }
       } catch (err) {

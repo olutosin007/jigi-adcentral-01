@@ -27,7 +27,7 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app/dashboard'
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app/work'
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

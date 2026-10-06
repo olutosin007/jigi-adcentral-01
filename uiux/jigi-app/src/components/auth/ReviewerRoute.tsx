@@ -23,7 +23,7 @@ export function ReviewerRoute({ children }: ReviewerRouteProps) {
   }
 
   if (!isReviewerRole(effectiveRole)) {
-    return <Navigate to="/app/dashboard" replace />
+    return <Navigate to="/app/work" replace />
   }
 
   return <>{children}</>
