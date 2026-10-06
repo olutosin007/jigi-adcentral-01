@@ -44,13 +44,14 @@ import {
   type PipelineStage,
   isGenerationStage,
 } from '@/lib/campaign-workspace'
+import { buildPipelineGateInput, evaluateBriefReadiness } from '@/lib/pipeline-gates'
 import {
-  buildPipelineGateInput,
-  evaluateBriefReadiness,
-  evaluateStageGates,
-  getNextPipelineAction,
-  type StageGateMap,
-} from '@/lib/pipeline-gates'
+  countJobAssets,
+  evaluateJobGates,
+  getJobHeaderAction,
+  type JobGateMap,
+} from '@/lib/handoff'
+import { JobContextRail } from '@/components/campaign/JobContextRail'
 import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
 
 const statusStyles: Record<string, string> = {
@@ -60,12 +61,15 @@ const statusStyles: Record<string, string> = {
   archived: 'bg-muted text-muted-foreground border-border',
 }
 
-const DEFAULT_GATE_MAP: StageGateMap = {
+const DEFAULT_GATE_MAP: JobGateMap = {
   brief: 'in_progress',
   concepts: 'available',
   copy: 'available',
   images: 'available',
   assets: 'available',
+  send: 'available',
+  decisions: 'available',
+  approved: 'available',
 }
 
 import type { CreativeAsset } from '@/store/campaignStore'
@@ -118,13 +122,19 @@ export function CampaignDetail() {
     () => (campaign ? buildPipelineGateInput(campaign, allAssets) : null),
     [campaign, allAssets]
   )
+  const jobCounts = useMemo(() => countJobAssets(allAssets), [allAssets])
   const gateMap = useMemo(
-    () => (gateInput ? evaluateStageGates(gateInput) : DEFAULT_GATE_MAP),
-    [gateInput]
+    () => (gateInput ? evaluateJobGates(gateInput, jobCounts) : DEFAULT_GATE_MAP),
+    [gateInput, jobCounts]
   )
   const nextPipelineAction = useMemo(
-    () => (gateInput ? getNextPipelineAction(gateInput) : null),
-    [gateInput]
+    () =>
+      gateInput
+        ? getJobHeaderAction(gateInput, jobCounts, {
+            hasUploaded: allAssets.some((a) => a.source === 'uploaded'),
+          })
+        : null,
+    [gateInput, jobCounts, allAssets]
   )
   const briefReadiness = useMemo(
     () =>
@@ -173,7 +183,7 @@ export function CampaignDetail() {
     setSearchParams(params, { replace: true })
   }
 
-  const goBack = () => navigate('/app/campaigns')
+  const goBack = () => navigate('/app/work')
 
   const handleArchive = async () => {
     if (!campaign) return
@@ -208,7 +218,7 @@ export function CampaignDetail() {
     setIsDeleting(false)
     if (result.success) {
       toast.success('Campaign deleted')
-      navigate('/app/campaigns')
+      navigate('/app/work')
       setShowDeleteDialog(false)
     } else {
       toast.error(result.error ?? 'Failed to delete campaign')
@@ -322,15 +332,41 @@ export function CampaignDetail() {
       <div className="p-6 md:p-8 max-w-[1400px] mx-auto flex flex-col items-center justify-center min-h-[400px]">
         <p className="text-muted-foreground">Campaign not found</p>
         <Button variant="link" onClick={goBack} className="mt-4">
-          Back to campaigns
+          Back to Work
         </Button>
       </div>
     )
   }
 
   const brief = campaign.brief || {}
-  const approvedCount = allAssets.filter((a) => a.status === 'approved').length
-  const totalCount = allAssets.length
+  const approvedCount = jobCounts.approved
+  const totalCount = jobCounts.total
+
+  const revalidate = async (assetIds: string[]) => {
+    if (!id || assetIds.length === 0) return
+    try {
+      await validateAssetsMutation.mutateAsync({ campaignId: id, assetIds })
+      toast.success('Re-validation complete')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Re-validation failed')
+    }
+  }
+
+  const renderAssetGrid = (assets: CreativeAsset[]) => (
+    <div className="p-6 overflow-y-auto h-full">
+      <AssetGrid
+        assets={assets}
+        campaignId={id}
+        onViewAsset={handleViewAsset}
+        onDeleteAsset={handleDeleteAsset}
+        onSubmitAsset={handleSubmitAsset}
+        onUploadAsset={() => setShowUploadModal(true)}
+        onRevalidateAll={id ? () => revalidate(assets.map((a) => a.id)) : undefined}
+        onRevalidateSelected={id ? revalidate : undefined}
+        isRevalidating={validateAssetsMutation.isPending}
+      />
+    </div>
+  )
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)]">
@@ -342,7 +378,7 @@ export function CampaignDetail() {
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Campaigns
+            Work
           </button>
           <span className="text-muted-foreground/50 text-xs">/</span>
           <span className="text-xs font-medium text-foreground truncate max-w-[200px]">
@@ -439,21 +475,42 @@ export function CampaignDetail() {
         </div>
       )}
 
-      <BriefSnippetBar
-        keyMessage={brief.key_message}
-        objective={brief.objective}
-        audience={brief.audience}
-        channels={brief.channels}
-        exclusions={brief.exclusions}
-        readiness={briefReadiness}
-        onEditBrief={startBriefEdit}
-        hidden={stage === 'brief'}
-      />
+      <div className="xl:hidden">
+        <BriefSnippetBar
+          keyMessage={brief.key_message}
+          objective={brief.objective}
+          audience={brief.audience}
+          channels={brief.channels}
+          exclusions={brief.exclusions}
+          readiness={briefReadiness}
+          onEditBrief={startBriefEdit}
+          hidden={stage === 'brief'}
+        />
+      </div>
 
       <CampaignWorkspace
         activeStage={stage}
         gateMap={gateMap}
         onStageChange={setStage}
+        railBadges={{ decisions: jobCounts.changes + jobCounts.waiting }}
+        contextRail={
+          stage === 'brief' ? null : (
+            <JobContextRail
+              className="hidden xl:block"
+              brand={brand}
+              brief={brief}
+              seedIdea={campaign.seed_idea}
+              journeyMode={campaign.journey_mode}
+              briefReadiness={briefReadiness}
+              onEditBrief={startBriefEdit}
+            />
+          )
+        }
+        sendStage={renderAssetGrid(allAssets.filter((a) => a.status === 'draft'))}
+        decisionsStage={renderAssetGrid(
+          allAssets.filter((a) => a.status !== 'draft' && a.status !== 'approved')
+        )}
+        approvedStage={renderAssetGrid(allAssets.filter((a) => a.status === 'approved'))}
         briefStage={
           <CampaignBriefStage
             campaign={campaign}
@@ -493,51 +550,7 @@ export function CampaignDetail() {
             />
           ) : null
         }
-        assetsStage={
-          <div className="p-6 overflow-y-auto h-full">
-            <AssetGrid
-              assets={allAssets}
-              campaignId={id}
-              onViewAsset={handleViewAsset}
-              onDeleteAsset={handleDeleteAsset}
-              onSubmitAsset={handleSubmitAsset}
-              onUploadAsset={() => setShowUploadModal(true)}
-              onRevalidateAll={
-                id
-                  ? async () => {
-                      try {
-                        const assetIds = allAssets.map((a) => a.id)
-                        if (assetIds.length === 0) return
-                        await validateAssetsMutation.mutateAsync({
-                          campaignId: id,
-                          assetIds,
-                        })
-                        toast.success('Re-validation complete')
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : 'Re-validation failed')
-                      }
-                    }
-                  : undefined
-              }
-              onRevalidateSelected={
-                id
-                  ? async (assetIds) => {
-                      try {
-                        await validateAssetsMutation.mutateAsync({
-                          campaignId: id,
-                          assetIds,
-                        })
-                        toast.success('Re-validation complete')
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : 'Re-validation failed')
-                      }
-                    }
-                  : undefined
-              }
-              isRevalidating={validateAssetsMutation.isPending}
-            />
-          </div>
-        }
+        assetsStage={renderAssetGrid(allAssets)}
       />
 
       <SubmitModal

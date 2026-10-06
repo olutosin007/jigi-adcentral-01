@@ -64,4 +64,25 @@ describe('CampaignPipelineRail', () => {
     await user.click(screen.getByRole('button', { name: 'Copy' }))
     expect(onStageChange).toHaveBeenCalledWith('copy')
   })
+
+  it('renders handoff stages with a pending badge', async () => {
+    const user = userEvent.setup()
+    const onStageChange = vi.fn()
+
+    render(
+      <CampaignPipelineRail
+        activeStage="brief"
+        gateMap={{ ...baseGateMap, decisions: 'in_progress' }}
+        onStageChange={onStageChange}
+        badges={{ decisions: 3 }}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Approved' })).toBeInTheDocument()
+    const decisions = screen.getByRole('button', { name: /Decisions/ })
+    expect(decisions).toHaveTextContent('3')
+    await user.click(decisions)
+    expect(onStageChange).toHaveBeenCalledWith('decisions')
+  })
 })

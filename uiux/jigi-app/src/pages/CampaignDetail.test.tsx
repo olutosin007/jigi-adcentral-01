@@ -114,18 +114,18 @@ describe('CampaignDetail page', () => {
 
   it('renders pipeline rail instead of legacy tabs', () => {
     render(<CampaignDetail />, { wrapper: createWrapper() })
-    expect(screen.getByRole('navigation', { name: 'Creative pipeline' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Job stages' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Concepts' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Images' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'All assets' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'All candidates' })).toBeInTheDocument()
     expect(screen.queryByText('Generated')).not.toBeInTheDocument()
   })
 
   it('shows brief snippet on non-brief stages', () => {
     render(<CampaignDetail />, { wrapper: createWrapper('/app/campaigns/camp-1?stage=concepts') })
     expect(screen.getByLabelText('Campaign brief summary')).toBeInTheDocument()
-    expect(screen.getByText('Test objective')).toBeInTheDocument()
+    expect(screen.getAllByText('Test objective').length).toBeGreaterThan(0)
   })
 
   it('hides brief snippet on brief stage', () => {
@@ -139,9 +139,9 @@ describe('CampaignDetail page', () => {
     expect(screen.getByTestId('generation-stage')).toHaveTextContent('copy')
   })
 
-  it('renders back to campaigns link', () => {
+  it('renders back to Work link', () => {
     render(<CampaignDetail />, { wrapper: createWrapper() })
-    expect(screen.getByRole('button', { name: /campaigns/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^work$/i })).toBeInTheDocument()
   })
 
   it('passes onSubmitAsset to GenerationPanel on concepts stage', async () => {
@@ -152,7 +152,7 @@ describe('CampaignDetail page', () => {
   it('switches pipeline stage on rail click', async () => {
     const user = userEvent.setup()
     render(<CampaignDetail />, { wrapper: createWrapper('/app/campaigns/camp-1?stage=concepts') })
-    await user.click(screen.getByRole('button', { name: 'All assets' }))
+    await user.click(screen.getByRole('button', { name: 'All candidates' }))
     expect(screen.queryByTestId('generation-stage')).not.toBeInTheDocument()
   })
 })
