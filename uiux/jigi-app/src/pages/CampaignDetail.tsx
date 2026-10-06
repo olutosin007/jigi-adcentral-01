@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -55,6 +55,8 @@ import { JobContextRail } from '@/components/campaign/JobContextRail'
 import { JobSendStage, type SendTarget } from '@/components/job/JobSendStage'
 import { JobDecisionsStage } from '@/components/job/JobDecisionsStage'
 import { JobApprovedStage } from '@/components/job/JobApprovedStage'
+import { UploadCanvas, CreativeModeToggle } from '@/components/upload/UploadCanvas'
+import { parseCreativeMode, stageToUploadType, type CreativeMode } from '@/lib/upload-intake'
 import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
 
 const statusStyles: Record<string, string> = {
@@ -96,6 +98,7 @@ export function CampaignDetail() {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const stage = resolveStage(searchParams)
+  const creativeMode = parseCreativeMode(searchParams.get('mode'))
 
   const [isEditingBrief, setIsEditingBrief] = useState(false)
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
@@ -183,6 +186,13 @@ export function CampaignDetail() {
     const params = new URLSearchParams(searchParams)
     params.delete('tab')
     params.set('stage', next)
+    setSearchParams(params, { replace: true })
+  }
+
+  const setCreativeMode = (next: CreativeMode) => {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'upload') params.set('mode', 'upload')
+    else params.delete('mode')
     setSearchParams(params, { replace: true })
   }
 
@@ -390,6 +400,38 @@ export function CampaignDetail() {
     </div>
   )
 
+  const renderCreative = (generateView: ReactNode) => (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center justify-between gap-3 px-6 py-2.5 border-b border-border flex-shrink-0">
+        <CreativeModeToggle mode={creativeMode} onChange={setCreativeMode} />
+        {creativeMode === 'upload' && (
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            Uploaded work goes through the same approval loop
+          </span>
+        )}
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {creativeMode === 'upload' && id ? (
+          <UploadCanvas
+            campaignId={id}
+            userId={user?.id}
+            defaultType={stageToUploadType(stage)}
+            uploadedAssets={allAssets.filter((a) => a.source === 'uploaded')}
+            onOpenAsset={handleViewAsset}
+            onGoToSend={() => {
+              const params = new URLSearchParams(searchParams)
+              params.delete('mode')
+              params.set('stage', 'send')
+              setSearchParams(params, { replace: true })
+            }}
+          />
+        ) : (
+          generateView
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div className="flex flex-col h-[calc(100vh-60px)]">
       {/* Campaign Header — page owns chrome (no AppLayout title) */}
@@ -578,19 +620,21 @@ export function CampaignDetail() {
           />
         }
         generationStage={
-          isGenerationStage(stage) ? (
-            <GenerationPanel
-              campaign={campaign}
-              brandId={campaign.brand_id || undefined}
-              userId={user?.id}
-              onSubmitAsset={handleSubmitAsset}
-              embeddedInWorkspace
-              stage={stage}
-              onStageChange={(s) => setStage(s)}
-            />
-          ) : null
+          isGenerationStage(stage)
+            ? renderCreative(
+                <GenerationPanel
+                  campaign={campaign}
+                  brandId={campaign.brand_id || undefined}
+                  userId={user?.id}
+                  onSubmitAsset={handleSubmitAsset}
+                  embeddedInWorkspace
+                  stage={stage}
+                  onStageChange={(s) => setStage(s)}
+                />
+              )
+            : null
         }
-        assetsStage={renderAssetGrid(allAssets)}
+        assetsStage={renderCreative(renderAssetGrid(allAssets))}
       />
 
       <SubmitModal
