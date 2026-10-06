@@ -4,6 +4,8 @@ import { getSupabaseAdmin, getAuthenticatedUser } from './lib/supabase.js'
 import { sendEmail, createGuestReviewInviteHtml } from './lib/resend.js'
 import { applyReviewDecision } from './lib/review-domain.js'
 import { deriveBrandEssentials } from '../../src/lib/brand-essentials-core.js'
+import { countRounds, previousRoundSnapshot, roundLabel } from '../../src/lib/handoff/rounds.js'
+import { fetchRoundHistory } from './lib/status-history.js'
 import {
   REVIEWABLE_STATUSES,
   createRateLimiter,
@@ -145,6 +147,7 @@ async function handleCreate(req: VercelRequest, res: VercelResponse, admin: Supa
     .single()
   if (error || !link) return res.status(500).json({ error: 'Could not create review link' })
 
+  const round = countRounds(await fetchRoundHistory(admin, asset.id), asset.status)
   const url = `${appBaseUrl(req)}/r/${token}`
   let emailSent = false
   if (body.send_email && recipientEmail) {
@@ -152,7 +155,8 @@ async function handleCreate(req: VercelRequest, res: VercelResponse, admin: Supa
       const { data: sender } = await admin.from('users').select('name, email').eq('id', userId).single()
       await sendEmail({
         to: recipientEmail,
-        subject: `Decision needed: ${campaign.name}`,
+        subject:
+          round >= 2 ? `Revised — ${roundLabel(round)}: ${campaign.name}` : `Decision needed: ${campaign.name}`,
         replyTo: sender?.email ?? undefined,
         html: createGuestReviewInviteHtml({
           recipientName: body.recipient_name,
@@ -163,6 +167,7 @@ async function handleCreate(req: VercelRequest, res: VercelResponse, admin: Supa
           message: body.message?.slice(0, 2000),
           reviewUrl: url,
           expiresAt: expiresAt.toISOString(),
+          round,
         }),
       })
       emailSent = true
@@ -212,7 +217,7 @@ async function handleView(req: VercelRequest, res: VercelResponse, admin: Supaba
     return res.status(410).json({ state, error: 'This review link is no longer active' })
   }
 
-  const [{ data: asset }, { data: campaign }] = await Promise.all([
+  const [{ data: asset }, { data: campaign }, history] = await Promise.all([
     admin
       .from('creative_assets')
       .select('id, type, status, source, content, original_filename, version, submission_note, review_notes, validation_scores, drift_status, compliance_check, created_at, updated_at')
@@ -223,6 +228,7 @@ async function handleView(req: VercelRequest, res: VercelResponse, admin: Supaba
       .select('id, name, brief, brand_id, brands ( name, identity, voice )')
       .eq('id', link.campaign_id)
       .single(),
+    fetchRoundHistory(admin, link.asset_id),
   ])
   if (!asset || !campaign) return res.status(404).json({ state: 'not_found', error: 'This review link is not valid' })
 
@@ -246,6 +252,8 @@ async function handleView(req: VercelRequest, res: VercelResponse, admin: Supaba
       ).status
     : 'none'
 
+  const previousSnapshot = previousRoundSnapshot(history)
+
   return res.json({
     state,
     link: {
@@ -257,6 +265,8 @@ async function handleView(req: VercelRequest, res: VercelResponse, admin: Supaba
     },
     asset: { ...asset, content: sanitizeContentForGuest(asset.content) },
     brand_kit: brandKit,
+    round: countRounds(history, asset.status as string),
+    previous_content: previousSnapshot ? sanitizeContentForGuest(previousSnapshot) : null,
     campaign: {
       name: campaign.name,
       brief: {

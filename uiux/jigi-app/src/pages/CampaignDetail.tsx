@@ -57,6 +57,7 @@ import { ShareReviewLinkDialog } from '@/components/job/ShareReviewLinkDialog'
 import { useReviewLinks, useRevokeReviewLink } from '@/hooks/useReviewLinks'
 import { createReviewLink } from '@/lib/api-client'
 import { JobDecisionsStage } from '@/components/job/JobDecisionsStage'
+import { useCampaignRounds } from '@/hooks/useAssetRounds'
 import { JobApprovedStage } from '@/components/job/JobApprovedStage'
 import { UploadCanvas, CreativeModeToggle } from '@/components/upload/UploadCanvas'
 import { parseCreativeMode, stageToUploadType, type CreativeMode } from '@/lib/upload-intake'
@@ -133,6 +134,11 @@ export function CampaignDetail() {
   const { data: reviewLinks = [], refetch: refetchLinks } = useReviewLinks(id)
   const revokeLink = useRevokeReviewLink(id)
   const linksByAsset = useMemo(() => latestLinkByAsset(reviewLinks), [reviewLinks])
+  const inFlightAssets = useMemo(
+    () => allAssets.filter((a) => ['changes_requested', 'submitted', 'brand_review'].includes(a.status)),
+    [allAssets]
+  )
+  const { data: roundsByAsset } = useCampaignRounds(inFlightAssets)
 
   const gateInput = useMemo(
     () => (campaign ? buildPipelineGateInput(campaign, allAssets) : null),
@@ -638,6 +644,7 @@ export function CampaignDetail() {
             onResend={(asset) => handleSubmitAsset(asset.id)}
             brandKit={brandKit}
             links={linksByAsset}
+            rounds={roundsByAsset}
             onShare={setShareAsset}
             onRevokeLink={async (linkId) => {
               try {

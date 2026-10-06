@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { CheckCircle2, Clock, Link2Off, Loader2, MessageSquare, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, GitCompare, Link2Off, Loader2, MessageSquare, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AssetHeroPreview } from '@/components/decide/AssetHeroPreview'
 import { DecideActions, type DecideAction } from '@/components/decide/DecideActions'
 import { GuestDecisionDialog } from '@/components/decide/GuestDecisionDialog'
 import { OnBrandCheckPanel } from '@/components/decide/OnBrandCheckPanel'
+import { CompareToPrevious } from '@/components/decide/CompareToPrevious'
+import { RoundChip } from '@/components/decide/RoundChip'
 import {
   fetchGuestReview,
   submitGuestDecision,
@@ -121,6 +123,7 @@ export function GuestDecide() {
   const [pendingAction, setPendingAction] = useState<DecideAction | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [comparing, setComparing] = useState(false)
   const opened = useRef(false)
 
   useEffect(() => {
@@ -168,6 +171,8 @@ export function GuestDecide() {
   }
 
   const data = view.kind === 'ready' || view.kind === 'done' ? view.data : undefined
+  const round = data?.round ?? 1
+  const canCompare = round >= 2 && !!data?.previous_content
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-tour="guest-decide">
@@ -213,13 +218,31 @@ export function GuestDecide() {
         <>
           <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-40 pt-6 md:px-8 lg:pb-32">
             <div className="flex flex-col gap-6 lg:flex-row">
-              <AssetHeroPreview asset={view.data.asset} className="lg:w-[68%]" />
+              {comparing && canCompare ? (
+                <CompareToPrevious
+                  asset={view.data.asset}
+                  previousContent={view.data.previous_content!}
+                  round={round}
+                  className="lg:w-[68%]"
+                />
+              ) : (
+                <AssetHeroPreview asset={view.data.asset} className="lg:w-[68%]" />
+              )}
               <aside className="lg:flex-1 space-y-5">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F59E0B]/30 bg-[#FEF3C7] px-2.5 py-1 text-xs font-medium text-[#B45309] dark:bg-[#422006] dark:text-[#FBBF24]">
-                    <Clock className="h-3 w-3" aria-hidden />
-                    Needs your decision
-                  </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <RoundChip round={round} />
+                  {canCompare && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      aria-pressed={comparing}
+                      onClick={() => setComparing((c) => !c)}
+                    >
+                      <GitCompare className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                      {comparing ? 'Show current only' : 'Compare to previous'}
+                    </Button>
+                  )}
                 </div>
                 {view.data.asset.submission_note && (
                   <section className="rounded-[10px] border border-border bg-card p-4">

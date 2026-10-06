@@ -69,6 +69,26 @@ describe('GuestDecide', () => {
     expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ action: 'approve', guest_name: 'Ada' })
   })
 
+  it('shows the round and compares copy to the previous round', async () => {
+    fetchMock.mockReturnValueOnce(
+      jsonResponse({ ...payload, round: 2, previous_content: { headline: 'Spring is here', body: 'Body copy' } })
+    )
+    renderPage()
+    expect(await screen.findByTestId('round-chip')).toHaveTextContent('Round 2 · Needs your decision')
+    fireEvent.click(screen.getByRole('button', { name: /compare to previous/i }))
+    const compare = screen.getByTestId('compare-fields')
+    expect(compare).toHaveTextContent('Spring is here')
+    expect(compare).toHaveTextContent('Summer is here')
+    expect(compare).toHaveTextContent(/2 fields changed since Round 1/)
+  })
+
+  it('hides compare on the first round', async () => {
+    fetchMock.mockReturnValueOnce(jsonResponse(payload))
+    renderPage()
+    expect(await screen.findByTestId('round-chip')).toHaveTextContent(/^Needs your decision$/)
+    expect(screen.queryByRole('button', { name: /compare to previous/i })).not.toBeInTheDocument()
+  })
+
   it('requires notes before requesting changes', async () => {
     fetchMock.mockReturnValueOnce(jsonResponse(payload))
     renderPage()

@@ -160,7 +160,9 @@ export function createGuestReviewInviteHtml(params: {
   message?: string
   reviewUrl: string
   expiresAt: string
+  round?: number
 }) {
+  const revised = (params.round ?? 1) >= 2
   const hello = params.recipientName ? `Hi ${escapeHtml(params.recipientName)},` : 'Hi,'
   const who = escapeHtml(params.senderName)
   const campaign = escapeHtml(params.campaignName)
@@ -173,9 +175,9 @@ export function createGuestReviewInviteHtml(params: {
   return `
     <div style="font-family: 'Source Sans 3', -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #FEFDFB;">
       ${brand ? `<p style="color: #78716C; font-size: 13px; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em;">${brand}</p>` : ''}
-      <h2 style="color: #1C1917; margin: 0 0 16px;">Your decision is needed</h2>
+      <h2 style="color: #1C1917; margin: 0 0 16px;">${revised ? `Revised — Round ${params.round}` : 'Your decision is needed'}</h2>
       <p style="color: #44403C;">${hello}</p>
-      <p style="color: #44403C;"><strong>${who}</strong> sent you a ${escapeHtml(params.assetType)} for <strong>"${campaign}"</strong>. Approve it, ask for changes, or decline — no account needed.</p>
+      <p style="color: #44403C;"><strong>${who}</strong> sent you ${revised ? 'a revised' : 'a'} ${escapeHtml(params.assetType)} for <strong>"${campaign}"</strong>. Approve it, ask for changes, or decline — no account needed.</p>
       ${message ? `<div style="background: #F5F5F4; padding: 16px; border-radius: 8px; margin: 16px 0;"><p style="color: #57534E; margin: 0; white-space: pre-line;">${message}</p></div>` : ''}
       <a href="${params.reviewUrl}" style="display: inline-block; background: #0D9488; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin: 16px 0; font-weight: 600;">Review and decide</a>
       <p style="color: #78716C; font-size: 13px;">This link is personal to you and works until ${expires}.</p>

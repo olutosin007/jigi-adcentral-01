@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getSupabaseAdmin, getAuthenticatedUser } from '../lib/supabase.js'
 import { sendEmail, createSubmissionEmailHtml } from '../lib/resend.js'
+import { fetchRoundHistory, insertStatusHistory } from '../lib/status-history.js'
+import { nextRound, roundLabel } from '../../../src/lib/handoff/rounds.js'
 
 interface SubmitAssetRequest {
   asset_id: string
@@ -108,6 +110,9 @@ export default async function handler(
       })
     }
 
+    const round = newStatus === 'submitted' ? nextRound(await fetchRoundHistory(supabaseAdmin, body.asset_id)) : null
+    const isRevision = round !== null && round >= 2
+
     const { data: updated, error: updateError } = await supabaseAdmin
       .from('creative_assets')
       .update({
@@ -123,12 +128,13 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to update asset' })
     }
 
-    await supabaseAdmin.from('asset_status_history').insert({
+    await insertStatusHistory(supabaseAdmin, {
       asset_id: body.asset_id,
       user_id: user.id,
       from_status: asset.status,
       to_status: newStatus,
       notes: body.message,
+      ...(newStatus === 'submitted' ? { content_snapshot: asset.content ?? null } : {}),
     })
 
     const { data: submitter } = await supabaseAdmin
@@ -154,8 +160,10 @@ export default async function handler(
           .insert({
             user_id: reviewer.id,
             type: 'submission',
-            title: 'New asset submitted for review',
-            body: `${submitter?.name || 'A team member'} submitted a ${asset.type} for "${campaign.name}"`,
+            title: isRevision ? `Revised — ${roundLabel(round)}` : 'New asset submitted for review',
+            body: isRevision
+              ? `${submitter?.name || 'A team member'} sent a revised ${asset.type} for "${campaign.name}"`
+              : `${submitter?.name || 'A team member'} submitted a ${asset.type} for "${campaign.name}"`,
             related_asset_id: body.asset_id,
             related_campaign_id: campaign.id,
             generation_mode: asset.generation_mode,
@@ -166,7 +174,9 @@ export default async function handler(
         try {
           await sendEmail({
             to: reviewer.email,
-            subject: `New ${asset.type} submitted for review - ${campaign.name}`,
+            subject: isRevision
+              ? `Revised — ${roundLabel(round)}: ${asset.type} for ${campaign.name}`
+              : `New ${asset.type} submitted for review - ${campaign.name}`,
             html: createSubmissionEmailHtml({
               recipientName: reviewer.name || 'there',
               campaignName: campaign.name,
@@ -192,6 +202,7 @@ export default async function handler(
       asset: updated,
       previous_status: asset.status,
       new_status: newStatus,
+      round,
       notifications_sent: newStatus === 'submitted',
     })
   } catch (error) {
