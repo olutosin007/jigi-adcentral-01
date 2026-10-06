@@ -1,0 +1,95 @@
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import type { CreativeAsset } from '@/store/campaignStore'
+import { JobSendStage } from './JobSendStage'
+import { JobDecisionsStage } from './JobDecisionsStage'
+import { JobApprovedStage } from './JobApprovedStage'
+
+function asset(id: string, status: CreativeAsset['status'], extra: Partial<CreativeAsset> = {}): CreativeAsset {
+  return {
+    id,
+    campaign_id: 'c1',
+    created_by: 'u1',
+    type: 'copy',
+    generation_mode: 'brand_grounded',
+    content: { headline: `Headline ${id}`, body: 'b', cta: 'c' },
+    version: 1,
+    status,
+    compliance_check: {} as CreativeAsset['compliance_check'],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...extra,
+  } as CreativeAsset
+}
+
+describe('JobSendStage', () => {
+  it('shows empty state when nothing is sendable', () => {
+    render(<JobSendStage assets={[asset('a', 'approved')]} onSend={vi.fn()} isSending={false} />)
+    expect(screen.getByText('Nothing to send yet')).toBeInTheDocument()
+  })
+
+  it('sends selected drafts to client by default', async () => {
+    const onSend = vi.fn().mockResolvedValue(undefined)
+    render(
+      <JobSendStage
+        assets={[asset('a', 'draft'), asset('b', 'draft'), asset('c', 'approved')]}
+        onSend={onSend}
+        isSending={false}
+      />
+    )
+    expect(screen.getByRole('button', { name: /select creative to send/i })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: /select all/i }))
+    fireEvent.click(screen.getByRole('button', { name: /send 2 to client/i }))
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith(['a', 'b'], 'submitted', undefined))
+  })
+
+  it('groups returned work under Fix & resend', () => {
+    render(
+      <JobSendStage
+        assets={[asset('a', 'changes_requested'), asset('b', 'draft')]}
+        onSend={vi.fn()}
+        isSending={false}
+      />
+    )
+    expect(screen.getByRole('region', { name: 'Fix & resend' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Ready to send' })).toBeInTheDocument()
+  })
+})
+
+describe('JobDecisionsStage', () => {
+  it('surfaces client notes on returned work and offers resend', () => {
+    const onResend = vi.fn()
+    render(
+      <JobDecisionsStage
+        assets={[
+          asset('a', 'changes_requested', { review_notes: 'Make the logo bigger' }),
+          asset('b', 'brand_review'),
+        ]}
+        onResend={onResend}
+      />
+    )
+    expect(screen.getByText('Make the logo bigger')).toBeInTheDocument()
+    expect(screen.getByText('1 needs your fix')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Waiting on client' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /resend/i }))
+    expect(onResend).toHaveBeenCalled()
+  })
+
+  it('shows empty state when nothing is in flight', () => {
+    render(<JobDecisionsStage assets={[asset('a', 'draft')]} />)
+    expect(screen.getByText('No decisions in flight')).toBeInTheDocument()
+  })
+})
+
+describe('JobApprovedStage', () => {
+  it('lists approved assets', () => {
+    render(
+      <MemoryRouter>
+        <JobApprovedStage assets={[asset('a', 'approved')]} />
+      </MemoryRouter>
+    )
+    expect(screen.getByText('1 asset cleared for use')).toBeInTheDocument()
+    expect(screen.getByText('Headline a')).toBeInTheDocument()
+  })
+})

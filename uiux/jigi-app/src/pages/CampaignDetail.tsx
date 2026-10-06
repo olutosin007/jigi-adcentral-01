@@ -52,6 +52,9 @@ import {
   type JobGateMap,
 } from '@/lib/handoff'
 import { JobContextRail } from '@/components/campaign/JobContextRail'
+import { JobSendStage, type SendTarget } from '@/components/job/JobSendStage'
+import { JobDecisionsStage } from '@/components/job/JobDecisionsStage'
+import { JobApprovedStage } from '@/components/job/JobApprovedStage'
 import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
 
 const statusStyles: Record<string, string> = {
@@ -303,9 +306,28 @@ export function CampaignDetail() {
         note,
       })
       setSubmitModalAsset(null)
-      toast.success('Asset submitted for review')
+      toast.success(targetStatus === 'submitted' ? 'Sent to client' : 'Sent for internal check')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to submit asset')
+      toast.error(e instanceof Error ? e.message : 'Failed to send')
+    }
+  }
+
+  const handleSendMany = async (assetIds: string[], targetStatus: SendTarget, note?: string) => {
+    if (!id || !user) return
+    let sent = 0
+    for (const assetId of assetIds) {
+      try {
+        await submitAsset.mutateAsync({ assetId, campaignId: id, userId: user.id, targetStatus, note })
+        sent += 1
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to send')
+      }
+    }
+    if (sent > 0) {
+      toast.success(
+        `${sent} sent ${targetStatus === 'submitted' ? 'to client' : 'for internal check'}`
+      )
+      setStage('decisions')
     }
   }
 
@@ -506,11 +528,29 @@ export function CampaignDetail() {
             />
           )
         }
-        sendStage={renderAssetGrid(allAssets.filter((a) => a.status === 'draft'))}
-        decisionsStage={renderAssetGrid(
-          allAssets.filter((a) => a.status !== 'draft' && a.status !== 'approved')
-        )}
-        approvedStage={renderAssetGrid(allAssets.filter((a) => a.status === 'approved'))}
+        sendStage={
+          <JobSendStage
+            assets={allAssets}
+            onSend={handleSendMany}
+            isSending={submitAsset.isPending}
+            onOpenAsset={handleViewAsset}
+            onGoToCreative={() => setStage('concepts')}
+          />
+        }
+        decisionsStage={
+          <JobDecisionsStage
+            assets={allAssets}
+            onOpenAsset={handleViewAsset}
+            onResend={(asset) => handleSubmitAsset(asset.id)}
+            onGoToSend={() => setStage('send')}
+          />
+        }
+        approvedStage={
+          <JobApprovedStage
+            assets={allAssets.filter((a) => a.status === 'approved')}
+            onOpenAsset={handleViewAsset}
+          />
+        }
         briefStage={
           <CampaignBriefStage
             campaign={campaign}

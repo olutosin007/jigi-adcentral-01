@@ -53,7 +53,7 @@ Every action writes to `asset_status_history` **and** `approval_actions` for a f
 
 ## 5. Loop-back / re-review
 
-After `changes_requested`, the creative reworks and resubmits (`submitted` again). The asset reappears in the approver's Review Queue (step 2). `StatusHistoryTimeline` shows the prior round so the approver has context on the second pass.
+After `changes_requested`, the creative reworks and resubmits (`submitted` again). The asset reappears in the approver's **Inbox** (`/app/review`, formerly Review Queue) (step 2). `StatusHistoryTimeline` shows the prior round so the approver has context on the second pass.
 
 ## 6. Terminal / success state
 

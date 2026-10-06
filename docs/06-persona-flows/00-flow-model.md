@@ -97,7 +97,7 @@ sequenceDiagram
     AC->>App: Submit (target=brand_review)
     Note over App: status = submitted
     App-->>BA: Notification + email
-    BA->>App: Open Review Queue → asset
+    BA->>App: Open Inbox → asset (Decide)
     alt approve
         BA->>App: Review (approve)
         Note over App: status = approved

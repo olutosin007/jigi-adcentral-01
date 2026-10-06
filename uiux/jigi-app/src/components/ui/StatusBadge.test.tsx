@@ -2,17 +2,22 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { StatusBadge } from './StatusBadge'
 import { STATUS_CONFIG } from '@/lib/status'
+import { humanStatusLabel } from '@/lib/handoff'
 
 describe('StatusBadge', () => {
-  it.each(Object.keys(STATUS_CONFIG))('renders configured label for %s', (status) => {
-    const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG]
+  it.each(Object.keys(STATUS_CONFIG))('renders creator label for %s', (status) => {
     render(<StatusBadge status={status} />)
-    expect(screen.getByText(config.label)).toBeInTheDocument()
+    expect(screen.getByText(humanStatusLabel(status))).toBeInTheDocument()
   })
 
-  it('falls back to Draft for unknown status', () => {
+  it('renders client language when requested', () => {
+    render(<StatusBadge status="submitted" audience="client" />)
+    expect(screen.getByText('Needs your decision')).toBeInTheDocument()
+  })
+
+  it('falls back to Working for unknown status', () => {
     render(<StatusBadge status="unknown_status" />)
-    expect(screen.getByText('Draft')).toBeInTheDocument()
+    expect(screen.getByText('Working')).toBeInTheDocument()
   })
 
   it('renders an icon alongside the label', () => {
