@@ -25,6 +25,7 @@ export interface GuestReviewPayload {
     | 'review_notes'
     | 'validation_scores'
     | 'drift_status'
+    | 'compliance_check'
     | 'created_at'
     | 'updated_at'
   >
@@ -38,6 +39,7 @@ export interface GuestReviewPayload {
     }
   }
   brand: { name: string; logo_url: string | null; primary_colour: string | null } | null
+  brand_kit?: 'starter' | 'partial' | 'complete' | 'none'
 }
 
 export type GuestReviewResult =

@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAdmin, getAuthenticatedUser } from './lib/supabase.js'
 import { sendEmail, createGuestReviewInviteHtml } from './lib/resend.js'
 import { applyReviewDecision } from './lib/review-domain.js'
+import { deriveBrandEssentials } from '../../src/lib/brand-essentials-core.js'
 import {
   REVIEWABLE_STATUSES,
   createRateLimiter,
@@ -11,6 +12,7 @@ import {
   hashReviewToken,
   isPlausibleToken,
   linkExpiry,
+  sanitizeContentForGuest,
   validateGuestReviewInput,
   type ReviewLinkRow,
 } from './lib/review-links.js'
@@ -213,12 +215,12 @@ async function handleView(req: VercelRequest, res: VercelResponse, admin: Supaba
   const [{ data: asset }, { data: campaign }] = await Promise.all([
     admin
       .from('creative_assets')
-      .select('id, type, status, source, content, original_filename, version, submission_note, review_notes, validation_scores, drift_status, created_at, updated_at')
+      .select('id, type, status, source, content, original_filename, version, submission_note, review_notes, validation_scores, drift_status, compliance_check, created_at, updated_at')
       .eq('id', link.asset_id)
       .single(),
     admin
       .from('campaigns')
-      .select('id, name, brief, brand_id, brands ( name, identity )')
+      .select('id, name, brief, brand_id, brands ( name, identity, voice )')
       .eq('id', link.campaign_id)
       .single(),
   ])
@@ -231,8 +233,18 @@ async function handleView(req: VercelRequest, res: VercelResponse, admin: Supaba
     .eq('id', link.id)
 
   const brief = (campaign.brief ?? {}) as Record<string, unknown>
-  const brand = campaign.brands as unknown as { name: string; identity?: Record<string, unknown> } | null
+  const brand = campaign.brands as unknown as {
+    name: string
+    identity?: Record<string, unknown>
+    voice?: Record<string, unknown>
+  } | null
   const identity = (brand?.identity ?? {}) as { logo_url?: string; colours?: { primary?: string } }
+  const brandKit = brand
+    ? deriveBrandEssentials(
+        brand.identity as Parameters<typeof deriveBrandEssentials>[0],
+        brand.voice as Parameters<typeof deriveBrandEssentials>[1]
+      ).status
+    : 'none'
 
   return res.json({
     state,
@@ -243,7 +255,8 @@ async function handleView(req: VercelRequest, res: VercelResponse, admin: Supaba
       decision: link.decision,
       guest_name: link.guest_name,
     },
-    asset,
+    asset: { ...asset, content: sanitizeContentForGuest(asset.content) },
+    brand_kit: brandKit,
     campaign: {
       name: campaign.name,
       brief: {

@@ -124,3 +124,16 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 }
+
+const INTERNAL_CONTENT_KEY = /prompt|generation_log|(^|_)(model|provider|seed|negative|system|raw|tokens?)(_|$)/i
+
+/** Strip generation internals (prompts, model ids, raw output) before showing content to guests. */
+export function sanitizeContentForGuest(content: unknown): Record<string, unknown> {
+  if (!content || typeof content !== 'object' || Array.isArray(content)) return {}
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(content as Record<string, unknown>)) {
+    if (INTERNAL_CONTENT_KEY.test(key)) continue
+    out[key] = value
+  }
+  return out
+}

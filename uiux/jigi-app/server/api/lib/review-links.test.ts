@@ -7,6 +7,7 @@ import {
   hashReviewToken,
   isPlausibleToken,
   linkExpiry,
+  sanitizeContentForGuest,
   validateGuestReviewInput,
 } from './review-links'
 
@@ -100,5 +101,23 @@ describe('rate limiter + escaping', () => {
   })
   it('escapes HTML', () => {
     expect(escapeHtml('<b>"x" & \'y\'</b>')).toBe('&lt;b&gt;&quot;x&quot; &amp; &#39;y&#39;&lt;/b&gt;')
+  })
+})
+
+describe('sanitizeContentForGuest', () => {
+  it('drops prompts and model internals but keeps creative fields', () => {
+    expect(
+      sanitizeContentForGuest({
+        url: 'https://x/img.png',
+        headline: 'Hi',
+        prompt_used: 'secret',
+        negative_prompt: 'n',
+        model: 'flux',
+        provider: 'azure',
+        width: 1024,
+        drawing_notes: 'keep',
+      })
+    ).toEqual({ url: 'https://x/img.png', headline: 'Hi', width: 1024, drawing_notes: 'keep' })
+    expect(sanitizeContentForGuest(null)).toEqual({})
   })
 })
