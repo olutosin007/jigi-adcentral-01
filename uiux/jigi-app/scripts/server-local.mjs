@@ -91,6 +91,8 @@ const server = http.createServer(async (req, res) => {
     'POST /api/assets/review': './api/assets/review.ts',
     'POST /api/campaigns/select': './api/campaigns/select.ts',
     'POST /api/notifications/send': './api/notifications/send.ts',
+    'POST /api/review-links': './api/review-links.ts',
+    'GET /api/review-links': './api/review-links.ts',
   }
   const key = `${req.method} ${pathname}`
   let modulePath = routeMap[key]

@@ -194,6 +194,59 @@ export async function reviewAsset(
   })
 }
 
+export interface ReviewLink {
+  id: string
+  asset_id: string
+  campaign_id: string
+  brand_id: string | null
+  created_by: string
+  recipient_name: string | null
+  recipient_email: string | null
+  expires_at: string
+  revoked_at: string | null
+  max_uses: number | null
+  use_count: number
+  first_opened_at: string | null
+  last_used_at: string | null
+  decided_at: string | null
+  decision: 'approve' | 'reject' | 'request_changes' | null
+  guest_name: string | null
+  guest_email?: string | null
+  created_at: string
+}
+
+export interface CreateReviewLinkRequest {
+  asset_id: string
+  recipient_name?: string
+  recipient_email?: string
+  expires_in_days?: number
+  send_email?: boolean
+  message?: string
+}
+
+export interface CreateReviewLinkResponse {
+  link: ReviewLink
+  url: string
+  token: string
+  email_sent: boolean
+}
+
+export async function createReviewLink(
+  request: CreateReviewLinkRequest
+): Promise<CreateReviewLinkResponse> {
+  return apiRequest<CreateReviewLinkResponse>('/review-links', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function revokeReviewLink(linkId: string): Promise<{ link: ReviewLink }> {
+  return apiRequest<{ link: ReviewLink }>('/review-links?action=revoke', {
+    method: 'POST',
+    body: JSON.stringify({ link_id: linkId }),
+  })
+}
+
 export interface SelectCampaignAssetRequest {
   campaign_id: string
   selection: 'concept' | 'copy'

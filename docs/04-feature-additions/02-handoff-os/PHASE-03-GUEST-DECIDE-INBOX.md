@@ -55,6 +55,14 @@ This is the Filestage bar for entry; Jigi keeps brand context hooks for P4.
 4. **Permissions**
    - Link creation requires same access as submit; action only valid while asset in `submitted` \| `brand_review`.
 
+### As built (3.1)
+
+- **One function, query-routed** (Vercel Hobby caps at 12 functions; 11 existed): `POST /api/review-links` (create), `POST /api/review-links?action=revoke`, `GET /api/review-links?token=…`, `POST /api/review-links?action=review&token=…`. Handler: `server/api/review-links.ts`.
+- **Migration** `supabase/migrations/032_review_links.sql`: `review_links` + audit columns (`reviewed_via`, `guest_name`, `guest_email`, `review_link_id`). Clients get SELECT on safe columns only (no `token_hash`); writes are service-role only.
+- **Shared domain** `server/api/lib/review-domain.ts` (`applyReviewDecision`) now backs both `POST /api/assets/review` and guest decisions. Update is guarded with `status IN (submitted, brand_review)` so concurrent decisions return 409.
+- **Token**: 32 random bytes base64url; SHA-256 at rest; TTL default 14d (1–60 clamp); single decision per link; revoke; best-effort per-instance rate limits (60 views/min, 10 decisions/min per IP).
+- Guest `request_changes` requires notes; name required; email optional. Email content is HTML-escaped.
+
 ### Acceptance
 
 - [ ] Guest can approve/request changes/reject through token API; asset status + history match authenticated path.

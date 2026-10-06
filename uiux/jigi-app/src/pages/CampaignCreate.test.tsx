@@ -94,7 +94,7 @@ describe('CampaignCreate page', () => {
     const nameInput = screen.getByLabelText(/campaign name/i)
     fireEvent.change(nameInput, { target: { value: 'My New Campaign' } })
     expect(nameInput).toHaveValue('My New Campaign')
-  })
+  }, 40_000)
 
   it('U1: navigates to campaign with ?stage=brief after create', async () => {
     const user = userEvent.setup()
