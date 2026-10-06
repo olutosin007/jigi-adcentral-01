@@ -10,7 +10,7 @@ import {
   GitCompare,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import {
   Tooltip,
   TooltipContent,
@@ -37,9 +37,10 @@ import {
   useDeleteComment,
 } from '@/hooks/useCampaignQueries'
 import { useAuthStore } from '@/store/authStore'
-import { getStatusConfig, isPendingReview, type ReviewAction } from '@/lib/status'
+import { isPendingReview, type ReviewAction } from '@/lib/status'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { trackDecision } from '@/lib/analytics'
 
 export function AssetReview() {
   const { assetId } = useParams<{ assetId: string }>()
@@ -103,6 +104,15 @@ export function AssetReview() {
         userId: user.id,
         action,
         notes,
+      })
+
+      trackDecision({
+        via: 'app',
+        action,
+        round: rounds?.round ?? 1,
+        sentAt: asset.updated_at,
+        assetType: asset.type,
+        candidateSource: asset.source,
       })
 
       const actionLabels: Record<ReviewAction, string> = {
@@ -295,13 +305,12 @@ export function AssetReview() {
           icon={FileQuestion}
           title="Asset not found"
           description="This asset may have been removed or you don’t have access."
-          action={{ label: 'Back to queue', onClick: goToQueue }}
+          action={{ label: 'Back to Inbox', onClick: goToQueue }}
         />
       </div>
     )
   }
 
-  const statusConfig = getStatusConfig(asset.status)
   const canReview = isPendingReview(asset.status)
   const round = rounds?.round ?? 1
   const canCompare = round >= 2 && !!rounds?.previousContent
@@ -324,7 +333,7 @@ export function AssetReview() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-3 border-b bg-background">
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm">
           <Button variant="ghost" size="sm" onClick={goToQueue} className="h-auto p-0 text-muted-foreground hover:text-primary font-medium">
-            Review Queue
+            Inbox
           </Button>
           <span className="text-muted-foreground">/</span>
           {asset.campaign && (
@@ -344,9 +353,7 @@ export function AssetReview() {
           {canReview ? (
             <RoundChip round={round} suffix="Waiting on you" />
           ) : (
-            <Badge className={`${statusConfig.bgColor} ${statusConfig.color}`}>
-              {statusConfig.label}
-            </Badge>
+            <StatusBadge status={asset.status} audience="client" />
           )}
           {canCompare && (
             <Button

@@ -182,7 +182,7 @@ async function notifyCreator(
         action: action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'changes_requested',
         reviewerName,
         notes,
-        assetUrl: `${appUrl}/app/campaigns/${campaign.id}?stage=decisions`,
+        assetUrl: `${appUrl}/app/campaigns/${campaign.id}?stage=decisions${action === 'request_changes' ? `&fix=${asset.id}` : ''}`,
       }),
     })
 

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   countJobAssets,
   getJobNextAction,
+  oldestWaitingAt,
+  waitingDays,
   humanStatusLabel,
   EMPTY_JOB_COUNTS,
 } from './index'
@@ -47,6 +49,37 @@ describe('countJobAssets', () => {
 })
 
 describe('getJobNextAction', () => {
+  it('nudges the client when work has waited too long, ahead of new drafts', () => {
+    const action = getJobNextAction({
+      counts: { ...EMPTY_JOB_COUNTS, total: 3, waiting: 2, draft: 1 },
+      briefReady: true,
+      oldestWaitingAt: '2026-10-01T09:00:00Z',
+      now: new Date('2026-10-05T10:00:00Z'),
+    })
+    expect(action).toMatchObject({ label: 'Nudge client', stage: 'decisions', hint: '2 assets waiting 4 days' })
+  })
+
+  it('keeps normal priority when waiting is fresh', () => {
+    const action = getJobNextAction({
+      counts: { ...EMPTY_JOB_COUNTS, total: 2, waiting: 1, draft: 1 },
+      briefReady: true,
+      oldestWaitingAt: '2026-10-04T09:00:00Z',
+      now: new Date('2026-10-05T10:00:00Z'),
+    })
+    expect(action.label).toBe('Send for approval')
+  })
+
+  it('finds the oldest waiting asset', () => {
+    expect(
+      oldestWaitingAt([
+        { status: 'submitted', updated_at: '2026-10-03' },
+        { status: 'brand_review', updated_at: '2026-10-02' },
+        { status: 'draft', updated_at: '2026-09-01' },
+      ])
+    ).toBe('2026-10-02')
+    expect(waitingDays(null)).toBe(0)
+  })
+
   it('prioritises client changes over everything', () => {
     const action = getJobNextAction({
       counts: { ...EMPTY_JOB_COUNTS, total: 3, changes: 2, draft: 1 },

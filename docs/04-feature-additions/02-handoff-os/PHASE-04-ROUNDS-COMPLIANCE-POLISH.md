@@ -1,7 +1,7 @@
 # Phase 4 — Rounds, Compliance-on-Decide & Polish
 
 **Initiative:** [Handoff OS](./README.md)  
-**Status:** Ready  
+**Status:** Implemented  
 **Duration:** 3 sprints (~3 weeks)  
 **Depends on:** P3 Decide surface (guest + authenticated sharing components)  
 **Unlocks:** Distinctive “brand-aware proofing” vs Filestage; trust vs GenStudio-lite

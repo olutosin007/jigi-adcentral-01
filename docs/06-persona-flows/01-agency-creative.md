@@ -60,16 +60,19 @@ The most-missed cycle. When a Brand Approver requests changes:
 
 ```mermaid
 flowchart LR
-    A[Work row: Fix N notes] --> B[Job ?stage=decisions]
-    B --> C[Read client notes under Fix & resend]
-    C --> D[Regenerate / edit asset]
-    D --> E[Resend from Decisions or Send stage]
-    E --> F[status = submitted]
+    A[Work row: Fix N notes / email link ?fix=asset] --> B[Job ?stage=decisions]
+    B --> C[Fix & resend dialog: client notes pinned]
+    C --> D[Edit copy fields or upload revised file]
+    D --> E[Resend as Round N+1]
+    E --> F[status = submitted, new round]
 ```
 
-- Entry: Work home next action (*Fix N notes*) or `NotificationBell` → `changes_requested`, deep-links to the job.
-- `JobDecisionsStage` groups work as **Fix & resend** (client notes inline), **Waiting on client**, **Internal check**, **Not moving forward**.
-- Asset is back in `changes_requested`; editing returns it toward `draft`, resubmitting sets `submitted` again.
+- Entry: Work home next action (*Fix N notes*), the changes-requested email (`?stage=decisions&fix=<assetId>` auto-opens the dialog), or opening a returned asset from Decisions.
+- `FixAndResendDialog` (`data-tour="fix-resend"`) pins *What the client asked for*, lets the creator edit copy/concept fields or upload a revised file (content + `version` only — status never changes client-side), add *Tell the client what changed*, then **Resend as Round N** via `POST /api/assets/submit`.
+- If the previous review link was emailed to a client, resend automatically emails a fresh link (*Revised — Round N*).
+- `JobDecisionsStage` groups work as **Fix & resend** (client notes inline), **Waiting on client** (grouped by round, with round labels), **Internal check**, **Not moving forward**.
+- Rounds are counted from `asset_status_history` (one round per client send). Each send stores `content_snapshot` (migration 033) so approvers can **Compare to previous**.
+- Work home nudges stale work: if anything has waited on the client for 3+ days, the job's next action becomes *Nudge client*.
 
 ## 6. Terminal / success state
 
@@ -80,11 +83,11 @@ flowchart LR
 
 1. **First on-brand generation (steps 4–6)** — the "wow". If the first concept/image feels off-brand, trust collapses. The tour should slow down and point at the brand-alignment score and visual-style result. If the brand kit is incomplete, the generation banner is the cue to finish essentials before heavy iteration.
 2. **Submit (step 8)** — the commitment moment. Make the `target` choice (internal vs brand) unambiguous.
-3. **Changes-requested loop (§5)** — where creators get lost. Surface review notes prominently on return.
+3. **Changes-requested loop (§5)** — where creators get lost. Notes are pinned in Fix & resend; the resend is labelled with its round so nobody re-reviews from scratch.
 
 ## 8. Anchor inventory (this persona)
 
-See [anchor-inventory.md](./anchor-inventory.md) for the full table. Anchors used here: `work-home`, `job-stage-rail`, `job-context-rail`, `journey-choice`, `brand-create`, `brief-form`, `generation-panel`, `compliance-panel`, `submit-action`, `notification-bell`, `approved-assets`.
+See [anchor-inventory.md](./anchor-inventory.md) for the full table. Anchors used here: `work-home`, `job-stage-rail`, `job-context-rail`, `journey-choice`, `brand-create`, `brief-form`, `generation-panel`, `compliance-panel`, `submit-action`, `send-stage`, `decisions-stage`, `fix-resend`, `notification-bell`, `approved-assets`.
 
 ## 9. Status language (UI)
 

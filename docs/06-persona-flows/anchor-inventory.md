@@ -40,6 +40,7 @@ The bridge artifact. Every tour step, every doc step, and (later) every E2E sele
 | `asset-details` | `/app/review/:assetId` | `src/components/review/AssetDetailsSidebar.tsx` | Details sidebar root | Review brief + compliance + history |
 | `comments-sidebar` | `/app/review/:assetId` | `src/components/comments/CommentsSidebar.tsx` | Comments panel root | Discuss (optional) |
 | `review-actions` | `/app/review/:assetId` | `src/components/review/ReviewActions.tsx` | Action button group | Approve / reject / request changes |
+| `fix-resend` | `/app/campaigns/:id?stage=decisions` | `src/components/job/FixAndResendDialog.tsx` | Dialog content | Creator: read notes, revise, resend as next round |
 
 ## Guest Approver
 
@@ -48,6 +49,7 @@ The bridge artifact. Every tour step, every doc step, and (later) every E2E sele
 | `guest-decide` | `/r/:token` | `src/pages/GuestDecide.tsx` | Page root | Orientation (outside onborda — no tour) |
 | `decide-asset` | `/r/:token` | `src/components/decide/AssetHeroPreview.tsx` | Hero root | Look at the work |
 | `decide-actions` | `/r/:token` | `src/components/decide/DecideActions.tsx` | Action bar | Approve / Request changes / Decline |
+| `on-brand-check` | `/r/:token`, `/app/review/:assetId` | `src/components/decide/OnBrandCheckPanel.tsx` | Panel root | Is it on-brand? (shared guest + app) |
 
 ## Cross-cutting (both personas)
 

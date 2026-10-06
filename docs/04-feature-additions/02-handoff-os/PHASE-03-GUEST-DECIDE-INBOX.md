@@ -1,7 +1,7 @@
 # Phase 3 — Guest Decide & Inbox
 
 **Initiative:** [Handoff OS](./README.md)  
-**Status:** Ready  
+**Status:** Implemented  
 **Duration:** 3 sprints (~3 weeks)  
 **Depends on:** P1 (Send stage + human labels); P2 recommended so upload demos work for freelancers  
 **Unlocks:** Archetype 1 sellability; P4 polish on Decide chrome

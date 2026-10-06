@@ -15,7 +15,7 @@ import {
   type GuestLinkState,
   type GuestReviewPayload,
 } from '@/lib/guest-review-api'
-import { trackEvent } from '@/lib/analytics'
+import { trackDecision, trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 type ViewState =
@@ -142,7 +142,7 @@ export function GuestDecide() {
       }
       if (!opened.current) {
         opened.current = true
-        trackEvent('decide_opened', { via: 'guest', asset_type: data.asset.type })
+        trackEvent('decide_opened', { via: 'guest', asset_type: data.asset.type, round: data.round ?? 1 })
       }
     })
     return () => {
@@ -165,7 +165,14 @@ export function GuestDecide() {
       setSubmitError(result.error)
       return
     }
-    trackEvent('decide_completed', { via: 'guest', action: pendingAction })
+    trackDecision({
+      via: 'guest',
+      action: pendingAction,
+      round: view.data.round ?? 1,
+      sentAt: view.data.asset.updated_at,
+      assetType: view.data.asset.type,
+      candidateSource: view.data.asset.source,
+    })
     setView({ kind: 'done', data: view.data, decision: pendingAction, by: identity.name.trim() })
     setPendingAction(null)
   }
