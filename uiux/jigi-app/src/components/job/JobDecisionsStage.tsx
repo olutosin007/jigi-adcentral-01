@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { MessageSquareWarning, Send, Hourglass } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { CreativeAsset } from '@/store/campaignStore'
+import type { BrandKitLevel } from '@/lib/handoff'
+import { cn } from '@/lib/utils'
 import { JobAssetRow } from './JobAssetRow'
 
 interface JobDecisionsStageProps {
@@ -9,6 +12,20 @@ interface JobDecisionsStageProps {
   onOpenAsset?: (asset: CreativeAsset) => void
   onResend?: (asset: CreativeAsset) => void
   onGoToSend?: () => void
+  brandKit?: BrandKitLevel
+}
+
+type SourceFilter = 'all' | 'ai' | 'uploaded'
+
+const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'ai', label: 'AI' },
+  { id: 'uploaded', label: 'Uploaded' },
+]
+
+function matchesSource(asset: CreativeAsset, filter: SourceFilter) {
+  if (filter === 'all') return true
+  return filter === 'uploaded' ? asset.source === 'uploaded' : asset.source !== 'uploaded'
 }
 
 function bucket(assets: CreativeAsset[], statuses: string[]) {
@@ -17,12 +34,25 @@ function bucket(assets: CreativeAsset[], statuses: string[]) {
     .sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
 }
 
-export function JobDecisionsStage({ assets, onOpenAsset, onResend, onGoToSend }: JobDecisionsStageProps) {
-  const changes = bucket(assets, ['changes_requested'])
-  const waiting = bucket(assets, ['submitted', 'brand_review'])
-  const internal = bucket(assets, ['agency_review'])
-  const declined = bucket(assets, ['rejected'])
-  const total = changes.length + waiting.length + internal.length + declined.length
+export function JobDecisionsStage({
+  assets,
+  onOpenAsset,
+  onResend,
+  onGoToSend,
+  brandKit,
+}: JobDecisionsStageProps) {
+  const [source, setSource] = useState<SourceFilter>('all')
+  const inFlight = assets.filter((a) =>
+    ['changes_requested', 'submitted', 'brand_review', 'agency_review', 'rejected'].includes(a.status)
+  )
+  const hasMixedSources =
+    inFlight.some((a) => a.source === 'uploaded') && inFlight.some((a) => a.source !== 'uploaded')
+  const visible = inFlight.filter((a) => matchesSource(a, source))
+  const changes = bucket(visible, ['changes_requested'])
+  const waiting = bucket(visible, ['submitted', 'brand_review'])
+  const internal = bucket(visible, ['agency_review'])
+  const declined = bucket(visible, ['rejected'])
+  const total = inFlight.length
 
   if (total === 0) {
     return (
@@ -39,6 +69,7 @@ export function JobDecisionsStage({ assets, onOpenAsset, onResend, onGoToSend }:
 
   return (
     <div className="p-6 overflow-y-auto h-full space-y-6" data-tour="decisions-stage">
+      <div className="flex items-end justify-between gap-3">
       <div>
         <h2 className="text-lg font-semibold text-foreground">Decisions</h2>
         <p className="text-sm text-muted-foreground">
@@ -49,6 +80,26 @@ export function JobDecisionsStage({ assets, onOpenAsset, onResend, onGoToSend }:
               : 'Nothing waiting on you'}
         </p>
       </div>
+        {hasMixedSources && (
+          <div role="radiogroup" aria-label="Filter by source" className="inline-flex rounded-lg border border-border bg-muted p-0.5">
+            {SOURCE_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                role="radio"
+                aria-checked={source === f.id}
+                onClick={() => setSource(f.id)}
+                className={cn(
+                  'px-2.5 py-0.5 text-xs rounded-md',
+                  source === f.id ? 'bg-card text-foreground font-medium shadow-sm' : 'text-muted-foreground'
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {changes.length > 0 && (
         <section className="space-y-2" aria-label="Fix and resend">
@@ -56,6 +107,7 @@ export function JobDecisionsStage({ assets, onOpenAsset, onResend, onGoToSend }:
           {changes.map((asset) => (
             <div key={asset.id} className="space-y-1.5">
               <JobAssetRow
+                brandKit={brandKit}
                 asset={asset}
                 onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
                 timestampLabel="Returned"
@@ -86,6 +138,7 @@ export function JobDecisionsStage({ assets, onOpenAsset, onResend, onGoToSend }:
           </p>
           {waiting.map((asset) => (
             <JobAssetRow
+                brandKit={brandKit}
               key={asset.id}
               asset={asset}
               timestampLabel="Sent"
@@ -100,6 +153,7 @@ export function JobDecisionsStage({ assets, onOpenAsset, onResend, onGoToSend }:
           <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Internal check</p>
           {internal.map((asset) => (
             <JobAssetRow
+                brandKit={brandKit}
               key={asset.id}
               asset={asset}
               onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
@@ -116,6 +170,7 @@ export function JobDecisionsStage({ assets, onOpenAsset, onResend, onGoToSend }:
           {declined.map((asset) => (
             <div key={asset.id} className="space-y-1.5">
               <JobAssetRow
+                brandKit={brandKit}
                 asset={asset}
                 onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
               />

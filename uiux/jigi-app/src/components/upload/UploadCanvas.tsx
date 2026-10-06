@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertCircle, CheckCircle2, Loader2, Send, X } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Loader2, Send, ShieldCheck, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,6 +13,7 @@ import {
   type UploadAssetType,
 } from '@/lib/upload-intake'
 import type { CreativeAsset } from '@/store/campaignStore'
+import { canRunBrandCheck, summarizeBrandCheck, type BrandKitLevel } from '@/lib/handoff'
 import { JobAssetRow } from '@/components/job/JobAssetRow'
 import { cn } from '@/lib/utils'
 import { UploadDropzone } from './UploadDropzone'
@@ -34,6 +35,9 @@ interface UploadCanvasProps {
   uploadedAssets: CreativeAsset[]
   onOpenAsset?: (asset: CreativeAsset) => void
   onGoToSend?: () => void
+  brandKit?: BrandKitLevel
+  onCheckBrand?: (assetIds: string[]) => Promise<void>
+  isCheckingBrand?: boolean
 }
 
 const TYPE_LABELS: Record<UploadAssetType, string> = {
@@ -67,6 +71,9 @@ export function UploadCanvas({
   uploadedAssets,
   onOpenAsset,
   onGoToSend,
+  brandKit = 'none',
+  onCheckBrand,
+  isCheckingBrand = false,
 }: UploadCanvasProps) {
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [copyText, setCopyText] = useState('')
@@ -149,6 +156,11 @@ export function UploadCanvas({
       setIsPastingCopy(false)
     }
   }
+
+  const uncheckedIds = uploadedAssets
+    .filter((a) => summarizeBrandCheck(a, brandKit).state === 'unchecked')
+    .map((a) => a.id)
+  const showBrandCheck = Boolean(onCheckBrand) && canRunBrandCheck(brandKit)
 
   const readyCount = queue.filter((i) => i.status === 'ready').length
   const doneCount = queue.filter((i) => i.status === 'done').length
@@ -280,17 +292,44 @@ export function UploadCanvas({
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Uploaded to this job ({uploadedAssets.length})
             </p>
-            {onGoToSend && uploadedAssets.some((a) => a.status === 'draft') && (
-              <Button size="sm" variant="outline" onClick={onGoToSend}>
-                <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                Send for approval
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {showBrandCheck && uncheckedIds.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={isCheckingBrand}
+                  onClick={() => onCheckBrand?.(uncheckedIds)}
+                >
+                  {isCheckingBrand ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <ShieldCheck className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Check against brand
+                </Button>
+              )}
+              {onGoToSend && uploadedAssets.some((a) => a.status === 'draft') && (
+                <Button size="sm" variant="outline" onClick={onGoToSend}>
+                  <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  Send for approval
+                </Button>
+              )}
+            </div>
           </div>
+          {brandKit === 'none' ? (
+            <p className="text-xs text-muted-foreground">Attach a brand to this job to run brand checks.</p>
+          ) : (
+            brandKit !== 'complete' && (
+              <p className="text-xs text-[#B45309] dark:text-[#FBBF24]">
+                Guidance only — complete the brand kit for stronger checks.
+              </p>
+            )
+          )}
           {uploadedAssets.map((asset) => (
             <JobAssetRow
               key={asset.id}
               asset={asset}
+              brandKit={brandKit}
               onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
             />
           ))}

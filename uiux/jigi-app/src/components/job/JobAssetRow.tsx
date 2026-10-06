@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { FileText, Image as ImageIcon, Layers } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { getAssetImageUrl, getAssetTitle } from '@/lib/handoff'
+import { getAssetImageUrl, getAssetTitle, type BrandKitLevel } from '@/lib/handoff'
+import { BrandCheckChip } from './BrandCheckChip'
 import type { CreativeAsset } from '@/store/campaignStore'
 import { cn } from '@/lib/utils'
 
@@ -34,9 +35,18 @@ interface JobAssetRowProps {
   meta?: ReactNode
   onOpen?: () => void
   timestampLabel?: string
+  brandKit?: BrandKitLevel
 }
 
-export function JobAssetRow({ asset, leading, trailing, meta, onOpen, timestampLabel }: JobAssetRowProps) {
+export function JobAssetRow({
+  asset,
+  leading,
+  trailing,
+  meta,
+  onOpen,
+  timestampLabel,
+  brandKit,
+}: JobAssetRowProps) {
   const title = getAssetTitle(asset)
   return (
     <div className="flex items-center gap-3 rounded-[10px] border border-border bg-card px-3 py-2.5">
@@ -66,6 +76,7 @@ export function JobAssetRow({ asset, leading, trailing, meta, onOpen, timestampL
             {timestampLabel ? `${timestampLabel} ` : ''}
             {formatDistanceToNow(new Date(asset.updated_at ?? asset.created_at), { addSuffix: true })}
           </span>
+          {brandKit && brandKit !== 'none' && <BrandCheckChip asset={asset} kit={brandKit} />}
           {meta}
         </div>
       </div>

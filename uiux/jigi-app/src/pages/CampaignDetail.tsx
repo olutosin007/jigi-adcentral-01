@@ -58,6 +58,9 @@ import { JobApprovedStage } from '@/components/job/JobApprovedStage'
 import { UploadCanvas, CreativeModeToggle } from '@/components/upload/UploadCanvas'
 import { parseCreativeMode, stageToUploadType, type CreativeMode } from '@/lib/upload-intake'
 import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
+import { deriveBrandEssentials } from '@/lib/brand-profile-status'
+import { trackEvent } from '@/lib/analytics'
+import type { BrandKitLevel } from '@/lib/handoff'
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground border-border',
@@ -141,6 +144,10 @@ export function CampaignDetail() {
           })
         : null,
     [gateInput, jobCounts, allAssets]
+  )
+  const brandKit: BrandKitLevel = useMemo(
+    () => (brand ? deriveBrandEssentials(brand.identity, brand.voice).status : 'none'),
+    [brand]
   )
   const briefReadiness = useMemo(
     () =>
@@ -334,6 +341,14 @@ export function CampaignDetail() {
       }
     }
     if (sent > 0) {
+      const sentAssets = allAssets.filter((a) => assetIds.includes(a.id))
+      trackEvent('assets_sent', {
+        count: sent,
+        target: targetStatus,
+        send_mixed_sources:
+          sentAssets.some((a) => a.source === 'uploaded') &&
+          sentAssets.some((a) => a.source !== 'uploaded'),
+      })
       toast.success(
         `${sent} sent ${targetStatus === 'submitted' ? 'to client' : 'for internal check'}`
       )
@@ -418,6 +433,9 @@ export function CampaignDetail() {
             defaultType={stageToUploadType(stage)}
             uploadedAssets={allAssets.filter((a) => a.source === 'uploaded')}
             onOpenAsset={handleViewAsset}
+            brandKit={brandKit}
+            onCheckBrand={revalidate}
+            isCheckingBrand={validateAssetsMutation.isPending}
             onGoToSend={() => {
               const params = new URLSearchParams(searchParams)
               params.delete('mode')
@@ -576,6 +594,7 @@ export function CampaignDetail() {
             onSend={handleSendMany}
             isSending={submitAsset.isPending}
             onOpenAsset={handleViewAsset}
+            brandKit={brandKit}
             onGoToCreative={() => setStage('concepts')}
           />
         }
@@ -584,6 +603,7 @@ export function CampaignDetail() {
             assets={allAssets}
             onOpenAsset={handleViewAsset}
             onResend={(asset) => handleSubmitAsset(asset.id)}
+            brandKit={brandKit}
             onGoToSend={() => setStage('send')}
           />
         }
