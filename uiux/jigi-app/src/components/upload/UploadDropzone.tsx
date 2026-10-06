@@ -4,10 +4,21 @@ import { Button } from '@/components/ui/button'
 
 interface UploadDropzoneProps {
   accept?: string[]
-  onFileSelected: (file: File) => void
+  onFileSelected?: (file: File) => void
+  onFilesSelected?: (files: File[]) => void
+  multiple?: boolean
+  title?: string
+  hint?: string
 }
 
-export function UploadDropzone({ accept, onFileSelected }: UploadDropzoneProps) {
+export function UploadDropzone({
+  accept,
+  onFileSelected,
+  onFilesSelected,
+  multiple = false,
+  title,
+  hint,
+}: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -18,10 +29,15 @@ export function UploadDropzone({ accept, onFileSelected }: UploadDropzoneProps) 
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return
-      const [file] = Array.from(files)
-      onFileSelected(file)
+      const list = Array.from(files)
+      if (multiple && onFilesSelected) {
+        onFilesSelected(list)
+      } else {
+        onFileSelected?.(list[0])
+        onFilesSelected?.([list[0]])
+      }
     },
-    [onFileSelected]
+    [multiple, onFileSelected, onFilesSelected]
   )
 
   const handleDrop: React.DragEventHandler<HTMLDivElement> = (event) => {
@@ -58,12 +74,20 @@ export function UploadDropzone({ accept, onFileSelected }: UploadDropzoneProps) 
         role="button"
         tabIndex={0}
         onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            handleClick()
+          }
+        }}
       >
-        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-sm mb-4">
+        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-card shadow-sm mb-4">
           <ImageIcon className="w-6 h-6 text-primary" />
         </div>
-        <p className="text-sm font-medium text-foreground">Drag and drop a file here</p>
-        <p className="text-xs text-gray-500 mt-1">or click to browse from your computer</p>
+        <p className="text-sm font-medium text-foreground">
+          {title ?? (multiple ? 'Drag and drop files here' : 'Drag and drop a file here')}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">{hint ?? 'or click to browse from your computer'}</p>
         {accept && accept.length > 0 && (
           <p className="text-[11px] text-muted-foreground/80 mt-2">
             Accepted types: {accept.join(', ')}
@@ -76,7 +100,7 @@ export function UploadDropzone({ accept, onFileSelected }: UploadDropzoneProps) 
           className="mt-4"
         >
           <UploadCloud className="w-4 h-4 mr-2" />
-          Choose file
+          {multiple ? 'Choose files' : 'Choose file'}
         </Button>
       </div>
 
@@ -84,8 +108,13 @@ export function UploadDropzone({ accept, onFileSelected }: UploadDropzoneProps) 
         ref={inputRef}
         type="file"
         accept={acceptAttr}
+        multiple={multiple}
         className="hidden"
-        onChange={(event) => handleFiles(event.target.files)}
+        data-testid="upload-input"
+        onChange={(event) => {
+          handleFiles(event.target.files)
+          event.target.value = ''
+        }}
       />
     </div>
   )
