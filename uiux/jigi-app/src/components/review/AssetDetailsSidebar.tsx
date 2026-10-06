@@ -8,6 +8,8 @@ import { Separator } from '@/components/ui/separator'
 import { ComplianceDisplay } from '@/components/generation/ComplianceDisplay'
 import { DriftBadge } from '@/components/generation/DriftBadge'
 import { StatusHistoryTimeline } from './StatusHistoryTimeline'
+import { OnBrandCheckPanel } from '@/components/decide/OnBrandCheckPanel'
+import { deriveBrandEssentials } from '@/lib/brand-profile-status'
 import { CommentsSidebar, type Comment } from '@/components/comments'
 import { getStatusConfig } from '@/lib/status'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -67,6 +69,7 @@ export function AssetDetailsSidebar({
   const [showComments, setShowComments] = useState(false)
   const statusConfig = getStatusConfig(asset.status)
   const StatusIcon = statusConfig.icon
+  const brandKit = asset.brand ? deriveBrandEssentials(asset.brand.identity, asset.brand.voice).status : 'none'
 
   return (
     <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-muted/30 overflow-y-auto h-full" data-tour="asset-details">
@@ -97,6 +100,13 @@ export function AssetDetailsSidebar({
             </div>
           </CardContent>
         </Card>
+
+        <OnBrandCheckPanel
+          asset={asset}
+          kit={brandKit}
+          onRunCheck={onRevalidate ?? onCheckCompliance}
+          isChecking={isRevalidating || isCheckingCompliance}
+        />
 
         {/* Asset Details */}
         <Card>

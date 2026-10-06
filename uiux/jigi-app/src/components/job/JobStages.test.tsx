@@ -44,6 +44,23 @@ describe('JobSendStage', () => {
     await waitFor(() => expect(onSend).toHaveBeenCalledWith(['a', 'b'], 'submitted', undefined, undefined))
   })
 
+  it('summarises what the client will see from the brand check', () => {
+    render(
+      <JobSendStage
+        assets={[
+          asset('a', 'draft', { validation_scores: { valid: true, blocking: false, validated_at: '2026-10-01' } }),
+          asset('b', 'draft'),
+        ]}
+        onSend={vi.fn()}
+        isSending={false}
+        brandKit="complete"
+      />
+    )
+    expect(screen.queryByTestId('send-brand-strip')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /select all/i }))
+    expect(screen.getByTestId('send-brand-strip')).toHaveTextContent('1 look on-brand · 1 not checked')
+  })
+
   it('passes an optional email recipient when sending to client', async () => {
     const onSend = vi.fn().mockResolvedValue(undefined)
     render(<JobSendStage assets={[asset('a', 'draft')]} onSend={onSend} isSending={false} />)

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { canSubmitAssetForReview } from '@/lib/status'
 import type { CreativeAsset } from '@/store/campaignStore'
-import type { BrandKitLevel } from '@/lib/handoff'
+import { summarizeBrandCheck, type BrandKitLevel, type BrandCheckState } from '@/lib/handoff'
 import { cn } from '@/lib/utils'
 import { JobAssetRow } from './JobAssetRow'
 
@@ -87,6 +87,21 @@ export function JobSendStage({
   const fresh = sendable.filter((a) => a.status !== 'changes_requested')
   const targets = allowInternalCheck ? TARGETS : TARGETS.filter((t) => t.id === 'submitted')
   const activeTarget = targets.find((t) => t.id === target) ?? targets[0]
+
+  const brandStrip = useMemo(() => {
+    if (!brandKit || brandKit === 'none' || selected.size === 0) return null
+    const counts: Record<BrandCheckState, number> = { clear: 0, attention: 0, blocking: 0, unchecked: 0 }
+    for (const a of sendable) if (selected.has(a.id)) counts[summarizeBrandCheck(a, brandKit).state] += 1
+    const clearLabel = brandKit === 'complete' ? 'look on-brand' : 'no issues found'
+    return [
+      counts.blocking && `${counts.blocking} with brand issues`,
+      counts.attention && `${counts.attention} need a look`,
+      counts.clear && `${counts.clear} ${clearLabel}`,
+      counts.unchecked && `${counts.unchecked} not checked`,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }, [brandKit, selected, sendable])
 
   const handleSend = async () => {
     if (selected.size === 0) return
@@ -234,6 +249,12 @@ export function JobSendStage({
             {brandKit === 'none'
               ? 'No brand attached — nothing has been checked against a brand.'
               : 'Brand kit is incomplete — brand checks are guidance only.'}
+          </p>
+        )}
+
+        {brandStrip && (
+          <p className="text-xs text-muted-foreground" data-testid="send-brand-strip">
+            Client will see: {brandStrip}
           </p>
         )}
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { AssetHeroPreview } from '@/components/decide/AssetHeroPreview'
 import { DecideActions, type DecideAction } from '@/components/decide/DecideActions'
 import { GuestDecisionDialog } from '@/components/decide/GuestDecisionDialog'
+import { OnBrandCheckPanel } from '@/components/decide/OnBrandCheckPanel'
 import {
   fetchGuestReview,
   submitGuestDecision,
@@ -230,6 +231,7 @@ export function GuestDecide() {
                     </p>
                   </section>
                 )}
+                <OnBrandCheckPanel asset={view.data.asset} kit={view.data.brand_kit ?? 'none'} />
                 <details className="group rounded-[10px] border border-border bg-card p-4">
                   <summary className="cursor-pointer list-none text-sm font-medium text-foreground flex items-center justify-between">
                     The brief
