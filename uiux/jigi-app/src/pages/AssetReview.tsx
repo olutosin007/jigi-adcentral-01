@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Keyboard,
   FileQuestion,
+  GitCompare,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +19,9 @@ import {
 } from '@/components/ui/tooltip'
 import { AssetPreviewArea } from '@/components/review/AssetPreviewArea'
 import { AssetDetailsSidebar } from '@/components/review/AssetDetailsSidebar'
+import { CompareToPrevious } from '@/components/decide/CompareToPrevious'
+import { RoundChip } from '@/components/decide/RoundChip'
+import { useAssetRounds } from '@/hooks/useAssetRounds'
 import { ReviewActions } from '@/components/review/ReviewActions'
 import { ApproveModal, RejectModal, RequestChangesModal } from '@/components/review'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -53,6 +57,9 @@ export function AssetReview() {
   } = useAssetWithReviewContext(assetId || '')
 
   const { data: queueItems = [] } = useReviewQueue()
+  const { data: rounds } = useAssetRounds(assetId, asset?.status)
+  const [comparing, setComparing] = useState(false)
+  useEffect(() => setComparing(false), [assetId])
 
   const {
     data: comments = [],
@@ -296,6 +303,8 @@ export function AssetReview() {
 
   const statusConfig = getStatusConfig(asset.status)
   const canReview = isPendingReview(asset.status)
+  const round = rounds?.round ?? 1
+  const canCompare = round >= 2 && !!rounds?.previousContent
 
   const assetName =
     asset.type === 'concept'
@@ -332,9 +341,25 @@ export function AssetReview() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-4">
-          <Badge className={`${statusConfig.bgColor} ${statusConfig.color}`}>
-            {statusConfig.label}
-          </Badge>
+          {canReview ? (
+            <RoundChip round={round} suffix="Waiting on you" />
+          ) : (
+            <Badge className={`${statusConfig.bgColor} ${statusConfig.color}`}>
+              {statusConfig.label}
+            </Badge>
+          )}
+          {canCompare && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              aria-pressed={comparing}
+              onClick={() => setComparing((c) => !c)}
+            >
+              <GitCompare className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              {comparing ? 'Show current only' : 'Compare to previous'}
+            </Button>
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -396,10 +421,16 @@ export function AssetReview() {
 
         {/* Main Preview Area */}
         <div className="flex-1 overflow-hidden bg-background min-h-0">
-          <AssetPreviewArea
-            asset={asset}
-            generationMode={asset.campaign?.generation_mode as 'brand_grounded' | 'idea_first' | undefined}
-          />
+          {comparing && canCompare ? (
+            <div className="h-full overflow-y-auto p-4 sm:p-6">
+              <CompareToPrevious asset={asset} previousContent={rounds!.previousContent!} round={round} />
+            </div>
+          ) : (
+            <AssetPreviewArea
+              asset={asset}
+              generationMode={asset.campaign?.generation_mode as 'brand_grounded' | 'idea_first' | undefined}
+            />
+          )}
         </div>
 
         {/* Right Sidebar - Details (stacks below on mobile) */}

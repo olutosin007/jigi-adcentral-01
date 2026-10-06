@@ -6,6 +6,7 @@ import type { CreativeAsset } from '@/store/campaignStore'
 import {
   HANDOFF_TONE_CLASSES,
   describeReviewLink,
+  roundLabel,
   type BrandKitLevel,
   type ReviewLinkLike,
 } from '@/lib/handoff'
@@ -21,6 +22,8 @@ interface JobDecisionsStageProps {
   links?: Map<string, ReviewLinkLike>
   onShare?: (asset: CreativeAsset) => void
   onRevokeLink?: (linkId: string) => void
+  /** Client-send round per asset, derived from status history. */
+  rounds?: Map<string, number>
 }
 
 type SourceFilter = 'all' | 'ai' | 'uploaded'
@@ -51,7 +54,29 @@ export function JobDecisionsStage({
   links,
   onShare,
   onRevokeLink,
+  rounds,
 }: JobDecisionsStageProps) {
+  const roundOf = (asset: CreativeAsset) => rounds?.get(asset.id) ?? 1
+  const roundMeta = (asset: CreativeAsset) =>
+    roundOf(asset) >= 2 ? (
+      <span
+        className="inline-flex items-center rounded-full border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+        data-testid="round-meta"
+      >
+        {roundLabel(roundOf(asset))}
+      </span>
+    ) : null
+  const meta = (asset: CreativeAsset) => {
+    const round = roundMeta(asset)
+    const link = linkMeta(asset)
+    if (!round && !link) return null
+    return (
+      <>
+        {round}
+        {link}
+      </>
+    )
+  }
   const linkMeta = (asset: CreativeAsset) => {
     const link = links?.get(asset.id)
     if (!link) return null
@@ -100,6 +125,13 @@ export function JobDecisionsStage({
   const internal = bucket(visible, ['agency_review'])
   const declined = bucket(visible, ['rejected'])
   const total = inFlight.length
+  const waitingByRound = Array.from(
+    waiting.reduce((groups, asset) => {
+      const r = roundOf(asset)
+      groups.set(r, [...(groups.get(r) ?? []), asset])
+      return groups
+    }, new Map<number, CreativeAsset[]>())
+  ).sort(([a], [b]) => b - a)
 
   if (total === 0) {
     return (
@@ -158,12 +190,12 @@ export function JobDecisionsStage({
                 asset={asset}
                 onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
                 timestampLabel="Returned"
-                meta={linkMeta(asset)}
+                meta={meta(asset)}
                 trailing={
                   onResend && (
                     <Button size="sm" variant="outline" onClick={() => onResend(asset)}>
                       <Send className="h-3.5 w-3.5 mr-1" aria-hidden />
-                      Resend
+                      {rounds ? `Resend as ${roundLabel(roundOf(asset) + 1)}` : 'Resend'}
                     </Button>
                   )
                 }
@@ -184,16 +216,23 @@ export function JobDecisionsStage({
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B45309] dark:text-[#FBBF24]">
             Waiting on client
           </p>
-          {waiting.map((asset) => (
-            <JobAssetRow
-                brandKit={brandKit}
-              key={asset.id}
-              asset={asset}
-              timestampLabel="Sent"
-              onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
-              meta={linkMeta(asset)}
-              trailing={waitingTrailing(asset)}
-            />
+          {waitingByRound.map(([round, group]) => (
+            <div key={round} className="space-y-2">
+              {waitingByRound.length > 1 && (
+                <p className="text-xs text-muted-foreground">{roundLabel(round)}</p>
+              )}
+              {group.map((asset) => (
+                <JobAssetRow
+                  brandKit={brandKit}
+                  key={asset.id}
+                  asset={asset}
+                  timestampLabel="Sent"
+                  onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
+                  meta={meta(asset)}
+                  trailing={waitingTrailing(asset)}
+                />
+              ))}
+            </div>
           ))}
         </section>
       )}

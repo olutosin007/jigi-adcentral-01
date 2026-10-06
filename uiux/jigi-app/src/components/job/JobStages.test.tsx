@@ -105,6 +105,26 @@ describe('JobDecisionsStage', () => {
     expect(onResend).toHaveBeenCalled()
   })
 
+  it('labels rounds, groups waiting work by round and offers the next round on resend', () => {
+    const onResend = vi.fn()
+    render(
+      <JobDecisionsStage
+        assets={[
+          asset('a', 'changes_requested'),
+          asset('b', 'brand_review'),
+          asset('c', 'submitted'),
+        ]}
+        rounds={new Map([['a', 2], ['b', 3], ['c', 1]])}
+        onResend={onResend}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Resend as Round 3' })).toBeInTheDocument()
+    const waiting = screen.getByRole('region', { name: 'Waiting on client' })
+    expect(waiting).toHaveTextContent('Round 3')
+    expect(waiting).toHaveTextContent('Round 1')
+    expect(screen.getAllByTestId('round-meta').map((n) => n.textContent)).toEqual(['Round 2', 'Round 3'])
+  })
+
   it('filters by source when AI and uploaded work are mixed', () => {
     render(
       <JobDecisionsStage

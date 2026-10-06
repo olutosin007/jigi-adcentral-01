@@ -40,6 +40,8 @@ export interface GuestReviewPayload {
   }
   brand: { name: string; logo_url: string | null; primary_colour: string | null } | null
   brand_kit?: 'starter' | 'partial' | 'complete' | 'none'
+  round?: number
+  previous_content?: Record<string, unknown> | null
 }
 
 export type GuestReviewResult =

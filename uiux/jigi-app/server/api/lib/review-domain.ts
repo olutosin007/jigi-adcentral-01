@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail, createApprovalEmailHtml } from './resend.js'
 import { REVIEWABLE_STATUSES, type ReviewAction } from './review-links.js'
+import { insertStatusHistory } from './status-history.js'
 
 const ACTION_TO_STATUS: Record<ReviewAction, string> = {
   approve: 'approved',
@@ -96,7 +97,7 @@ export async function applyReviewDecision(
         }
       : {}
 
-  await admin.from('asset_status_history').insert({
+  await insertStatusHistory(admin, {
     asset_id: assetId,
     user_id: actor.userId,
     from_status: asset.status,
