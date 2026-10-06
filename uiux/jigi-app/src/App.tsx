@@ -9,6 +9,7 @@ import { LandingV2 } from '@/pages/LandingV2'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Dashboard } from '@/pages/Dashboard'
+import { Work } from '@/pages/Work'
 import { CampaignDetail } from '@/pages/CampaignDetail'
 import { AssetReview } from '@/pages/AssetReview'
 import { QuickStart } from '@/pages/QuickStart'
@@ -105,8 +106,10 @@ export function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            <Route index element={<Navigate to="work" replace />} />
+            <Route path="work" element={<Work />} />
+            <Route path="dashboard" element={<Navigate to="/app/work" replace />} />
+            <Route path="overview" element={<Dashboard />} />
             
             {/* Journey entry points */}
             <Route path="quick-start" element={<QuickStart />} />

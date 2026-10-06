@@ -11,12 +11,13 @@ import { TourCard } from '@/components/tour/TourCard'
 import { TourAutoStart } from '@/components/tour/TourAutoStart'
 
 const pageTitles: Record<string, string> = {
-  '/app/dashboard': 'Dashboard',
+  '/app/work': 'Work',
+  '/app/overview': 'Overview',
   '/app/quick-start': 'Quick Start',
   '/app/campaigns': 'Campaigns',
   '/app/brands': 'Brands',
-  '/app/approved': 'Approved Assets',
-  '/app/review': 'Review Queue',
+  '/app/approved': 'Approved',
+  '/app/review': 'Inbox',
   '/app/settings': 'Settings',
 }
 
@@ -45,12 +46,12 @@ export function AppLayout() {
       return ''
     }
     if (location.pathname.startsWith('/app/review/')) {
-      return 'Asset Review'
+      return 'Decide'
     }
-    return pageTitles[location.pathname] || 'Dashboard'
+    return pageTitles[location.pathname] || 'Work'
   }
 
-  const showCTAs = location.pathname === '/app/dashboard'
+  const showCTAs = location.pathname === '/app/overview'
 
   const mainMarginLeft = isMobile ? 0 : sidebarCollapsed ? 64 : 240
 

@@ -19,6 +19,8 @@ export const PIPELINE_NAV: { id: PipelineStage; label: string; section?: 'main' 
 const STAGE_ORDER: PipelineStage[] = ['brief', 'concepts', 'copy', 'images', 'assets']
 
 export function parsePipelineStage(value: string | null | undefined): PipelineStage {
+  if (value === 'creative') return 'concepts'
+  if (value === 'send' || value === 'decisions' || value === 'approved') return 'assets'
   if (
     value === 'brief' ||
     value === 'concepts' ||

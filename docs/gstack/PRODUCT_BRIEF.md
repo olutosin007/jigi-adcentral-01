@@ -49,6 +49,8 @@ Out of scope for initial rebuild pass unless explicitly requested: full DAM, pai
 
 Spec references: `docs/02-creativegen-mvp/`, `docs/JIGI_PROJECT_SPECIFICATION.md`, `docs/02-creativegen-mvp/03-human-review-in-app.md`.
 
+**Handoff OS (next major suite):** `docs/04-feature-additions/02-handoff-os/` — Work/Job stages, Generate\|Upload parity, guest Decide, rounds + compliance-on-Decide.
+
 ---
 
 ## Technical anchor (current codebase)
