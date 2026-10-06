@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { canSubmitAssetForReview } from '@/lib/status'
 import type { CreativeAsset } from '@/store/campaignStore'
@@ -13,9 +14,19 @@ import { JobAssetRow } from './JobAssetRow'
 
 export type SendTarget = 'submitted' | 'agency_review'
 
+export interface SendRecipient {
+  name?: string
+  email: string
+}
+
 interface JobSendStageProps {
   assets: CreativeAsset[]
-  onSend: (assetIds: string[], target: SendTarget, note?: string) => Promise<void>
+  onSend: (
+    assetIds: string[],
+    target: SendTarget,
+    note?: string,
+    recipient?: SendRecipient
+  ) => Promise<void>
   isSending: boolean
   onOpenAsset?: (asset: CreativeAsset) => void
   onGoToCreative?: () => void
@@ -52,6 +63,8 @@ export function JobSendStage({
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [target, setTarget] = useState<SendTarget>('submitted')
   const [note, setNote] = useState('')
+  const [recipientName, setRecipientName] = useState('')
+  const [recipientEmail, setRecipientEmail] = useState('')
 
   useEffect(() => {
     setSelected((prev) => {
@@ -77,7 +90,12 @@ export function JobSendStage({
 
   const handleSend = async () => {
     if (selected.size === 0) return
-    await onSend([...selected], activeTarget.id, note.trim() || undefined)
+    const email = recipientEmail.trim()
+    const recipient =
+      activeTarget.id === 'submitted' && email
+        ? { email, name: recipientName.trim() || undefined }
+        : undefined
+    await onSend([...selected], activeTarget.id, note.trim() || undefined, recipient)
     setSelected(new Set())
     setNote('')
   }
@@ -184,6 +202,32 @@ export function JobSendStage({
             onChange={(e) => setNote(e.target.value)}
           />
         </div>
+
+        {activeTarget.id === 'submitted' && (
+          <div className="space-y-2" data-tour="send-email-link">
+            <Label htmlFor="send-recipient-email">Email a review link (optional)</Label>
+            <Input
+              id="send-recipient-email"
+              type="email"
+              placeholder="client@brand.com"
+              className="bg-card"
+              value={recipientEmail}
+              onChange={(e) => setRecipientEmail(e.target.value)}
+            />
+            {recipientEmail.trim() && (
+              <Input
+                aria-label="Client name"
+                placeholder="Client name (optional)"
+                className="bg-card"
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              They can decide from the email — no account needed. Copy links later from Decisions.
+            </p>
+          </div>
+        )}
 
         {brandKit && brandKit !== 'complete' && (
           <p className="text-xs text-[#B45309] dark:text-[#FBBF24]">

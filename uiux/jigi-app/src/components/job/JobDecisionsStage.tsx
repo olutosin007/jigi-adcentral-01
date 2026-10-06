@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { MessageSquareWarning, Send, Hourglass } from 'lucide-react'
+import { MessageSquareWarning, Send, Hourglass, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { CreativeAsset } from '@/store/campaignStore'
-import type { BrandKitLevel } from '@/lib/handoff'
+import {
+  HANDOFF_TONE_CLASSES,
+  describeReviewLink,
+  type BrandKitLevel,
+  type ReviewLinkLike,
+} from '@/lib/handoff'
 import { cn } from '@/lib/utils'
 import { JobAssetRow } from './JobAssetRow'
 
@@ -13,6 +18,9 @@ interface JobDecisionsStageProps {
   onResend?: (asset: CreativeAsset) => void
   onGoToSend?: () => void
   brandKit?: BrandKitLevel
+  links?: Map<string, ReviewLinkLike>
+  onShare?: (asset: CreativeAsset) => void
+  onRevokeLink?: (linkId: string) => void
 }
 
 type SourceFilter = 'all' | 'ai' | 'uploaded'
@@ -40,7 +48,46 @@ export function JobDecisionsStage({
   onResend,
   onGoToSend,
   brandKit,
+  links,
+  onShare,
+  onRevokeLink,
 }: JobDecisionsStageProps) {
+  const linkMeta = (asset: CreativeAsset) => {
+    const link = links?.get(asset.id)
+    if (!link) return null
+    const view = describeReviewLink(link)
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+          HANDOFF_TONE_CLASSES[view.tone]
+        )}
+        data-testid="link-status"
+      >
+        <Link2 className="h-3 w-3" aria-hidden />
+        {view.label}
+      </span>
+    )
+  }
+  const waitingTrailing = (asset: CreativeAsset) => {
+    const link = links?.get(asset.id)
+    const view = link ? describeReviewLink(link) : null
+    return (
+      <div className="flex items-center gap-1">
+        {view?.canRevoke && onRevokeLink && link && (
+          <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => onRevokeLink(link.id)}>
+            Revoke
+          </Button>
+        )}
+        {onShare && (
+          <Button size="sm" variant="outline" onClick={() => onShare(asset)}>
+            <Link2 className="h-3.5 w-3.5 mr-1" aria-hidden />
+            {view?.canRevoke ? 'New link' : 'Share link'}
+          </Button>
+        )}
+      </div>
+    )
+  }
   const [source, setSource] = useState<SourceFilter>('all')
   const inFlight = assets.filter((a) =>
     ['changes_requested', 'submitted', 'brand_review', 'agency_review', 'rejected'].includes(a.status)
@@ -111,6 +158,7 @@ export function JobDecisionsStage({
                 asset={asset}
                 onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
                 timestampLabel="Returned"
+                meta={linkMeta(asset)}
                 trailing={
                   onResend && (
                     <Button size="sm" variant="outline" onClick={() => onResend(asset)}>
@@ -143,6 +191,8 @@ export function JobDecisionsStage({
               asset={asset}
               timestampLabel="Sent"
               onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
+              meta={linkMeta(asset)}
+              trailing={waitingTrailing(asset)}
             />
           ))}
         </section>

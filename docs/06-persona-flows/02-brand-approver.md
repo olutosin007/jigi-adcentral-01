@@ -15,13 +15,14 @@
 - Authenticated, belongs to the brand's organisation, and passes `isReviewerRole` (else `ReviewerRoute` redirects).
 - At least one asset has been submitted (`status = submitted`) for a brand in the approver's org.
 - Typical entry is a **notification** (in-app `NotificationBell` + email), deep-linking to `/app/review/:assetId`.
+- Brand stakeholders without an account use the **[Guest Approver](./03-guest-approver.md)** path instead.
 
 ## 3. Ideal (happy) path
 
 | # | User action | Route | Component | System response | Status after | Anchor |
 |---|-------------|-------|-----------|-----------------|--------------|--------|
 | 1 | Open notification | any `/app/*` | `NotificationBell`, `NotificationDropdown` | Deep-links to the submitted asset | `submitted` | `notification-bell` |
-| 2 | Open review queue | `/app/review` | `ReviewQueue`, `ReviewQueueCard` | Lists everything awaiting brand review | `submitted` | `review-queue` |
+| 2 | Open Inbox | `/app/review` | `ReviewQueue` (titled **Inbox**) | Grouped by campaign, oldest first; thumbnail, version, age, *Needs your decision* | `submitted` | `review-queue` |
 | 3 | Open an asset | `/app/review/:assetId` | `AssetReview`, `AssetPreviewArea` | Full-fidelity preview loads | `submitted` (→ `brand_review` if claimed) | `asset-preview` |
 | 4 | Inspect details | `/app/review/:assetId` | `AssetDetailsSidebar`, `ComplianceDisplay`, `StatusHistoryTimeline` | Brief, brand context, compliance, history shown | — | `asset-details` |
 | 5 | Discuss _(optional)_ | `/app/review/:assetId` | `CommentsSidebar`, `CommentThread` | Threaded comments captured | — | `comments-sidebar` |

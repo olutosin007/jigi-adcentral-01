@@ -1,9 +1,10 @@
 # Persona flows
 
-Single source of truth for the two key user journeys through Jigi:
+Single source of truth for the key user journeys through Jigi:
 
 1. **[Agency Creative](./01-agency-creative.md)** — turns an idea/brief into on-brand creative and submits it for approval.
-2. **[Brand Approver](./02-brand-approver.md)** — reviews submitted creative and approves, rejects, or requests changes.
+2. **[Brand Approver](./02-brand-approver.md)** — reviews submitted creative from the **Inbox** and approves, rejects, or requests changes.
+3. **[Guest Approver](./03-guest-approver.md)** — decides from a review link (`/r/:token`) with no account.
 
 Shared model (roles, the asset status machine, the single handoff between the two personas) lives in **[00-flow-model.md](./00-flow-model.md)**.
 
@@ -25,7 +26,7 @@ These docs are **derived from code**, not written from memory. When the flows ch
 
 - **Status machine** mirrors `uiux/jigi-app/src/lib/status.ts` (`STATUS_TRANSITIONS`).
 - **Roles** mirror `uiux/jigi-app/src/lib/roles.ts` (`UserRole`, `isReviewerRole`).
-- **Handoff** mirrors the server endpoints `server/api/assets/submit.ts` and `server/api/assets/review.ts`.
+- **Handoff** mirrors the server endpoints `server/api/assets/submit.ts`, `server/api/assets/review.ts` and `server/api/review-links.ts` (all decisions go through `server/api/lib/review-domain.ts`).
 - **Routes** mirror `uiux/jigi-app/src/App.tsx`.
 
 If a diagram and the code disagree, the code wins — fix the diagram.

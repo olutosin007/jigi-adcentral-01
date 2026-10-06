@@ -41,7 +41,19 @@ describe('JobSendStage', () => {
     expect(screen.getByRole('button', { name: /select creative to send/i })).toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: /select all/i }))
     fireEvent.click(screen.getByRole('button', { name: /send 2 to client/i }))
-    await waitFor(() => expect(onSend).toHaveBeenCalledWith(['a', 'b'], 'submitted', undefined))
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith(['a', 'b'], 'submitted', undefined, undefined))
+  })
+
+  it('passes an optional email recipient when sending to client', async () => {
+    const onSend = vi.fn().mockResolvedValue(undefined)
+    render(<JobSendStage assets={[asset('a', 'draft')]} onSend={onSend} isSending={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /select all/i }))
+    fireEvent.change(screen.getByLabelText(/email a review link/i), { target: { value: 'c@brand.co' } })
+    fireEvent.change(screen.getByLabelText('Client name'), { target: { value: 'Cleo' } })
+    fireEvent.click(screen.getByRole('button', { name: /send 1 to client/i }))
+    await waitFor(() =>
+      expect(onSend).toHaveBeenCalledWith(['a'], 'submitted', undefined, { email: 'c@brand.co', name: 'Cleo' })
+    )
   })
 
   it('groups returned work under Fix & resend', () => {
@@ -100,6 +112,42 @@ describe('JobDecisionsStage', () => {
     )
     expect(screen.getByTestId('brand-check-chip')).toHaveTextContent('No issues found')
     expect(screen.queryByText(/on-brand/i)).not.toBeInTheDocument()
+  })
+
+  it('shows link status with share and revoke on waiting work', () => {
+    const onShare = vi.fn()
+    const onRevokeLink = vi.fn()
+    const links = new Map([
+      [
+        'a',
+        {
+          id: 'l1',
+          asset_id: 'a',
+          created_at: '2026-10-01T00:00:00Z',
+          expires_at: '2099-01-01T00:00:00Z',
+          revoked_at: null,
+          first_opened_at: '2026-10-02T00:00:00Z',
+          decided_at: null,
+          decision: null,
+          guest_name: null,
+          recipient_name: null,
+          recipient_email: null,
+        },
+      ],
+    ])
+    render(
+      <JobDecisionsStage
+        assets={[asset('a', 'brand_review')]}
+        links={links}
+        onShare={onShare}
+        onRevokeLink={onRevokeLink}
+      />
+    )
+    expect(screen.getByTestId('link-status')).toHaveTextContent('Link opened')
+    fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+    expect(onRevokeLink).toHaveBeenCalledWith('l1')
+    fireEvent.click(screen.getByRole('button', { name: /new link/i }))
+    expect(onShare).toHaveBeenCalled()
   })
 
   it('shows empty state when nothing is in flight', () => {

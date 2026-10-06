@@ -52,7 +52,10 @@ import {
   type JobGateMap,
 } from '@/lib/handoff'
 import { JobContextRail } from '@/components/campaign/JobContextRail'
-import { JobSendStage, type SendTarget } from '@/components/job/JobSendStage'
+import { JobSendStage, type SendRecipient, type SendTarget } from '@/components/job/JobSendStage'
+import { ShareReviewLinkDialog } from '@/components/job/ShareReviewLinkDialog'
+import { useReviewLinks, useRevokeReviewLink } from '@/hooks/useReviewLinks'
+import { createReviewLink } from '@/lib/api-client'
 import { JobDecisionsStage } from '@/components/job/JobDecisionsStage'
 import { JobApprovedStage } from '@/components/job/JobApprovedStage'
 import { UploadCanvas, CreativeModeToggle } from '@/components/upload/UploadCanvas'
@@ -60,7 +63,7 @@ import { parseCreativeMode, stageToUploadType, type CreativeMode } from '@/lib/u
 import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
 import { deriveBrandEssentials } from '@/lib/brand-profile-status'
 import { trackEvent } from '@/lib/analytics'
-import type { BrandKitLevel } from '@/lib/handoff'
+import { latestLinkByAsset, type BrandKitLevel } from '@/lib/handoff'
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground border-border',
@@ -107,6 +110,7 @@ export function CampaignDetail() {
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [viewAsset, setViewAsset] = useState<CreativeAsset | null>(null)
+  const [shareAsset, setShareAsset] = useState<CreativeAsset | null>(null)
   const [submitModalAsset, setSubmitModalAsset] = useState<{
     id: string
     name: string
@@ -126,6 +130,9 @@ export function CampaignDetail() {
   const deleteAsset = useDeleteAsset()
   const submitAsset = useSubmitAsset()
   const validateAssetsMutation = useValidateAssets()
+  const { data: reviewLinks = [], refetch: refetchLinks } = useReviewLinks(id)
+  const revokeLink = useRevokeReviewLink(id)
+  const linksByAsset = useMemo(() => latestLinkByAsset(reviewLinks), [reviewLinks])
 
   const gateInput = useMemo(
     () => (campaign ? buildPipelineGateInput(campaign, allAssets) : null),
@@ -329,16 +336,42 @@ export function CampaignDetail() {
     }
   }
 
-  const handleSendMany = async (assetIds: string[], targetStatus: SendTarget, note?: string) => {
+  const handleSendMany = async (
+    assetIds: string[],
+    targetStatus: SendTarget,
+    note?: string,
+    recipient?: SendRecipient
+  ) => {
     if (!id || !user) return
     let sent = 0
+    let emailed = 0
     for (const assetId of assetIds) {
       try {
         await submitAsset.mutateAsync({ assetId, campaignId: id, userId: user.id, targetStatus, note })
         sent += 1
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Failed to send')
+        continue
       }
+      if (recipient) {
+        try {
+          const result = await createReviewLink({
+            asset_id: assetId,
+            recipient_email: recipient.email,
+            recipient_name: recipient.name,
+            send_email: true,
+            message: note,
+          })
+          if (result.email_sent) emailed += 1
+        } catch {
+          // Asset is sent either way; surfaced below.
+        }
+      }
+    }
+    if (recipient) {
+      void refetchLinks()
+      if (emailed > 0) toast.success(`Review link${emailed === 1 ? '' : 's'} emailed to ${recipient.email}`)
+      else if (sent > 0) toast.warning('Sent, but the review email could not be delivered — share a link from Decisions')
     }
     if (sent > 0) {
       const sentAssets = allAssets.filter((a) => assetIds.includes(a.id))
@@ -604,6 +637,16 @@ export function CampaignDetail() {
             onOpenAsset={handleViewAsset}
             onResend={(asset) => handleSubmitAsset(asset.id)}
             brandKit={brandKit}
+            links={linksByAsset}
+            onShare={setShareAsset}
+            onRevokeLink={async (linkId) => {
+              try {
+                await revokeLink.mutateAsync(linkId)
+                toast.success('Link revoked')
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Could not revoke link')
+              }
+            }}
             onGoToSend={() => setStage('send')}
           />
         }
@@ -666,6 +709,14 @@ export function CampaignDetail() {
         isSubmitting={submitAsset.isPending}
         allowAgencyReview={true}
       />
+
+      {id && (
+        <ShareReviewLinkDialog
+          asset={shareAsset}
+          campaignId={id}
+          onOpenChange={(open) => !open && setShareAsset(null)}
+        />
+      )}
 
       {id && (
         <UploadModal
