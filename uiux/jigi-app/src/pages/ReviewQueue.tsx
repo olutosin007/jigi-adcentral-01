@@ -1,98 +1,64 @@
-import { useState, useMemo } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { Filter, Inbox, CheckCircle2, Clock, ArrowUpDown, Image as ImageIcon, FileText, Lightbulb } from 'lucide-react'
+import { useMemo } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { CheckCircle2, ChevronRight, Inbox as InboxIcon } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { useReviewQueue, useRecentlyReviewed, type ReviewQueueItem } from '@/hooks/useCampaignQueries'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { AssetThumb } from '@/components/job/JobAssetRow'
+import { useReviewQueue, useRecentlyReviewed } from '@/hooks/useCampaignQueries'
 import { useAuthStore } from '@/store/authStore'
-import { getStatusConfig, type AssetStatus } from '@/lib/status'
-import { formatDistanceToNow } from 'date-fns'
+import { getAssetTitle } from '@/lib/handoff'
 
-const SORT_OPTIONS = [
-  { value: 'oldest', label: 'Oldest first' },
-  { value: 'campaign', label: 'Campaign name' },
-] as const
-
+/** Authenticated approver home ("Inbox"). Route stays /app/review for link stability. */
 export function ReviewQueue() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const campaignFilter = searchParams.get('campaign')
   const { user } = useAuthStore()
-  const [statusFilter, setStatusFilter] = useState<AssetStatus | 'all'>('all')
-  const [sortBy, setSortBy] = useState<string>('oldest')
 
-  const {
-    data: queueItems = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useReviewQueue(statusFilter === 'all' ? undefined : { status: statusFilter })
+  const { data: queueItems = [], isLoading, isError, error, refetch } = useReviewQueue()
   const { data: recentlyReviewed = [] } = useRecentlyReviewed(user?.id || '')
 
-  const sortedQueueItems = useMemo(() => {
-    let items = queueItems
-    if (campaignFilter) {
-      items = items.filter((item) => item.campaignId === campaignFilter)
-    }
-    if (sortBy === 'campaign') {
-      return [...items].sort((a, b) => a.campaignName.localeCompare(b.campaignName))
-    }
-    return [...items].sort((a, b) => {
-      const oldestA = a.assets[a.assets.length - 1]?.created_at ?? ''
-      const oldestB = b.assets[b.assets.length - 1]?.created_at ?? ''
-      return new Date(oldestA).getTime() - new Date(oldestB).getTime()
-    })
-  }, [queueItems, sortBy, campaignFilter])
+  const groups = useMemo(() => {
+    const items = campaignFilter
+      ? queueItems.filter((item) => item.campaignId === campaignFilter)
+      : queueItems
+    const oldest = (assets: { updated_at: string }[]) =>
+      Math.min(...assets.map((a) => new Date(a.updated_at).getTime()))
+    return [...items]
+      .map((item) => ({
+        ...item,
+        assets: [...item.assets].sort(
+          (a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+        ),
+      }))
+      .sort((a, b) => oldest(a.assets) - oldest(b.assets))
+  }, [queueItems, campaignFilter])
 
-  const totalPending = sortedQueueItems.reduce((sum, item) => sum + item.assetCount, 0)
-
-  const handleReviewAsset = (assetId: string) => {
-    navigate(`/app/review/${assetId}`)
-  }
+  const totalPending = groups.reduce((sum, item) => sum + item.assets.length, 0)
 
   if (isLoading) {
     return (
-      <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <Skeleton className="h-8 w-48 mb-2" />
-            <Skeleton className="h-4 w-56" />
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-40" />
-          <Skeleton className="h-10 w-36" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-52 rounded-xl" />
-          ))}
-        </div>
+      <div className="p-6 md:p-8 max-w-[960px] mx-auto space-y-6">
+        <Skeleton className="h-9 w-40" />
+        <Skeleton className="h-4 w-56" />
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-20 rounded-[10px]" />
+        ))}
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
+      <div className="p-6 md:p-8 max-w-[960px] mx-auto">
         <EmptyState
-          icon={Inbox}
-          title="Couldn’t load the review queue"
+          icon={InboxIcon}
+          title="Couldn’t load your inbox"
           description={
-            error instanceof Error
-              ? error.message
-              : 'Check your connection or permissions, then try again.'
+            error instanceof Error ? error.message : 'Check your connection or permissions, then try again.'
           }
           action={{ label: 'Try again', onClick: () => void refetch() }}
         />
@@ -101,260 +67,110 @@ export function ReviewQueue() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-8" data-tour="review-queue">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Review Queue</h1>
-          <p className="text-muted-foreground">
-            Review and approve creative assets
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock className="h-4 w-4" />
-          <span>{totalPending} pending review</span>
-        </div>
+    <div className="p-6 md:p-8 max-w-[960px] mx-auto space-y-8" data-tour="review-queue">
+      <div>
+        <h1 className="text-[2rem] leading-tight font-serif font-semibold tracking-tight text-foreground">
+          Inbox
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          {totalPending === 0
+            ? 'Nothing needs your decision right now'
+            : `${totalPending} need${totalPending === 1 ? 's' : ''} your decision · oldest first`}
+        </p>
       </div>
 
       {campaignFilter && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-          <span className="text-foreground">Showing pending assets for one campaign.</span>
+        <div className="flex flex-wrap items-center gap-3 rounded-[10px] border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+          <span className="text-foreground">Showing one campaign.</span>
           <Link to="/app/review" className="font-medium text-primary hover:underline">
-            Show all campaigns
+            Show everything
           </Link>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="text-sm font-medium">Filter:</span>
+      {groups.length === 0 ? (
+        <EmptyState
+          icon={<CheckCircle2 className="h-7 w-7 text-success" />}
+          title="All caught up"
+          description="When the team sends creative for a decision, it lands here."
+          action={
+            campaignFilter ? { label: 'Show everything', onClick: () => navigate('/app/review') } : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-6">
+          {groups.map((group) => (
+            <section key={group.campaignId} aria-label={group.campaignName} className="space-y-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-sm font-semibold text-foreground">
+                  {group.campaignName}
+                  {group.brandName && (
+                    <span className="font-normal text-muted-foreground"> · {group.brandName}</span>
+                  )}
+                </h2>
+                <span className="text-xs text-muted-foreground">{group.assets.length} waiting</span>
+              </div>
+              <ul className="space-y-2">
+                {group.assets.map((asset) => (
+                  <li key={asset.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/app/review/${asset.id}`)}
+                      className="group flex w-full items-center gap-3 rounded-[10px] border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40"
+                    >
+                      <AssetThumb asset={asset} className="h-14 w-14" />
+                      <span className="flex-1 min-w-0">
+                        <span className="block truncate text-sm font-medium text-foreground">
+                          {getAssetTitle(asset)}
+                        </span>
+                        <span className="block text-xs text-muted-foreground mt-0.5">
+                          <span className="capitalize">{asset.type}</span> · Version {asset.version ?? 1} · waiting{' '}
+                          {formatDistanceToNow(new Date(asset.updated_at))}
+                        </span>
+                      </span>
+                      <StatusBadge status={asset.status} audience="client" />
+                      <span className="hidden sm:inline-flex items-center text-sm font-medium text-primary">
+                        Review
+                        <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as AssetStatus | 'all')}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All pending</SelectItem>
-              <SelectItem value="submitted">Submitted</SelectItem>
-              <SelectItem value="brand_review">Brand Review</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[160px]">
-              <ArrowUpDown className="h-4 w-4 mr-1.5 shrink-0" />
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
 
-      {/* Pending Your Review */}
-      <section>
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Inbox className="h-5 w-5 text-amber-500" />
-          Pending Your Review
-        </h2>
-
-        {sortedQueueItems.length === 0 ? (
-          <EmptyState
-            icon={<CheckCircle2 className="h-7 w-7 text-success" />}
-            title={campaignFilter ? 'No pending assets for this campaign' : 'All caught up'}
-            description={
-              campaignFilter
-                ? 'This campaign has no assets waiting for review right now.'
-                : 'No assets are waiting for your review.'
-            }
-            action={
-              campaignFilter
-                ? {
-                    label: 'Clear campaign filter',
-                    onClick: () => navigate('/app/review'),
-                  }
-                : {
-                    label: 'Browse campaigns',
-                    onClick: () => navigate('/app/campaigns'),
-                  }
-            }
-          />
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {sortedQueueItems.map((item) => (
-              <ReviewQueueCard
-                key={item.campaignId}
-                item={item}
-                onStartReview={() => {
-                  if (item.assets.length > 0) handleReviewAsset(item.assets[0].id)
-                }}
-                onReviewAsset={handleReviewAsset}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Recently Reviewed */}
       {recentlyReviewed.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-success" />
-            Recently Reviewed
+        <section className="space-y-2" aria-label="Decided recently">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Decided recently
           </h2>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {recentlyReviewed.slice(0, 8).map((asset) => {
-              const statusConfig = getStatusConfig(asset.status)
-              const displayName =
-                asset.type === 'concept'
-                  ? (asset.content as { theme?: string })?.theme
-                  : asset.type === 'copy'
-                  ? (asset.content as { headline?: string })?.headline
-                  : 'Image'
-              const TypeIcon = asset.type === 'image' ? ImageIcon : asset.type === 'copy' ? FileText : Lightbulb
-              return (
-                <Card
-                  key={asset.id}
-                  className="cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-200 border-border rounded-xl"
-                  onClick={() => {
-                    if (asset.status === 'approved' || asset.status === 'rejected') {
-                      navigate(`/app/campaigns/${asset.campaign_id}?stage=assets`)
-                    } else {
-                      handleReviewAsset(asset.id)
-                    }
-                  }}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="p-2 bg-muted rounded-lg shrink-0">
-                          <TypeIcon className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate text-sm">{displayName}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{asset.type}</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className={`${statusConfig.bgColor} ${statusConfig.color} shrink-0`}>
-                        {statusConfig.label}
-                      </Badge>
-                    </div>
-                    {asset.reviewed_at && (
-                      <p className="text-xs text-muted-foreground mt-3">
-                        Reviewed {formatDistanceToNow(new Date(asset.reviewed_at), { addSuffix: true })}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+          <ul className="divide-y divide-border rounded-[10px] border border-border bg-card">
+            {recentlyReviewed.slice(0, 6).map((asset) => (
+              <li key={asset.id} className="flex items-center gap-3 px-3 py-2">
+                <AssetThumb asset={asset} className="h-9 w-9" />
+                <span className="flex-1 min-w-0 truncate text-sm">{getAssetTitle(asset)}</span>
+                {asset.reviewed_at && (
+                  <span className="hidden sm:inline text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(asset.reviewed_at), { addSuffix: true })}
+                  </span>
+                )}
+                <StatusBadge status={asset.status} audience="client" />
+              </li>
+            ))}
+          </ul>
         </section>
       )}
-    </div>
-  )
-}
 
-interface ReviewQueueCardProps {
-  item: ReviewQueueItem
-  onStartReview: () => void
-  onReviewAsset: (assetId: string) => void
-}
-
-function ReviewQueueCard({ item, onStartReview, onReviewAsset }: ReviewQueueCardProps) {
-  const assetTypes = item.assets.reduce((acc, asset) => {
-    acc[asset.type] = (acc[asset.type] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  const previewAssets = item.assets.slice(0, 3)
-  const oldestAsset = item.assets[item.assets.length - 1]
-  const waitingTime = oldestAsset?.created_at
-    ? formatDistanceToNow(new Date(oldestAsset.created_at), { addSuffix: true })
-    : null
-
-  return (
-    <Card className="shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-shadow duration-200 border-border rounded-xl">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1 min-w-0">
-            <CardTitle className="text-base">{item.campaignName}</CardTitle>
-            {item.brandName && (
-              <CardDescription className="truncate">{item.brandName}</CardDescription>
-            )}
-          </div>
-          <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 shrink-0">
-            {item.assetCount} pending
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Asset Previews */}
-        <div className="flex gap-2">
-          {previewAssets.map((asset, idx) => (
-            <button
-              key={asset.id}
-              type="button"
-              onClick={() => onReviewAsset(asset.id)}
-              className="w-16 h-16 rounded-lg bg-muted border border-border flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-primary/40 transition-shadow"
-              style={{ opacity: 1 - idx * 0.15 }}
-              aria-label={`Review ${asset.type} asset`}
-            >
-              {asset.type === 'image' && (asset.content as { url?: string })?.url ? (
-                <img
-                  src={(asset.content as { url: string }).url}
-                  alt="Asset preview"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-xs text-muted-foreground capitalize">
-                  {asset.type}
-                </span>
-              )}
-            </button>
-          ))}
-          {item.assetCount > 3 && (
-            <div className="w-16 h-16 rounded-lg bg-muted border border-border flex items-center justify-center">
-              <span className="text-xs text-muted-foreground">
-                +{item.assetCount - 3}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Asset Type Breakdown */}
-        <div className="flex gap-2 flex-wrap">
-          {Object.entries(assetTypes).map(([type, count]) => (
-            <Badge key={type} variant="outline" className="text-xs capitalize">
-              {count} {type}
-              {count > 1 ? 's' : ''}
-            </Badge>
-          ))}
-        </div>
-
-        {/* Waiting Time & Action */}
-        <div className="flex items-center justify-between gap-2">
-          {waitingTime && (
-            <span className="text-xs text-muted-foreground">
-              Waiting {waitingTime}
-            </span>
-          )}
-          <Button size="sm" onClick={onStartReview} className="ml-auto">
-            Start Review
+      {groups.length > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={() => navigate(`/app/review/${groups[0].assets[0].id}`)}>
+            Start with the oldest
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   )
 }

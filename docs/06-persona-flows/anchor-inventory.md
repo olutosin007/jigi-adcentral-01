@@ -19,6 +19,9 @@ The bridge artifact. Every tour step, every doc step, and (later) every E2E sele
 | `send-stage` | `/app/campaigns/:id?stage=send` | `src/components/job/JobSendStage.tsx` | Stage root | Pick what to send |
 | `decisions-stage` | `/app/campaigns/:id?stage=decisions` | `src/components/job/JobDecisionsStage.tsx` | Stage root | Track decisions / fix notes |
 | `approved-stage` | `/app/campaigns/:id?stage=approved` | `src/components/job/JobApprovedStage.tsx` | Stage root | Approved for this job |
+| `creative-mode` | `/app/campaigns/:id` (Creative stages) | `src/components/upload/UploadCanvas.tsx` (`CreativeModeToggle`) | Generate \| Upload toggle | Choose how to add creative |
+| `upload-canvas` | `/app/campaigns/:id?mode=upload` | `src/components/upload/UploadCanvas.tsx` | Canvas root | Upload work made elsewhere |
+| `send-email-link` | `/app/campaigns/:id?stage=send` | `src/components/job/JobSendStage.tsx` | Email-a-review-link field | Invite client by email |
 | `journey-choice` | `/setup/journey` | `src/pages/setup/JourneyChoice.tsx` | The two journey option cards (wrapper) | Pick journey |
 | `brand-create` | `/app/brands` | `src/pages/Brands.tsx` + `src/components/brands/QuickCreateBrandDialog.tsx` | "Create brand" trigger | Create/confirm brand |
 | `brief-form` | `/app/campaigns/new` | `src/components/campaigns/BriefForm.tsx` | Brief form container | Enter brief |
@@ -32,11 +35,19 @@ The bridge artifact. Every tour step, every doc step, and (later) every E2E sele
 | Anchor id | Route | Component file | Attach to | Tour step |
 |-----------|-------|----------------|-----------|-----------|
 | `notification-bell` | any `/app/*` | `src/components/notifications/NotificationBell.tsx` | Bell button | Open notification |
-| `review-queue` | `/app/review` (Inbox) | `src/pages/ReviewQueue.tsx` + `src/components/review/ReviewQueueCard.tsx` | Queue list / first card | Open review queue |
+| `review-queue` | `/app/review` (Inbox) | `src/pages/ReviewQueue.tsx` | Queue list / first card | Open review queue |
 | `asset-preview` | `/app/review/:assetId` | `src/components/review/AssetPreviewArea.tsx` | Preview area root | Inspect the asset |
 | `asset-details` | `/app/review/:assetId` | `src/components/review/AssetDetailsSidebar.tsx` | Details sidebar root | Review brief + compliance + history |
 | `comments-sidebar` | `/app/review/:assetId` | `src/components/comments/CommentsSidebar.tsx` | Comments panel root | Discuss (optional) |
 | `review-actions` | `/app/review/:assetId` | `src/components/review/ReviewActions.tsx` | Action button group | Approve / reject / request changes |
+
+## Guest Approver
+
+| Anchor id | Route | Component file | Attach to | Tour step |
+|-----------|-------|----------------|-----------|-----------|
+| `guest-decide` | `/r/:token` | `src/pages/GuestDecide.tsx` | Page root | Orientation (outside onborda — no tour) |
+| `decide-asset` | `/r/:token` | `src/components/decide/AssetHeroPreview.tsx` | Hero root | Look at the work |
+| `decide-actions` | `/r/:token` | `src/components/decide/DecideActions.tsx` | Action bar | Approve / Request changes / Decline |
 
 ## Cross-cutting (both personas)
 
