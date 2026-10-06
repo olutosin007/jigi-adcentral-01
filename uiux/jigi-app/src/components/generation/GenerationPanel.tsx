@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sparkles, RefreshCw, AlertCircle, Lightbulb, FileText, Image, Wand2, History, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,10 @@ import type { BrandIncludeFlags, ConceptResult, CopyImageAnchor, CopyResult, Ima
 import { DEFAULT_BRAND_INCLUDE } from '@/lib/ai'
 import { cn } from '@/lib/utils'
 import { getPrimaryCopyBudgetChars } from '@/lib/channel-constraints'
+import {
+  buildCompositeImageDescription,
+  describeCompositeSources,
+} from '@/lib/image-prompt'
 import { toast } from 'sonner'
 import type { GenerationStage } from '@/lib/campaign-workspace'
 import { trackGenerateImagePath } from '@/lib/analytics'
@@ -194,6 +198,46 @@ export function GenerationPanel({
     }
     return null
   }, [concepts, effectiveConceptAssetId])
+
+  const imageAnchorCopyAsset = useMemo(() => {
+    if (!imageCopyAnchorId) return null
+    return copyAssets.find((asset) => asset.id === imageCopyAnchorId) || null
+  }, [copyAssets, imageCopyAnchorId])
+
+  const imageConceptAsset = useMemo(() => {
+    const parentId = imageAnchorCopyAsset?.parent_asset_id
+    if (parentId) {
+      const fromParent = concepts.find((asset) => asset.id === parentId)
+      if (fromParent) return fromParent
+    }
+    return selectedConceptAsset
+  }, [concepts, imageAnchorCopyAsset, selectedConceptAsset])
+
+  const imageCompositeInput = useMemo(
+    () => ({
+      brief: campaign.brief,
+      seedIdea: campaign.seed_idea,
+      concept: imageConceptAsset
+        ? (imageConceptAsset.content as ConceptResult)
+        : null,
+      copy: imageAnchorCopyAsset
+        ? (imageAnchorCopyAsset.content as CopyResult)
+        : null,
+    }),
+    [campaign.brief, campaign.seed_idea, imageConceptAsset, imageAnchorCopyAsset]
+  )
+
+  const imageCompositeDescription = useMemo(
+    () => buildCompositeImageDescription(imageCompositeInput),
+    [imageCompositeInput]
+  )
+
+  const imageCompositeSources = useMemo(
+    () => describeCompositeSources(imageCompositeInput),
+    [imageCompositeInput]
+  )
+
+  const lastAutoFilledPromptRef = useRef('')
   const copyGroups = useMemo(() => {
     const conceptsById = new Map(concepts.map((asset) => [asset.id, asset]))
     const grouped = new Map<string, { title: string; assets: CreativeAsset[] }>()
@@ -249,6 +293,21 @@ export function GenerationPanel({
       setImageCopyAnchorId(productionCopyAssetId)
     }
   }, [productionCopyAssetId, copyAssets])
+
+  useEffect(() => {
+    if (activeTab !== 'images') return
+    setPrompt((current) => {
+      const trimmed = current.trim()
+      const lastAuto = lastAutoFilledPromptRef.current
+      if (lastAuto === '__user_cleared__' && trimmed.length === 0) {
+        return current
+      }
+      const userEdited = trimmed.length > 0 && trimmed !== lastAuto.trim()
+      if (userEdited) return current
+      lastAutoFilledPromptRef.current = imageCompositeDescription
+      return imageCompositeDescription
+    })
+  }, [activeTab, imageCompositeDescription])
 
   useEffect(() => {
     if (activeTab !== 'copy' || selectedConceptAssetId || !productionConceptAssetId) return
@@ -307,14 +366,17 @@ export function GenerationPanel({
         })
         toast.success('Copy generated successfully!')
       } else if (activeTab === 'images') {
-        const anchorAsset = imageCopyAnchorId
-          ? copyAssets.find((a) => a.id === imageCopyAnchorId)
-          : undefined
+        const anchorAsset = imageAnchorCopyAsset ?? undefined
         const copyAnchor = anchorAsset
           ? copyAssetToImageAnchor(anchorAsset.id, anchorAsset.content as CopyResult)
           : undefined
-        const conceptIdForImage = anchorAsset?.parent_asset_id ?? undefined
+        const conceptIdForImage =
+          imageConceptAsset?.id ?? anchorAsset?.parent_asset_id ?? undefined
         const usesProductionCopy = !!copyAnchor || !!productionCopyAssetId
+        const visualDirection =
+          prompt.trim() ||
+          imageCompositeDescription ||
+          'Professional advertising key art, on-brief and campaign-ready'
 
         trackGenerateImagePath(usesProductionCopy ? 'production_path' : 'explore_path', {
           campaign_id: campaign.id,
@@ -326,7 +388,7 @@ export function GenerationPanel({
           brandId,
           conceptId: conceptIdForImage,
           imageTier,
-          visualDirection: prompt || campaign.brief?.objective || 'Professional advertising image',
+          visualDirection,
           seedIdea: campaign.seed_idea,
           userId,
           brandInclude,
@@ -338,6 +400,10 @@ export function GenerationPanel({
         setPreviewAssetStatus(undefined)
         setShowPreview(true)
         toast.success('Image generated successfully!')
+        // Keep composite in the textarea for iterate; do not wipe to blank
+        lastAutoFilledPromptRef.current = visualDirection
+        setPrompt(visualDirection)
+        return
       }
       setPrompt('')
     } catch (err) {
@@ -348,6 +414,12 @@ export function GenerationPanel({
 
   const handleGenerateImageFromConcept = async (conceptAsset: CreativeAsset) => {
     const concept = conceptAsset.content as ConceptResult
+    const visualDirection = buildCompositeImageDescription({
+      brief: campaign.brief,
+      seedIdea: campaign.seed_idea,
+      concept,
+      userOverride: prompt.trim() || null,
+    })
     trackGenerateImagePath('explore_path', {
       campaign_id: campaign.id,
       source: 'concept',
@@ -362,7 +434,7 @@ export function GenerationPanel({
         brandId,
         conceptId: conceptAsset.id,
         imageTier,
-        visualDirection: concept.visual_direction,
+        visualDirection: visualDirection || concept.visual_direction,
         seedIdea: campaign.seed_idea,
         userId,
         brandInclude,
@@ -379,6 +451,16 @@ export function GenerationPanel({
   const handleGenerateImageFromCopyAsset = async (copyAsset: CreativeAsset) => {
     const copy = copyAsset.content as CopyResult
     const copyAnchor = copyAssetToImageAnchor(copyAsset.id, copy)
+    const parentConcept = copyAsset.parent_asset_id
+      ? concepts.find((asset) => asset.id === copyAsset.parent_asset_id)
+      : undefined
+    const visualDirection = buildCompositeImageDescription({
+      brief: campaign.brief,
+      seedIdea: campaign.seed_idea,
+      concept: parentConcept ? (parentConcept.content as ConceptResult) : null,
+      copy,
+      userOverride: prompt.trim() || null,
+    })
     trackGenerateImagePath('production_path', {
       campaign_id: campaign.id,
       source: 'copy_detail',
@@ -394,11 +476,7 @@ export function GenerationPanel({
         brandId,
         conceptId: copyAsset.parent_asset_id ?? undefined,
         imageTier,
-        visualDirection:
-          prompt.trim() ||
-          campaign.brief?.objective ||
-          campaign.seed_idea ||
-          'Professional advertising image',
+        visualDirection,
         seedIdea: campaign.seed_idea,
         userId,
         brandInclude,
@@ -672,6 +750,7 @@ export function GenerationPanel({
                   size="sm"
                   className="flex-shrink-0"
                   onClick={() => {
+                    lastAutoFilledPromptRef.current = '__user_cleared__'
                     setPrompt('')
                   }}
                 >
@@ -680,6 +759,21 @@ export function GenerationPanel({
               )}
             </div>
           </div>
+          {activeTab === 'images' && (
+            <div
+              className="mt-3 flex items-center gap-2 flex-wrap"
+              data-testid="image-composite-badge"
+            >
+              <Badge variant="secondary" className="text-[11px] font-medium">
+                {imageCompositeSources.label}
+              </Badge>
+              {imageCompositeSources.hasConcept && (
+                <span className="text-[11px] text-muted-foreground">
+                  Prompt pre-filled from campaign selections — edit freely.
+                </span>
+              )}
+            </div>
+          )}
           {activeTab === 'images' && copyAssets.length > 0 && (
             <div className="mt-3 max-w-md">
               <label htmlFor="image-copy-anchor" className="text-xs font-medium text-foreground block mb-1.5">
@@ -710,7 +804,6 @@ export function GenerationPanel({
               <p>
                 For messaging-aligned key art, generate or pick copy first when you can—you can still produce visuals from the brief or concept alone.
               </p>
-              <p>Free-tier-first routing is enabled. Tier selection maps to draft/refine/final model lanes.</p>
             </div>
           )}
           {activeTab === 'images' && refinedPrompt && (
