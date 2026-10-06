@@ -76,6 +76,32 @@ describe('JobDecisionsStage', () => {
     expect(onResend).toHaveBeenCalled()
   })
 
+  it('filters by source when AI and uploaded work are mixed', () => {
+    render(
+      <JobDecisionsStage
+        assets={[
+          asset('a', 'brand_review', { source: 'uploaded' }),
+          asset('b', 'brand_review', { source: 'ai' }),
+        ]}
+      />
+    )
+    expect(screen.getByText('Headline a')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: 'AI' }))
+    expect(screen.queryByText('Headline a')).not.toBeInTheDocument()
+    expect(screen.getByText('Headline b')).toBeInTheDocument()
+  })
+
+  it('shows guidance-only brand check with an incomplete kit', () => {
+    render(
+      <JobDecisionsStage
+        brandKit="partial"
+        assets={[asset('a', 'brand_review', { validation_scores: { valid: true, blocking: false } })]}
+      />
+    )
+    expect(screen.getByTestId('brand-check-chip')).toHaveTextContent('No issues found')
+    expect(screen.queryByText(/on-brand/i)).not.toBeInTheDocument()
+  })
+
   it('shows empty state when nothing is in flight', () => {
     render(<JobDecisionsStage assets={[asset('a', 'draft')]} />)
     expect(screen.getByText('No decisions in flight')).toBeInTheDocument()

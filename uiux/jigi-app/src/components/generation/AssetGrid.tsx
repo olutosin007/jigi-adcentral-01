@@ -51,7 +51,10 @@ export function AssetGrid({
     const name = content?.theme || content?.headline || content?.prompt_used || ''
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesType = typeFilter === 'all' || asset.type === typeFilter
-    const matchesStatus = statusFilter === 'all' || asset.status === statusFilter
+    const matchesStatus =
+      statusFilter === 'all' ||
+      asset.status === statusFilter ||
+      (statusFilter === 'waiting' && (asset.status === 'submitted' || asset.status === 'brand_review'))
     const matchesSource =
       sourceFilter === 'all' ||
       (sourceFilter === 'ai' && (!asset.source || asset.source === 'ai')) ||
@@ -147,13 +150,12 @@ export function AssetGrid({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="agency_review">Agency Review</SelectItem>
-            <SelectItem value="submitted">Submitted</SelectItem>
-            <SelectItem value="brand_review">Brand Review</SelectItem>
-            <SelectItem value="changes_requested">Changes Requested</SelectItem>
+            <SelectItem value="draft">Working</SelectItem>
+            <SelectItem value="agency_review">Internal check</SelectItem>
+            <SelectItem value="waiting">Waiting on client</SelectItem>
+            <SelectItem value="changes_requested">Fix & resend</SelectItem>
             <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="rejected">Not moving forward</SelectItem>
           </SelectContent>
         </Select>
 

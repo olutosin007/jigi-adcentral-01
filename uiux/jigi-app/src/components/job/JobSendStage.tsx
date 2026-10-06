@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { EmptyState } from '@/components/ui/empty-state'
 import { canSubmitAssetForReview } from '@/lib/status'
 import type { CreativeAsset } from '@/store/campaignStore'
+import type { BrandKitLevel } from '@/lib/handoff'
 import { cn } from '@/lib/utils'
 import { JobAssetRow } from './JobAssetRow'
 
@@ -18,7 +19,7 @@ interface JobSendStageProps {
   isSending: boolean
   onOpenAsset?: (asset: CreativeAsset) => void
   onGoToCreative?: () => void
-  brandKitIncomplete?: boolean
+  brandKit?: BrandKitLevel
   /** Hide the internal gate for orgs/contexts where it doesn't apply. */
   allowInternalCheck?: boolean
 }
@@ -44,7 +45,7 @@ export function JobSendStage({
   isSending,
   onOpenAsset,
   onGoToCreative,
-  brandKitIncomplete,
+  brandKit,
   allowInternalCheck = true,
 }: JobSendStageProps) {
   const sendable = useMemo(() => assets.filter((a) => canSubmitAssetForReview(a.status)), [assets])
@@ -102,6 +103,7 @@ export function JobSendStage({
           <JobAssetRow
             key={asset.id}
             asset={asset}
+            brandKit={brandKit}
             onOpen={onOpenAsset ? () => onOpenAsset(asset) : undefined}
             leading={
               <Checkbox
@@ -183,9 +185,11 @@ export function JobSendStage({
           />
         </div>
 
-        {brandKitIncomplete && (
+        {brandKit && brandKit !== 'complete' && (
           <p className="text-xs text-[#B45309] dark:text-[#FBBF24]">
-            Brand kit is incomplete — brand checks are guidance only.
+            {brandKit === 'none'
+              ? 'No brand attached — nothing has been checked against a brand.'
+              : 'Brand kit is incomplete — brand checks are guidance only.'}
           </p>
         )}
 
