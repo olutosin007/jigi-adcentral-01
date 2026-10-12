@@ -113,6 +113,16 @@ export interface CopyResult {
   brand_tune_suggestion?: string
 }
 
+export type ImageProviderId =
+  | 'google_gemini'
+  | 'kling'
+  | 'replicate'
+  | 'azure_openai'
+  | 'azure_foundry'
+  | 'google_imagen'
+
+export type ImageAspectRatio = '1:1' | '4:5' | '16:9' | '9:16' | '4:3' | '3:4'
+
 export interface ImageResult {
   url: string
   prompt_used: string
@@ -121,13 +131,19 @@ export interface ImageResult {
   copy_asset_id?: string
   copy_headline_anchor?: string
   copy_key_message?: string
-  image_provider?: 'google_imagen' | 'replicate' | 'azure_openai' | 'azure_foundry'
+  image_provider?: ImageProviderId
   image_tier?: 'draft' | 'refine' | 'final'
   routing_reason?: 'default' | 'retry' | 'quota_exhausted' | 'budget_guard'
   cost_bucket?: 'free' | 'paid_fallback'
   provider_model?: string
   route_attempt?: number
   revised_prompt?: string
+  aspect_ratio?: ImageAspectRatio
+  image_resolution?: '1K' | '2K' | '4K'
+  estimated_cost_usd?: number | null
+  /** Set on upscaled versions (P2): id of the source image asset. */
+  upscaled_from?: string
+  upscale_scale?: number
   size?: string
   quality?: string
   /** PRD 08: Image Output Schema fields */
@@ -147,7 +163,7 @@ export interface GenerationResult {
     latency_ms: number
     tokens_used?: number
     generation_mode: 'brand_grounded' | 'idea_first'
-    image_provider?: 'google_imagen' | 'replicate' | 'azure_openai' | 'azure_foundry'
+    image_provider?: ImageProviderId
     image_tier?: 'draft' | 'refine' | 'final'
     routing_reason?: 'default' | 'retry' | 'quota_exhausted' | 'budget_guard'
     cost_bucket?: 'free' | 'paid_fallback'

@@ -34,23 +34,38 @@ const {
   mockGetUser,
   mockInsert,
   mockCreateChatCompletion,
+  mockGenerateGemini,
+  mockBuildRouteChain,
+  mockResolveRoute,
 } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockInsert: vi.fn().mockResolvedValue({ error: null }),
+  mockInsert: vi.fn(),
   mockCreateChatCompletion: vi.fn(),
+  mockGenerateGemini: vi.fn(),
+  mockBuildRouteChain: vi.fn(() => [] as unknown[]),
+  mockResolveRoute: vi.fn(),
 }))
+
+/** Chainable Supabase query stub: every builder method returns itself; awaiting resolves a result. */
+function queryBuilder(table: string) {
+  const result = { data: table === 'creative_assets' ? { id: 'asset-1' } : null, error: null, count: 0 }
+  const builder: Record<string, unknown> = {
+    then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
+  }
+  for (const method of ['select', 'eq', 'is', 'gte', 'update', 'single', 'maybeSingle', 'limit', 'order']) {
+    builder[method] = () => builder
+  }
+  builder.insert = (row: unknown) => {
+    mockInsert(row, table)
+    return builder
+  }
+  return builder
+}
 
 vi.mock('./lib/supabase.js', () => ({
   getAuthenticatedUser: (auth?: string) => mockGetUser(auth),
   getSupabaseAdmin: () => ({
-    from: () => ({
-      insert: mockInsert,
-      select: () => ({
-        eq: () => ({
-          gte: () => Promise.resolve({ count: 0, error: null }),
-        }),
-      }),
-    }),
+    from: (table: string) => queryBuilder(table),
     storage: {
       from: () => ({
         upload: vi.fn().mockResolvedValue({ error: null }),
@@ -77,8 +92,12 @@ vi.mock('./lib/replicate.js', () => ({
   generateImageWithReplicateModel: vi.fn(),
 }))
 
-vi.mock('./lib/google-imagen.js', () => ({
-  generateImageWithGoogleImagen: vi.fn(),
+vi.mock('./lib/google-gemini-image.js', () => ({
+  generateImageWithGemini: (args: unknown) => mockGenerateGemini(args),
+}))
+
+vi.mock('./lib/kling-image.js', () => ({
+  generateImageWithKling: vi.fn(),
 }))
 
 vi.mock('./lib/azure-image.js', () => ({
@@ -90,7 +109,7 @@ vi.mock('./lib/azure-foundry-flux.js', () => ({
 }))
 
 vi.mock('./lib/image-routing.js', () => ({
-  buildRouteChain: vi.fn(() => []),
+  buildRouteChain: (tier: string) => mockBuildRouteChain(tier),
   getImageRoutingCaps: vi.fn(() => ({
     tierDailyCaps: { draft: 300, refine: 120, final: 40 },
     perUserDailyCap: 24,
@@ -101,7 +120,7 @@ vi.mock('./lib/image-routing.js', () => ({
   hasAzureImageConfig: vi.fn(() => false),
   hasFoundryFluxConfig: vi.fn(() => false),
   isRetryableProviderError: vi.fn(() => false),
-  resolveRoute: vi.fn(),
+  resolveRoute: (...args: unknown[]) => mockResolveRoute(...args),
 }))
 
 describe('POST /api/generate/text (handler)', () => {
@@ -275,5 +294,79 @@ describe('POST /api/generate/image (handler)', () => {
     )
     expect(res._status).toBe(400)
     expect(String((res._json as { error?: string }).error)).toMatch(/missing required/i)
+  })
+
+  it('routes to Nano Banana and stores cost, resolution and aspect ratio on the asset', async () => {
+    const route = {
+      provider: 'google_gemini',
+      model: 'gemini-nano-banana-2.1',
+      costBucket: 'free',
+      resolution: '2K',
+      image_provider: 'google_gemini',
+      image_tier: 'final',
+      routing_reason: 'default',
+      cost_bucket: 'free',
+      provider_model: 'gemini-nano-banana-2.1',
+      route_attempt: 1,
+    }
+    mockBuildRouteChain.mockReturnValueOnce([route])
+    mockResolveRoute.mockReturnValueOnce(route)
+    mockGenerateGemini.mockResolvedValueOnce({
+      buffer: new ArrayBuffer(4),
+      contentType: 'image/png',
+      model: 'gemini-nano-banana-2.1',
+    })
+
+    const imageHandler = (await import('./generate/image.js')).default
+    const res = createMockRes()
+    await imageHandler(
+      req({
+        headers: { authorization: 'Bearer x' },
+        body: { prompt: 'Hero shot', campaign_id: 'c1', image_tier: 'final', aspect_ratio: '4:5' },
+      }),
+      res
+    )
+
+    expect(res._status).toBe(200)
+    expect(mockGenerateGemini).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'gemini-nano-banana-2.1', aspectRatio: '4:5', resolution: '2K' })
+    )
+    const assetRow = mockInsert.mock.calls.find(([, table]) => table === 'creative_assets')?.[0] as {
+      content: Record<string, unknown>
+    }
+    expect(assetRow.content).toMatchObject({
+      image_provider: 'google_gemini',
+      image_resolution: '2K',
+      aspect_ratio: '4:5',
+      estimated_cost_usd: 0.0504,
+    })
+    expect((res._json as { estimated_cost_usd?: number }).estimated_cost_usd).toBe(0.0504)
+  })
+
+  it('falls back to 1:1 for an unsupported aspect ratio', async () => {
+    const route = {
+      provider: 'google_gemini',
+      model: 'gemini-3.1-flash-lite-image',
+      costBucket: 'free',
+      resolution: '1K',
+      image_provider: 'google_gemini',
+      image_tier: 'draft',
+      routing_reason: 'default',
+      cost_bucket: 'free',
+      provider_model: 'gemini-3.1-flash-lite-image',
+      route_attempt: 1,
+    }
+    mockBuildRouteChain.mockReturnValueOnce([route])
+    mockResolveRoute.mockReturnValueOnce(route)
+    mockGenerateGemini.mockResolvedValueOnce({ buffer: new ArrayBuffer(1), contentType: 'image/png', model: route.model })
+
+    const imageHandler = (await import('./generate/image.js')).default
+    const res = createMockRes()
+    await imageHandler(
+      req({ headers: { authorization: 'Bearer x' }, body: { prompt: 'p', campaign_id: 'c1', aspect_ratio: '7:3' } }),
+      res
+    )
+    expect(res._status).toBe(200)
+    expect(mockGenerateGemini).toHaveBeenCalledWith(expect.objectContaining({ aspectRatio: '1:1' }))
   })
 })

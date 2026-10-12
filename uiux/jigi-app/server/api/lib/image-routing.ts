@@ -1,12 +1,14 @@
 import { getBooleanEnv, getNumberEnv, getServerEnv } from './env.js'
+import { pickModel, type ImageProvider, type ImageResolution, type ImageTier } from './image-models.js'
+import { hasKlingConfig } from './kling-image.js'
 
-export type ImageProvider = 'google_imagen' | 'replicate' | 'azure_openai' | 'azure_foundry'
-export type ImageTier = 'draft' | 'refine' | 'final'
+export type { ImageProvider, ImageTier, ImageResolution } from './image-models.js'
 export type RoutingReason =
   | 'default'
   | 'retry'
   | 'quota_exhausted'
   | 'budget_guard'
+/** `free` is kept as the stored value for primary lanes (historic rows); the UI labels it "Primary". */
 export type CostBucket = 'free' | 'paid_fallback'
 
 export interface ImageRoutingMetadata {
@@ -22,12 +24,14 @@ export interface RouteCandidate {
   provider: ImageProvider
   model: string
   costBucket: CostBucket
+  resolution: ImageResolution
 }
 
 export interface ResolvedRoute extends ImageRoutingMetadata {
   provider: ImageProvider
   model: string
   costBucket: CostBucket
+  resolution: ImageResolution
 }
 
 export interface RoutingContext {
@@ -40,13 +44,19 @@ export interface RoutingContext {
 
 type ImageRoutingProviderMode = 'hybrid' | 'azure_only'
 
-const DEFAULT_GOOGLE_MODEL_BY_TIER: Record<ImageTier, string> = {
-  draft: 'imagen-4.0-fast-generate-001',
-  refine: 'imagen-4.0-generate-001',
-  final: 'imagen-4.0-ultra-generate-001',
+export const DEFAULT_GEMINI_MODEL_BY_TIER: Record<ImageTier, string> = {
+  draft: 'gemini-3.1-flash-lite-image',
+  refine: 'gemini-nano-banana-2.1',
+  final: 'gemini-nano-banana-2.1',
 }
 
-const DEFAULT_REPLICATE_MODEL_BY_TIER: Record<ImageTier, string> = {
+export const DEFAULT_KLING_MODEL_BY_TIER: Record<ImageTier, string> = {
+  draft: 'kling-v2-1',
+  refine: 'kling-v3',
+  final: 'kling-v3',
+}
+
+export const DEFAULT_REPLICATE_MODEL_BY_TIER: Record<ImageTier, string> = {
   draft: 'black-forest-labs/flux-schnell',
   refine: 'black-forest-labs/flux-dev',
   final: 'black-forest-labs/flux-dev',
@@ -55,73 +65,71 @@ const DEFAULT_REPLICATE_MODEL_BY_TIER: Record<ImageTier, string> = {
 const DEFAULT_AZURE_MODEL_BY_TIER: Record<ImageTier, string> = {
   draft: 'gpt-image-1-mini',
   refine: 'gpt-image-1-mini',
-  final: getServerEnv('AZURE_OPENAI_DEPLOYMENT_DALLE', false) || 'gpt-image-1-mini',
+  final: 'gpt-image-1-mini',
 }
 
-const DEFAULT_FOUNDRY_MODEL_BY_TIER: Record<ImageTier, string> = {
-  draft: 'flux-2-flex',
-  refine: 'flux-2-flex',
-  final: 'flux-2-flex',
+const DEFAULT_FOUNDRY_MODEL = 'flux-2-flex'
+
+/** Output resolution requested per tier (providers that can't honour it render at 1K). */
+export const RESOLUTION_BY_TIER: Record<ImageTier, ImageResolution> = {
+  draft: '1K',
+  refine: '1K',
+  final: '2K',
 }
 
-function getGoogleModelForTier(tier: ImageTier): string {
-  if (tier === 'draft') {
-    return (
-      getServerEnv('GOOGLE_IMAGEN_MODEL_DRAFT', false) ||
-      DEFAULT_GOOGLE_MODEL_BY_TIER.draft
-    )
+const TIER_ENV_SUFFIX: Record<ImageTier, string> = {
+  draft: 'DRAFT',
+  refine: 'REFINE',
+  final: 'FINAL',
+}
+
+/** Reads `<prefix>_<TIER>` (first prefix that is set wins) and refuses retired models. */
+function modelFromEnv(prefixes: string[], tier: ImageTier, fallback: string): string {
+  for (const prefix of prefixes) {
+    const envKey = `${prefix}_${TIER_ENV_SUFFIX[tier]}`
+    const envValue = getServerEnv(envKey, false)
+    if (envValue) return pickModel({ envKey, envValue, fallback })
   }
-  if (tier === 'refine') {
-    return (
-      getServerEnv('GOOGLE_IMAGEN_MODEL_REFINE', false) ||
-      DEFAULT_GOOGLE_MODEL_BY_TIER.refine
-    )
-  }
-  return (
-    getServerEnv('GOOGLE_IMAGEN_MODEL_FINAL', false) ||
-    DEFAULT_GOOGLE_MODEL_BY_TIER.final
+  return fallback
+}
+
+export function getGeminiModelForTier(tier: ImageTier): string {
+  return modelFromEnv(
+    ['GOOGLE_IMAGE_MODEL', 'GOOGLE_IMAGEN_MODEL'],
+    tier,
+    DEFAULT_GEMINI_MODEL_BY_TIER[tier]
   )
+}
+
+export function getKlingModelForTier(tier: ImageTier): string {
+  return modelFromEnv(['KLING_IMAGE_MODEL'], tier, DEFAULT_KLING_MODEL_BY_TIER[tier])
 }
 
 function getReplicateModelForTier(tier: ImageTier): string {
-  if (tier === 'draft') {
-    return (
-      getServerEnv('REPLICATE_IMAGE_MODEL_DRAFT', false) ||
-      DEFAULT_REPLICATE_MODEL_BY_TIER.draft
-    )
-  }
-  if (tier === 'refine') {
-    return (
-      getServerEnv('REPLICATE_IMAGE_MODEL_REFINE', false) ||
-      DEFAULT_REPLICATE_MODEL_BY_TIER.refine
-    )
-  }
-  return (
-    getServerEnv('REPLICATE_IMAGE_MODEL_FINAL', false) ||
-    DEFAULT_REPLICATE_MODEL_BY_TIER.final
-  )
+  return modelFromEnv(['REPLICATE_IMAGE_MODEL'], tier, DEFAULT_REPLICATE_MODEL_BY_TIER[tier])
 }
 
 function getAzureModelForTier(tier: ImageTier): string {
-  if (tier === 'draft') {
-    return (
-      getServerEnv('AZURE_OPENAI_IMAGE_MODEL_DRAFT', false) ||
-      DEFAULT_AZURE_MODEL_BY_TIER.draft
-    )
-  }
-  if (tier === 'refine') {
-    return (
-      getServerEnv('AZURE_OPENAI_IMAGE_MODEL_REFINE', false) ||
-      DEFAULT_AZURE_MODEL_BY_TIER.refine
-    )
-  }
-  return (
-    getServerEnv('AZURE_OPENAI_IMAGE_MODEL_FINAL', false) ||
-    DEFAULT_AZURE_MODEL_BY_TIER.final
-  )
+  const fallback =
+    tier === 'final'
+      ? pickModel({
+          envKey: 'AZURE_OPENAI_DEPLOYMENT_DALLE',
+          envValue: getServerEnv('AZURE_OPENAI_DEPLOYMENT_DALLE', false),
+          fallback: DEFAULT_AZURE_MODEL_BY_TIER.final,
+        })
+      : DEFAULT_AZURE_MODEL_BY_TIER[tier]
+  return modelFromEnv(['AZURE_OPENAI_IMAGE_MODEL'], tier, fallback)
 }
 
-function hasGoogleConfig(): boolean {
+function getFoundryModel(): string {
+  return pickModel({
+    envKey: 'AZURE_FOUNDRY_FLUX_MODEL',
+    envValue: getServerEnv('AZURE_FOUNDRY_FLUX_MODEL', false),
+    fallback: DEFAULT_FOUNDRY_MODEL,
+  })
+}
+
+export function hasGeminiImageConfig(): boolean {
   return Boolean(getServerEnv('GOOGLE_AI_API_KEY', false))
 }
 
@@ -140,13 +148,6 @@ export function hasFoundryFluxConfig(): boolean {
   return Boolean(
     getServerEnv('AZURE_FOUNDRY_FLUX_ENDPOINT', false) &&
       getServerEnv('AZURE_FOUNDRY_FLUX_API_KEY', false)
-  )
-}
-
-function getFoundryModelForTier(tier: ImageTier): string {
-  return (
-    getServerEnv('AZURE_FOUNDRY_FLUX_MODEL', false) ||
-    DEFAULT_FOUNDRY_MODEL_BY_TIER[tier]
   )
 }
 
@@ -172,65 +173,49 @@ export function getImageRoutingProviderMode(): ImageRoutingProviderMode {
   return mode === 'azure_only' ? 'azure_only' : 'hybrid'
 }
 
+/**
+ * Primary-lane order per tier. Kling leads where it is cheapest (draft, refine);
+ * Nano Banana 2.1 leads final for in-image text rendering.
+ */
+export const PRIMARY_PROVIDER_ORDER: Record<ImageTier, Array<'kling' | 'google_gemini'>> = {
+  draft: ['kling', 'google_gemini'],
+  refine: ['kling', 'google_gemini'],
+  final: ['google_gemini', 'kling'],
+}
+
 export function buildRouteChain(tier: ImageTier): RouteCandidate[] {
   const chain: RouteCandidate[] = []
-  const providerMode = getImageRoutingProviderMode()
+  const resolution = RESOLUTION_BY_TIER[tier]
 
-  if (providerMode === 'azure_only') {
+  if (getImageRoutingProviderMode() === 'azure_only') {
     if (hasFoundryFluxConfig()) {
-      chain.push({
-        provider: 'azure_foundry',
-        model: getFoundryModelForTier(tier),
-        costBucket: 'paid_fallback',
-      })
-    }
-    if (hasFoundryFluxConfig()) {
-      return chain
+      return [{ provider: 'azure_foundry', model: getFoundryModel(), costBucket: 'paid_fallback', resolution }]
     }
     if (hasAzureImageConfig()) {
-      chain.push({
-        provider: 'azure_openai',
-        model: getAzureModelForTier(tier),
-        costBucket: 'paid_fallback',
-      })
+      chain.push({ provider: 'azure_openai', model: getAzureModelForTier(tier), costBucket: 'paid_fallback', resolution })
     }
     return chain
   }
 
+  for (const provider of PRIMARY_PROVIDER_ORDER[tier]) {
+    if (provider === 'kling' && hasKlingConfig()) {
+      chain.push({ provider, model: getKlingModelForTier(tier), costBucket: 'free', resolution })
+    }
+    if (provider === 'google_gemini' && hasGeminiImageConfig()) {
+      chain.push({ provider, model: getGeminiModelForTier(tier), costBucket: 'free', resolution })
+    }
+  }
+
   if (hasFoundryFluxConfig()) {
-    chain.push({
-      provider: 'azure_foundry',
-      model: getFoundryModelForTier(tier),
-      costBucket: 'free',
-    })
+    chain.push({ provider: 'azure_foundry', model: getFoundryModel(), costBucket: 'free', resolution })
   }
 
-  if (hasGoogleConfig()) {
-    chain.push({
-      provider: 'google_imagen',
-      model: getGoogleModelForTier(tier),
-      costBucket: 'free',
-    })
-  }
-
-  // Replicate (Flux) is a first-class primary lane. Previously gated behind the
-  // paid-fallback flag; promoted so it works as the standalone workhorse once
-  // Azure lanes are decommissioned. Daily per-user/per-campaign/tier caps still
-  // bound spend.
   if (hasReplicateConfig()) {
-    chain.push({
-      provider: 'replicate',
-      model: getReplicateModelForTier(tier),
-      costBucket: 'free',
-    })
+    chain.push({ provider: 'replicate', model: getReplicateModelForTier(tier), costBucket: 'free', resolution: '1K' })
   }
 
   if (isPaidFallbackEnabled() && hasAzureImageConfig()) {
-    chain.push({
-      provider: 'azure_openai',
-      model: getAzureModelForTier(tier),
-      costBucket: 'paid_fallback',
-    })
+    chain.push({ provider: 'azure_openai', model: getAzureModelForTier(tier), costBucket: 'paid_fallback', resolution: '1K' })
   }
 
   return chain
@@ -267,6 +252,7 @@ export function resolveRoute(
     provider: selected.provider,
     model: selected.model,
     costBucket: selected.costBucket,
+    resolution: selected.resolution,
     image_provider: selected.provider,
     image_tier: context.tier,
     routing_reason: routingReason,

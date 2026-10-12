@@ -1,9 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getSupabaseAdmin, getAuthenticatedUser } from '../lib/supabase.js'
 import { generateImageWithReplicateModel } from '../lib/replicate.js'
-import { generateImageWithGoogleImagen } from '../lib/google-imagen.js'
+import { generateImageWithGemini } from '../lib/google-gemini-image.js'
+import { generateImageWithKling } from '../lib/kling-image.js'
 import { generateImageWithAzure } from '../lib/azure-image.js'
 import { generateImageWithFoundryFlux } from '../lib/azure-foundry-flux.js'
+import { estimateImageCostUsd } from '../lib/image-models.js'
 import {
   buildRouteChain,
   getImageRoutingCaps,
@@ -12,14 +14,21 @@ import {
   hasFoundryFluxConfig,
   isRetryableProviderError,
   resolveRoute,
-  type ImageRoutingMetadata,
   type ImageTier,
   type ResolvedRoute,
 } from '../lib/image-routing.js'
 import { ensureDatabaseContract } from '../lib/schema-contract.js'
 
 type LegacyImageQuality = 'draft' | 'standard' | 'high'
-type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+type AspectRatio = '1:1' | '4:5' | '16:9' | '9:16' | '4:3' | '3:4'
+type LegacyAspectRatio = Exclude<AspectRatio, '4:5'>
+
+const SUPPORTED_ASPECT_RATIOS: AspectRatio[] = ['1:1', '4:5', '16:9', '9:16', '4:3', '3:4']
+
+/** Azure lanes predate 4:5; nearest portrait keeps the subject framing. */
+function toLegacyAspect(aspectRatio: AspectRatio): LegacyAspectRatio {
+  return aspectRatio === '4:5' ? '3:4' : aspectRatio
+}
 
 interface GenerateImageRequest {
   prompt: string
@@ -142,24 +151,25 @@ async function executeProvider(
   prompt: string,
   aspectRatio: AspectRatio
 ): Promise<ProviderExecutionResult> {
-  if (route.provider === 'google_imagen') {
-    const generated = await generateImageWithGoogleImagen({
+  if (route.provider === 'google_gemini' || route.provider === 'kling') {
+    const generate = route.provider === 'kling' ? generateImageWithKling : generateImageWithGemini
+    const generated = await generate({
       prompt,
       model: route.model,
       aspectRatio,
+      resolution: route.resolution,
     })
     return {
       imageBuffer: generated.buffer,
       contentType: generated.contentType,
       modelUsed: generated.model,
-      revisedPrompt: generated.revisedPrompt,
     }
   }
 
   if (route.provider === 'replicate') {
     const imageUrls = await generateImageWithReplicateModel(route.model, {
       prompt,
-      aspect_ratio: aspectRatio,
+      aspect_ratio: toLegacyAspect(aspectRatio),
       num_outputs: 1,
       output_format: 'webp',
       output_quality: route.image_tier === 'final' ? 95 : route.image_tier === 'refine' ? 90 : 82,
@@ -182,7 +192,7 @@ async function executeProvider(
   if (route.provider === 'azure_foundry') {
     const generated = await generateImageWithFoundryFlux({
       prompt,
-      aspectRatio,
+      aspectRatio: toLegacyAspect(aspectRatio),
     })
     return {
       imageBuffer: generated.buffer,
@@ -193,7 +203,7 @@ async function executeProvider(
 
   const generated = await generateImageWithAzure({
     prompt,
-    aspectRatio,
+    aspectRatio: toLegacyAspect(aspectRatio),
     deployment: route.model,
   })
   const imageResponse = await fetch(generated.imageUrl)
@@ -243,7 +253,8 @@ export default async function handler(
 
   const startTime = Date.now()
   const imageTier = body.image_tier || mapLegacyQualityToTier(body.quality)
-  const aspectRatio = body.aspect_ratio || '1:1'
+  const aspectRatio: AspectRatio =
+    body.aspect_ratio && SUPPORTED_ASPECT_RATIOS.includes(body.aspect_ratio) ? body.aspect_ratio : '1:1'
   const supabaseAdmin = getSupabaseAdmin()
   const routingCaps = getImageRoutingCaps()
   const routingMode = getImageRoutingProviderMode()
@@ -326,7 +337,7 @@ export default async function handler(
     }
 
     let providerResult: ProviderExecutionResult | null = null
-    let selectedRoute: ImageRoutingMetadata | null = null
+    let selectedRoute: ResolvedRoute | null = null
     const routeErrors: string[] = []
 
     for (let routeAttempt = 0; routeAttempt < routeChain.length; routeAttempt++) {
@@ -397,6 +408,7 @@ export default async function handler(
       )
     }
 
+    const estimatedCostUsd = estimateImageCostUsd(selectedRoute.provider_model, selectedRoute.resolution)
     const extension = inferExtension(providerResult.contentType)
     const filename = `${body.campaign_id}/${Date.now()}.${extension}`
     const { error: uploadError } = await supabaseAdmin.storage
@@ -437,6 +449,8 @@ export default async function handler(
         cost_bucket: selectedRoute.cost_bucket,
         provider_model: selectedRoute.provider_model,
         route_attempt: selectedRoute.route_attempt,
+        image_resolution: selectedRoute.resolution,
+        estimated_cost_usd: estimatedCostUsd,
       },
       status: 'draft',
     }
@@ -496,6 +510,7 @@ export default async function handler(
       image_tier: imageTier,
       routing_reason: selectedRoute.routing_reason,
       cost_bucket: selectedRoute.cost_bucket,
+      estimated_cost_usd: estimatedCostUsd,
       latency_ms: latencyMs,
     })
   } catch (error) {

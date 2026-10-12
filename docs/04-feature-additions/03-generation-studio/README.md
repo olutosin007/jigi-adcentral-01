@@ -23,7 +23,7 @@
 ### Success metrics
 
 - Zero image generations routed to a retired model (enforced by unit test + runtime guard).
-- Blended cost per draft image ≤ $0.02; per final image ≤ $0.06 (from `generation_log` + `content.estimated_cost_usd`).
+- Blended cost per draft image ≤ $0.035; per final image ≤ $0.06 (from `generation_log` + `content.estimated_cost_usd`).
 - Generate → submit for review in ≤ 3 clicks from the Images tab.
 
 ---
@@ -46,10 +46,12 @@
 
 | Tier | Primary | Fallbacks (in order) | Est. primary cost |
 |------|---------|----------------------|-------------------|
-| Draft | Nano Banana 2 Lite `gemini-3.1-flash-lite-image` | Kling Image 2.1 `kling-v2-1` → Azure Foundry FLUX → Replicate `flux-schnell` | $0.017 |
+| Draft | Kling Image 2.1 `kling-v2-1` | Nano Banana 2 Lite `gemini-3.1-flash-lite-image` → Azure Foundry FLUX → Replicate `flux-schnell` | $0.014 |
 | Refine | Kling Image 3.0 `kling-v3` | Nano Banana 2.1 → Azure Foundry FLUX → Replicate `flux-dev` | $0.028 |
 | Final | Nano Banana 2.1 `gemini-nano-banana-2.1` @2K | Kling Image 3.0 @2K → Azure Foundry FLUX → Replicate `flux-dev` | $0.050 |
-| Upscale | Replicate `nightmareai/real-esrgan` ×2 | — | ~$0.002 |
+| Upscale | Replicate `nightmareai/real-esrgan` ×2 | — | ~$0.002 (estimate) |
+
+Final stays on Nano Banana 2.1 (not the cheaper Kling 3.0 @2K) for its in-image text rendering — ad finals usually carry a headline. Swap with `GOOGLE_IMAGE_MODEL_FINAL` / chain order if the benchmark says otherwise. Without Kling credentials, every tier falls through to Nano Banana. Nano Banana 2 Lite and 2.1 list at the same $0.0336 @1K; Lite is kept for speed only.
 
 Prices and retirement dates live in **one place**: `server/api/lib/image-models.ts`. The client tier catalog (`src/lib/image-tiers.ts`) is drift-tested against it.
 

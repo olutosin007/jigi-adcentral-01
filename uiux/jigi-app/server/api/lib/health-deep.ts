@@ -1,6 +1,13 @@
 import { getServerEnv } from './env.js'
 import { getSupabaseAdmin } from './supabase.js'
-import { hasFoundryFluxConfig, hasAzureImageConfig, getImageRoutingProviderMode } from './image-routing.js'
+import {
+  buildRouteChain,
+  getImageRoutingProviderMode,
+  hasAzureImageConfig,
+  hasFoundryFluxConfig,
+} from './image-routing.js'
+import { findRetiredModelOverrides } from './image-models.js'
+import { hasKlingConfig } from './kling-image.js'
 import { getLlmProvider, getLlmModelName, createChatCompletion } from './llm.js'
 
 interface CheckResult {
@@ -131,9 +138,29 @@ export async function runDeepHealthCheck(): Promise<DeepHealthResult> {
   }
 
   const googleKey = getServerEnv('GOOGLE_AI_API_KEY', false)
-  checks['image_provider_google_imagen'] = {
+  checks['image_provider_google_gemini'] = {
     ok: !!googleKey,
-    detail: googleKey ? 'configured' : 'missing GOOGLE_AI_API_KEY',
+    detail: googleKey ? 'configured (Nano Banana)' : 'missing GOOGLE_AI_API_KEY',
+  }
+  checks['image_provider_kling'] = {
+    ok: hasKlingConfig(),
+    detail: hasKlingConfig() ? 'configured' : 'missing KLING_API_KEY (or KLING_ACCESS_KEY + KLING_SECRET_KEY)',
+  }
+
+  const tiers = ['draft', 'refine', 'final'] as const
+  checks['image_route_chains'] = {
+    ok: tiers.every((tier) => buildRouteChain(tier).length > 0),
+    detail: tiers
+      .map((tier) => `${tier}: ${buildRouteChain(tier).map((r) => `${r.provider}/${r.model}`).join(' → ') || 'none'}`)
+      .join(' | '),
+  }
+
+  const retiredOverrides = findRetiredModelOverrides(process.env)
+  checks['image_model_overrides'] = {
+    ok: retiredOverrides.length === 0,
+    detail: retiredOverrides.length
+      ? `retired models in env (ignored at runtime): ${retiredOverrides.join(', ')}`
+      : 'no retired model overrides',
   }
 
   const replicateToken = getServerEnv('REPLICATE_API_TOKEN', false)

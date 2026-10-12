@@ -1,0 +1,46 @@
+/**
+ * Drift guard: every provider the router can write must be accepted by the
+ * DB CHECK constraint, or routing events fail to insert and daily caps stop counting.
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import { describe, expect, it } from 'vitest'
+import type { ImageProvider } from './image-models.js'
+
+const MIGRATION = path.resolve(
+  __dirname,
+  '../../../../../supabase/migrations/035_image_providers_gemini_kling.sql'
+)
+
+/** Compile-time exhaustive list of the ImageProvider union. */
+const PROVIDERS: Record<ImageProvider, true> = {
+  google_gemini: true,
+  kling: true,
+  replicate: true,
+  azure_openai: true,
+  azure_foundry: true,
+  google_imagen: true,
+}
+
+function checkLists(sql: string): string[][] {
+  return [...sql.matchAll(/image_provider IN \(([^)]+)\)/g)].map((m) =>
+    m[1].split(',').map((v) => v.trim().replace(/'/g, ''))
+  )
+}
+
+describe('migration 035 image_provider CHECK', () => {
+  const sql = fs.readFileSync(MIGRATION, 'utf8')
+  const lists = checkLists(sql)
+
+  it('constrains both generation_log and image_routing_events', () => {
+    expect(lists).toHaveLength(2)
+    expect(sql).toContain('ALTER TABLE generation_log')
+    expect(sql).toContain('ALTER TABLE image_routing_events')
+  })
+
+  it('accepts exactly the ImageProvider union', () => {
+    for (const list of lists) {
+      expect([...list].sort()).toEqual(Object.keys(PROVIDERS).sort())
+    }
+  })
+})

@@ -47,6 +47,7 @@ import {
 import { toast } from 'sonner'
 import type { GenerationStage } from '@/lib/campaign-workspace'
 import { trackGenerateImagePath } from '@/lib/analytics'
+import { formatCostUsd, formatLaneLabel } from '@/lib/image-tiers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1106,7 +1107,7 @@ export function GenerationPanel({
                 className={imageTier === 'draft' ? '' : ''}
                 onClick={() => setImageTier('draft')}
               >
-                Draft (Free)
+                Draft
               </Button>
               <Button
                 size="sm"
@@ -1114,7 +1115,7 @@ export function GenerationPanel({
                 className={imageTier === 'refine' ? '' : ''}
                 onClick={() => setImageTier('refine')}
               >
-                Refine (Free Limited)
+                Refine
               </Button>
               <Button
                 size="sm"
@@ -1122,7 +1123,7 @@ export function GenerationPanel({
                 className={imageTier === 'final' ? '' : ''}
                 onClick={() => setImageTier('final')}
               >
-                Final Polish (Very Limited)
+                Final
               </Button>
             </div>
             {imageAssets.length > 0 && (
@@ -1132,7 +1133,8 @@ export function GenerationPanel({
               <div className="mb-4 rounded-lg border border-border bg-muted px-3 py-2">
                 <p className="text-xs text-foreground">
                   Route: <span className="font-medium text-foreground">{latestImage.image_provider || latestImage.model}</span>
-                  {latestImage.cost_bucket ? ` · ${latestImage.cost_bucket === 'free' ? 'Free lane' : 'Paid fallback'}` : ''}
+                  {latestImage.cost_bucket ? ` · ${formatLaneLabel(latestImage.cost_bucket)}` : ''}
+                  {latestImage.estimated_cost_usd != null ? ` · ${formatCostUsd(latestImage.estimated_cost_usd)}` : ''}
                   {latestImage.image_tier ? ` · ${latestImage.image_tier}` : ''}
                 </p>
               </div>

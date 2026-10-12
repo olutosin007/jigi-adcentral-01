@@ -459,6 +459,7 @@ export class AIOrchestrator {
         routing_reason: response.routing_reason,
         cost_bucket: response.cost_bucket,
         provider_model: response.model,
+        estimated_cost_usd: response.estimated_cost_usd ?? null,
         channel: channelId,
         dimensions: expectedDimensions,
         ...(copyAnchor?.copy_asset_id && { copy_asset_id: copyAnchor.copy_asset_id }),

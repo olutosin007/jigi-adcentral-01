@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/store/authStore'
 import { getSupabaseSessionSingleFlight } from './supabase-session'
+import type { ImageAspectRatio, ImageProviderId } from './ai/types'
 
 const API_BASE = '/api'
 const API_TIMEOUT_MS = 90_000
@@ -101,7 +102,7 @@ export interface GenerateImageRequest {
   campaign_id: string
   brand_id?: string
   concept_id?: string
-  aspect_ratio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+  aspect_ratio?: ImageAspectRatio
   image_tier?: 'draft' | 'refine' | 'final'
   quality?: 'draft' | 'standard' | 'high'
   brand_context?: {
@@ -133,10 +134,11 @@ export interface GenerateImageResponse {
   }
   image_url: string
   model: string
-  image_provider: 'google_imagen' | 'replicate' | 'azure_openai' | 'azure_foundry'
+  image_provider: ImageProviderId
   image_tier: 'draft' | 'refine' | 'final'
   routing_reason: 'default' | 'retry' | 'quota_exhausted' | 'budget_guard'
   cost_bucket: 'free' | 'paid_fallback'
+  estimated_cost_usd?: number | null
   latency_ms: number
 }
 

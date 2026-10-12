@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { canSubmitAssetForReview } from '@/lib/status'
+import { formatCostUsd, formatLaneLabel } from '@/lib/image-tiers'
 import type { ImageResult } from '@/lib/ai'
 
 interface ImagePreviewModalProps {
@@ -131,8 +132,13 @@ export function ImagePreviewModal({
                 </Badge>
               )}
               {image.cost_bucket && (
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {image.cost_bucket === 'free' ? 'Free lane' : 'Paid fallback'}
+                <Badge variant="secondary" className="text-xs">
+                  {formatLaneLabel(image.cost_bucket)}
+                </Badge>
+              )}
+              {image.estimated_cost_usd != null && (
+                <Badge variant="secondary" className="text-xs tabular-nums">
+                  {formatCostUsd(image.estimated_cost_usd)}
                 </Badge>
               )}
               {isSaved && (

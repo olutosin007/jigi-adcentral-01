@@ -37,7 +37,7 @@ Every image request routes to a live, priced model. Retired models can never be 
 ### Scope
 
 1. `server/api/lib/google-gemini-image.ts` — `POST {base}/models/{model}:generateContent` with `x-goog-api-key`; `generationConfig.responseModalities: ['IMAGE']`, `imageConfig: { aspectRatio, imageSize }`. Reads first `inlineData` part. Lite model is forced to `1K`.
-2. `server/api/lib/kling-image.ts` — `POST /v1/images/generations` (`model_name`, `prompt`, `aspect_ratio`, `resolution`, `n: 1`), then poll `GET /v1/images/generations/{task_id}` until `succeed` / `failed` / timeout (`KLING_POLL_TIMEOUT_MS`, default 60s). Auth: `KLING_API_KEY` bearer, else HS256 JWT from `KLING_ACCESS_KEY` / `KLING_SECRET_KEY` (30-min expiry, `nbf` −5s). Downloads the result immediately (Kling purges after 30 days).
+2. `server/api/lib/kling-image.ts` — `POST /v1/images/generations` (`model_name`, `prompt`, `aspect_ratio`, `resolution`, `n: 1`), then poll `GET /v1/images/generations/{task_id}` until `succeed` / `failed` / timeout (`KLING_POLL_TIMEOUT_MS`, default 40s so a fallback still fits the 60s function budget). Auth: `KLING_API_KEY` bearer, else HS256 JWT from `KLING_ACCESS_KEY` / `KLING_SECRET_KEY` (30-min expiry, `nbf` −5s). Downloads the result immediately (Kling purges after 30 days).
 3. Remove `google-imagen.ts` (Imagen `:predict` is dead).
 4. Tests: `google-gemini-image.test.ts`, `kling-image.test.ts` (mocked `fetch`; request shape, auth header, polling, failure message, timeout).
 
