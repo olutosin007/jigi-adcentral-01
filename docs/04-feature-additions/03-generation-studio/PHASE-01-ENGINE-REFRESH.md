@@ -1,7 +1,7 @@
 # Phase 1 — Engine Refresh
 
 **Initiative:** [Generation Studio](./README.md)
-**Status:** In progress
+**Status:** Implemented
 **Depends on:** —
 **Unlocks:** P2 (upscale uses the registry), P3 (client catalog)
 

@@ -151,6 +151,25 @@ export async function generateImage(
   })
 }
 
+export interface UpscaleImageRequest {
+  asset_id: string
+  scale?: 2 | 4
+}
+
+export interface UpscaleImageResponse {
+  asset: { id: string; campaign_id: string; content: Record<string, unknown>; version: number }
+  image_url: string
+  model: string
+  estimated_cost_usd: number | null
+}
+
+export async function upscaleImage(request: UpscaleImageRequest): Promise<UpscaleImageResponse> {
+  return apiRequest<UpscaleImageResponse>('/generate/upscale', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
 export interface SubmitAssetRequest {
   asset_id: string
   target: 'agency_review' | 'brand_review'

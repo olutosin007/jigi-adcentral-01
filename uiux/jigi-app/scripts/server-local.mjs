@@ -84,6 +84,7 @@ const server = http.createServer(async (req, res) => {
   const routeMap = {
     'POST /api/generate/text': './api/generate/text.ts',
     'POST /api/generate/image': './api/generate/image.ts',
+    'POST /api/generate/upscale': './api/generate/upscale.ts',
     'POST /api/brief/generate': './api/brief/generate.ts',
     'POST /api/brief/trigger': './api/brief/trigger.ts',
     'POST /api/creative-router/generate': './api/creative-router/generate.ts',
@@ -171,6 +172,7 @@ server.listen(PORT, () => {
   console.log('  GET  /api/health/deep   ← diagnose env/Supabase/Azure/schema')
   console.log('  POST /api/generate/text')
   console.log('  POST /api/generate/image')
+  console.log('  POST /api/generate/upscale')
   console.log('  POST /api/brief/generate (alias → text)')
   console.log('  POST /api/brief/trigger (alias → text)')
   console.log('  ...')

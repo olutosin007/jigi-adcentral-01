@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useCampaign, useCampaignAssets, useBrand, useReviewQueue, useSelectConcept, useSelectCopy } from './useCampaignQueries'
+import { useCampaign, useCampaignAssets, useBrand, useReviewQueue, useSelectConcept, useSelectCopy, useUpscaleImage } from './useCampaignQueries'
 import type { ReactNode } from 'react'
 
 const mockCampaign = {
@@ -81,9 +81,11 @@ const mockReviewQueueAssets = [
 const reviewQueueOrderSpy = vi.fn()
 
 const mockSelectCampaignAsset = vi.fn()
+const mockUpscaleImage = vi.fn()
 
 vi.mock('@/lib/api-client', () => ({
   selectCampaignAsset: (...args: unknown[]) => mockSelectCampaignAsset(...args),
+  upscaleImage: (...args: unknown[]) => mockUpscaleImage(...args),
 }))
 
 vi.mock('@/lib/supabase', () => ({
@@ -230,6 +232,20 @@ describe('useCampaignQueries', () => {
         selection: 'copy',
         asset_id: 'copy-1',
       })
+    })
+  })
+
+  describe('useUpscaleImage', () => {
+    it('calls the upscale API and invalidates the campaign assets query', async () => {
+      mockUpscaleImage.mockResolvedValueOnce({ asset: { id: 'up-1' }, image_url: 'u', model: 'm', estimated_cost_usd: 0.002 })
+      const { queryClient, Wrapper } = createWrapper()
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const { result } = renderHook(() => useUpscaleImage(), { wrapper: Wrapper })
+
+      await result.current.mutateAsync({ assetId: 'asset-1', campaignId: 'camp-1', scale: 2 })
+
+      expect(mockUpscaleImage).toHaveBeenCalledWith({ asset_id: 'asset-1', scale: 2 })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['campaign-assets', 'camp-1'] })
     })
   })
 })

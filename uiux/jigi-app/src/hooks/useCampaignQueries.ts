@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { uploadFileToStorage, isAllowedMimeType, validateFileSize } from '@/lib/upload'
-import { selectCampaignAsset } from '@/lib/api-client'
+import { selectCampaignAsset, upscaleImage } from '@/lib/api-client'
 import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type CopyImageAnchor, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ComplianceResult } from '@/lib/ai'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
 import type { Brand } from '@/store/brandStore'
@@ -630,6 +630,20 @@ export function useGenerateImage() {
 
   return useMutation({
     mutationFn: generateAndSaveImage,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['campaign-assets', variables.campaignId],
+      })
+    },
+  })
+}
+
+export function useUpscaleImage() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ assetId, scale }: { assetId: string; campaignId: string; scale?: 2 | 4 }) =>
+      upscaleImage({ asset_id: assetId, scale }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', variables.campaignId],

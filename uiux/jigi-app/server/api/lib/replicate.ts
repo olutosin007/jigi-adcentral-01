@@ -46,6 +46,13 @@ export async function generateImageWithReplicateModel(
   return output as string[]
 }
 
+export async function runReplicateModel(
+  model: string,
+  input: Record<string, unknown>
+): Promise<unknown> {
+  return getReplicateClient().run(model as `${string}/${string}`, { input })
+}
+
 export async function generateImageWithFluxDev(
   options: FluxGenerationOptions
 ): Promise<string[]> {
