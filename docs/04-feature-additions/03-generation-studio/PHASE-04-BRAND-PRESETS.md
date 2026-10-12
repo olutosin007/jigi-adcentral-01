@@ -1,7 +1,7 @@
 # Phase 4 — Brand Presets
 
 **Initiative:** [Generation Studio](./README.md)
-**Status:** Planned
+**Status:** Implemented — apply `supabase/migrations/036_brand_image_presets.sql`
 **Depends on:** P3 composer
 
 ---
@@ -30,7 +30,9 @@ brand_image_presets (
 RLS mirrors brand visibility: readable/insertable by members of the brand's org **or** an agency with `agency_brand_access`; delete by creator or org admin. (Presets are not review state, so direct client writes are allowed — submit/review rules are untouched.)
 
 - `src/lib/brand-presets.ts`: `validatePresetInput`, `applyPresetToPrompt(prompt, preset)` (appends style once; idempotent).
-- Hooks: `useBrandPresets(brandId)`, `useCreateBrandPreset()`, `useDeleteBrandPreset()`.
+- Hooks (`src/hooks/useBrandPresets.ts`): `useBrandPresets(brandId)`, `useCreateBrandPreset(brandId)`, `useDeleteBrandPreset(brandId)`. Reads degrade to `[]` if 036 is not applied yet.
+- Access helper `brand_preset_accessible(brand_id)` (SECURITY DEFINER) backs all four policies; update is creator-only.
+- Applied style lives in the prompt as a trailing `Style: …` block; re-applying replaces it (`stripPresetStyle` / `extractPresetStyle`).
 
 ### Tests
 
@@ -50,5 +52,5 @@ RLS mirrors brand visibility: readable/insertable by members of the brand's org 
 
 ### Acceptance
 
-- [ ] Preset saved by one agency creator is visible to a teammate on the same brand.
-- [ ] Applying a preset twice does not duplicate style text.
+- [ ] Preset saved by one agency creator is visible to a teammate on the same brand. *(RLS — verify manually after applying 036.)*
+- [x] Applying a preset twice does not duplicate style text (`brand-presets.test.ts`).

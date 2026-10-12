@@ -102,6 +102,12 @@ vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
   }
 })
 
+vi.mock('@/hooks/useBrandPresets', () => ({
+  useBrandPresets: () => ({ data: [] }),
+  useCreateBrandPreset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteBrandPreset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
+
 vi.mock('@/lib/api-client', () => ({
   generateText: vi.fn().mockResolvedValue({ content: { refined_prompt: 'Refined' } }),
 }))

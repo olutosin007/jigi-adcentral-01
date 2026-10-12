@@ -21,6 +21,7 @@ import { CopyDetailModal } from './CopyDetailModal'
 import { GenerationLoadingState } from './GenerationLoadingState'
 import { GenerationHistory } from './GenerationHistory'
 import { TierPicker } from './TierPicker'
+import { BrandPresetBar } from './BrandPresetBar'
 import {
   useGenerateConcepts,
   useGenerateCopy,
@@ -50,6 +51,7 @@ import { toast } from 'sonner'
 import type { GenerationStage } from '@/lib/campaign-workspace'
 import { trackGenerateImagePath } from '@/lib/analytics'
 import { formatCostUsd, formatLaneLabel, nearestSupportedAspect } from '@/lib/image-tiers'
+import { applyPresetToPrompt, type BrandImagePreset } from '@/lib/brand-presets'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -571,6 +573,13 @@ export function GenerationPanel({
     setPreviewAssetId(asset.id)
     setPreviewAssetStatus(asset.status)
     setShowPreview(true)
+  }
+
+  const handleApplyPreset = (preset: BrandImagePreset) => {
+    setPrompt((current) => applyPresetToPrompt(current, preset))
+    setImageTier(preset.image_tier)
+    setAspectRatio(preset.aspect_ratio)
+    toast.success(`Applied “${preset.name}”`)
   }
 
   const handleRemixImage = (image: ImageResult) => {
@@ -1139,6 +1148,14 @@ export function GenerationPanel({
                 </div>
               </div>
             )}
+            <BrandPresetBar
+              brandId={brandId}
+              userId={userId}
+              prompt={prompt}
+              tier={imageTier}
+              aspectRatio={aspectRatio}
+              onApply={handleApplyPreset}
+            />
             <div className="mb-4">
               <TierPicker
                 tier={imageTier}
