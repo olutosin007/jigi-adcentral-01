@@ -6,6 +6,10 @@
 --   approved_first_round: approve on round 1 (avg = approved_first_round_rate)
 -- Requires 032 (reviewed_via). security_invoker keeps base-table RLS in force.
 
+-- Mirrors 020 so this view can be created on databases where 020 was skipped.
+ALTER TABLE creative_assets
+ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'ai' CHECK (source IN ('ai', 'uploaded'));
+
 CREATE OR REPLACE VIEW handoff_decision_metrics
 WITH (security_invoker = true) AS
 SELECT
