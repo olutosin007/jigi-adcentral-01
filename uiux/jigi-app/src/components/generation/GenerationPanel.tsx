@@ -20,10 +20,12 @@ import { ConceptDetailModal } from './ConceptDetailModal'
 import { CopyDetailModal } from './CopyDetailModal'
 import { GenerationLoadingState } from './GenerationLoadingState'
 import { GenerationHistory } from './GenerationHistory'
+import { TierPicker } from './TierPicker'
 import {
   useGenerateConcepts,
   useGenerateCopy,
   useGenerateImage,
+  useUpscaleImage,
   useCampaignAssets,
   useDeleteAsset,
   useBrand,
@@ -36,10 +38,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { deriveBrandEssentials } from '@/lib/brand-profile-status'
 import { generateText } from '@/lib/api-client'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
-import type { BrandIncludeFlags, ConceptResult, CopyImageAnchor, CopyResult, ImageResult } from '@/lib/ai'
+import type { BrandIncludeFlags, ConceptResult, CopyImageAnchor, CopyResult, ImageAspectRatio, ImageResult } from '@/lib/ai'
 import { DEFAULT_BRAND_INCLUDE } from '@/lib/ai'
 import { cn } from '@/lib/utils'
-import { getPrimaryCopyBudgetChars } from '@/lib/channel-constraints'
+import { getChannelConstraint, getPrimaryCopyBudgetChars } from '@/lib/channel-constraints'
 import {
   buildCompositeImageDescription,
   describeCompositeSources,
@@ -47,7 +49,7 @@ import {
 import { toast } from 'sonner'
 import type { GenerationStage } from '@/lib/campaign-workspace'
 import { trackGenerateImagePath } from '@/lib/analytics'
-import { formatCostUsd, formatLaneLabel } from '@/lib/image-tiers'
+import { formatCostUsd, formatLaneLabel, nearestSupportedAspect } from '@/lib/image-tiers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,6 +110,13 @@ export function GenerationPanel({
   const [prompt, setPrompt] = useState('')
   const [selectedConceptAssetId, setSelectedConceptAssetId] = useState<string | null>(null)
   const [imageTier, setImageTier] = useState<ImageTier>('draft')
+  const [aspectRatio, setAspectRatio] = useState<ImageAspectRatio>(() => {
+    const leadChannel = campaign.brief?.channels?.[0]
+    return nearestSupportedAspect(
+      leadChannel ? getChannelConstraint(leadChannel).image_dimensions?.aspect_ratio : undefined
+    )
+  })
+  const [upscalingAssetId, setUpscalingAssetId] = useState<string | null>(null)
   const [previewImage, setPreviewImage] = useState<ImageResult | null>(null)
   const [previewAssetId, setPreviewAssetId] = useState<string | null>(null)
   const [previewAssetStatus, setPreviewAssetStatus] = useState<string | undefined>(undefined)
@@ -148,6 +157,7 @@ export function GenerationPanel({
   const generateConcepts = useGenerateConcepts()
   const generateCopy = useGenerateCopy()
   const generateImage = useGenerateImage()
+  const upscaleImage = useUpscaleImage()
   const deleteAsset = useDeleteAsset()
   const selectConcept = useSelectConcept(campaign.id)
   const selectCopy = useSelectCopy(campaign.id)
@@ -389,6 +399,7 @@ export function GenerationPanel({
           brandId,
           conceptId: conceptIdForImage,
           imageTier,
+          aspectRatio,
           visualDirection,
           seedIdea: campaign.seed_idea,
           userId,
@@ -435,6 +446,7 @@ export function GenerationPanel({
         brandId,
         conceptId: conceptAsset.id,
         imageTier,
+        aspectRatio,
         visualDirection: visualDirection || concept.visual_direction,
         seedIdea: campaign.seed_idea,
         userId,
@@ -477,6 +489,7 @@ export function GenerationPanel({
         brandId,
         conceptId: copyAsset.parent_asset_id ?? undefined,
         imageTier,
+        aspectRatio,
         visualDirection,
         seedIdea: campaign.seed_idea,
         userId,
@@ -558,6 +571,32 @@ export function GenerationPanel({
     setPreviewAssetId(asset.id)
     setPreviewAssetStatus(asset.status)
     setShowPreview(true)
+  }
+
+  const handleRemixImage = (image: ImageResult) => {
+    setPrompt(image.prompt_used || '')
+    if (image.image_tier) setImageTier(image.image_tier)
+    if (image.aspect_ratio) setAspectRatio(image.aspect_ratio)
+    const promptInput = document.getElementById('generation-prompt')
+    promptInput?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    promptInput?.focus()
+    toast.message('Prompt loaded — edit and generate a new version')
+  }
+
+  const handleUpscaleImage = async (assetId: string) => {
+    setUpscalingAssetId(assetId)
+    try {
+      const result = await upscaleImage.mutateAsync({ assetId, campaignId: campaign.id })
+      setPreviewImage(result.asset.content as unknown as ImageResult)
+      setPreviewAssetId(result.asset.id)
+      setPreviewAssetStatus('draft')
+      setShowPreview(true)
+      toast.success('Upscaled version saved')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upscale failed.')
+    } finally {
+      setUpscalingAssetId(null)
+    }
   }
 
   const handleSubmitAsset = (assetId: string) => {
@@ -1100,31 +1139,13 @@ export function GenerationPanel({
                 </div>
               </div>
             )}
-            <div className="mb-4 flex items-center gap-2 flex-wrap">
-              <Button
-                size="sm"
-                variant={imageTier === 'draft' ? 'default' : 'outline'}
-                className={imageTier === 'draft' ? '' : ''}
-                onClick={() => setImageTier('draft')}
-              >
-                Draft
-              </Button>
-              <Button
-                size="sm"
-                variant={imageTier === 'refine' ? 'default' : 'outline'}
-                className={imageTier === 'refine' ? '' : ''}
-                onClick={() => setImageTier('refine')}
-              >
-                Refine
-              </Button>
-              <Button
-                size="sm"
-                variant={imageTier === 'final' ? 'default' : 'outline'}
-                className={imageTier === 'final' ? '' : ''}
-                onClick={() => setImageTier('final')}
-              >
-                Final
-              </Button>
+            <div className="mb-4">
+              <TierPicker
+                tier={imageTier}
+                onTierChange={setImageTier}
+                aspectRatio={aspectRatio}
+                onAspectRatioChange={setAspectRatio}
+              />
             </div>
             {imageAssets.length > 0 && (
               <p className="text-xs text-muted-foreground mb-4">{imageAssets.length} images generated</p>
@@ -1151,6 +1172,10 @@ export function GenerationPanel({
                   onView={() => handleOpenImagePreview(asset)}
                   onSubmit={() => handleSubmitAsset(asset.id)}
                   onRegenerate={handleGenerate}
+                  onRemix={() => handleRemixImage(asset.content as ImageResult)}
+                  onUpscale={() => void handleUpscaleImage(asset.id)}
+                  isUpscaling={upscalingAssetId === asset.id}
+                  version={asset.version}
                   showActions={true}
                 />
               ))}

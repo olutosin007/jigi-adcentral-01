@@ -18,6 +18,8 @@ export type {
   CopyResult,
   CopyImageAnchor,
   ImageResult,
+  ImageAspectRatio,
+  ImageProviderId,
   ComplianceResult,
   ComplianceCheck,
   AIModel,

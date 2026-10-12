@@ -4,14 +4,19 @@ import type { CampaignBrief } from './types'
 const generateTextMock = vi.fn()
 const assemblePromptMock = vi.fn()
 const supabaseFromMock = vi.fn()
+const generateImageMock = vi.fn()
 
 vi.mock('@/lib/api-client', () => ({
   generateText: (...args: unknown[]) => generateTextMock(...args),
-  generateImage: vi.fn(),
+  generateImage: (...args: unknown[]) => generateImageMock(...args),
 }))
 
 vi.mock('@/lib/prompt-assembly', () => ({
   assemblePrompt: (...args: unknown[]) => assemblePromptMock(...args),
+}))
+
+vi.mock('@/lib/image-enforcement', () => ({
+  validateImage: vi.fn().mockResolvedValue({ warnings: [] }),
 }))
 
 vi.mock('@/lib/supabase', () => ({
@@ -148,5 +153,44 @@ describe('AIOrchestrator.generateCopy', () => {
     const call = generateTextMock.mock.calls[0][0]
     expect(call.prompt).toContain('Persisted Concept')
     expect(call.prompt).toContain('Delivers refresh promise directly')
+  })
+})
+
+describe('AIOrchestrator.generateImage', () => {
+  const orchestrator = new AIOrchestrator()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    assemblePromptMock.mockResolvedValue(null)
+    generateImageMock.mockResolvedValue({
+      image_url: 'https://example.com/img.png',
+      model: 'kling-v3',
+      estimated_cost_usd: 0.028,
+    })
+  })
+
+  it('P3: forwards the selected aspect ratio to the image API', async () => {
+    await orchestrator.generateImage(
+      undefined,
+      'Sunlit product shot',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'refine',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      '9:16'
+    )
+    expect(generateImageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ image_tier: 'refine', aspect_ratio: '9:16' })
+    )
+  })
+
+  it('P3: omits aspect_ratio when none selected (server defaults to 1:1)', async () => {
+    await orchestrator.generateImage(undefined, 'Sunlit product shot')
+    expect(generateImageMock.mock.calls[0][0]).not.toHaveProperty('aspect_ratio')
   })
 })

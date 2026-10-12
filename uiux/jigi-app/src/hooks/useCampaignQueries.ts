@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { uploadFileToStorage, isAllowedMimeType, validateFileSize } from '@/lib/upload'
 import { selectCampaignAsset, upscaleImage } from '@/lib/api-client'
-import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type CopyImageAnchor, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ComplianceResult } from '@/lib/ai'
+import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type CopyImageAnchor, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ImageAspectRatio, type ComplianceResult } from '@/lib/ai'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
 import type { Brand } from '@/store/brandStore'
 
@@ -552,10 +552,11 @@ interface GenerateImageParams {
   brandInclude?: BrandIncludeFlags
   channelId?: string
   copyAnchor?: CopyImageAnchor
+  aspectRatio?: ImageAspectRatio
 }
 
 async function generateAndSaveImage(params: GenerateImageParams) {
-  const { campaignId, brandId, conceptId, visualDirection, imageTier, seedIdea, userId, brandInclude, channelId, copyAnchor } = params
+  const { campaignId, brandId, conceptId, visualDirection, imageTier, seedIdea, userId, brandInclude, channelId, copyAnchor, aspectRatio } = params
 
   let brandConstraints: BrandConstraints | undefined
   if (brandId) {
@@ -602,7 +603,8 @@ async function generateAndSaveImage(params: GenerateImageParams) {
     conceptId,
     brandInclude,
     channel,
-    copyAnchor
+    copyAnchor,
+    aspectRatio
   )
 
   const imageData = (result.data as ImageResult[])[0]

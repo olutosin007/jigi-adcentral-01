@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, ExternalLink, Trash2, MoreHorizontal, RefreshCw, Check, ZoomIn, Send } from 'lucide-react'
+import { Download, ExternalLink, Trash2, MoreHorizontal, RefreshCw, Check, ZoomIn, Send, Wand2, Maximize2, Loader2 } from 'lucide-react'
 import { DriftBadge } from './DriftBadge'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -25,7 +25,19 @@ interface ImageCardProps {
   onDelete?: () => void
   onView?: () => void
   onSubmit?: () => void
+  /** Loads this image's prompt, tier and aspect back into the composer. */
+  onRemix?: () => void
+  onUpscale?: () => void
+  isUpscaling?: boolean
+  version?: number
   showActions?: boolean
+}
+
+const ASPECT_CLASS: Record<string, string> = {
+  '1:1': 'aspect-square',
+  '4:5': 'aspect-[4/5]',
+  '9:16': 'aspect-[9/16]',
+  '16:9': 'aspect-video',
 }
 
 export function ImageCard({
@@ -39,8 +51,14 @@ export function ImageCard({
   onDelete,
   onView,
   onSubmit,
+  onRemix,
+  onUpscale,
+  isUpscaling = false,
+  version,
   showActions = true,
 }: ImageCardProps) {
+  const canUpscale = !!onUpscale && !image.upscaled_from
+  const aspectClass = ASPECT_CLASS[image.aspect_ratio ?? '1:1'] ?? 'aspect-square'
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
@@ -71,7 +89,7 @@ export function ImageCard({
       } ${onSelect ? 'cursor-pointer' : ''}`}
       onClick={onSelect}
     >
-      <div className="relative aspect-square bg-muted">
+      <div className={`relative ${aspectClass} bg-muted`}>
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -116,6 +134,15 @@ export function ImageCard({
             <StatusBadge status={status} />
           </div>
         )}
+        {version != null && version > 1 && (
+          <span
+            className="absolute bottom-2 right-2 rounded-md bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground"
+            data-testid="image-version-badge"
+          >
+            v{version}
+            {image.upscaled_from ? ` · ${image.upscale_scale ?? 2}×` : ''}
+          </span>
+        )}
 
         {onView && (
           <button
@@ -137,8 +164,8 @@ export function ImageCard({
           </p>
           
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-[10px] text-muted-foreground">
-              {image.size || '1024×1024'}
+            <span className="text-[10px] text-muted-foreground tabular-nums">
+              {[image.aspect_ratio, image.image_resolution].filter(Boolean).join(' · ') || image.size || '1024×1024'}
             </span>
             
             <div className="flex items-center gap-1 flex-wrap">
@@ -155,10 +182,46 @@ export function ImageCard({
                   Submit
                 </Button>
               )}
+              {onRemix && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  aria-label="Remix"
+                  title="Remix"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRemix()
+                  }}
+                >
+                  <Wand2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {canUpscale && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  aria-label={isUpscaling ? 'Upscaling' : 'Upscale 2×'}
+                  title="Upscale 2×"
+                  disabled={isUpscaling}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onUpscale?.()
+                  }}
+                >
+                  {isUpscaling ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Maximize2 className="w-3.5 h-3.5" />
+                  )}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0"
+                aria-label="Download"
                 onClick={(e) => {
                   e.stopPropagation()
                   handleDownload()
@@ -173,6 +236,7 @@ export function ImageCard({
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
+                    aria-label="More actions"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <MoreHorizontal className="w-4 h-4" />

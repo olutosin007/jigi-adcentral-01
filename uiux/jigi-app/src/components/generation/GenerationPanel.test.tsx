@@ -87,6 +87,7 @@ vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
       isError: false,
       reset: vi.fn(),
     }),
+    useUpscaleImage: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useCampaignAssets: () => ({ data: mockCampaignAssetsData.current }),
     useDeleteAsset: () => ({ mutateAsync: vi.fn() }),
     useBrand: () => ({ data: mockBrandData.current }),
@@ -106,7 +107,7 @@ vi.mock('@/lib/api-client', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() },
 }))
 
 function createWrapper() {

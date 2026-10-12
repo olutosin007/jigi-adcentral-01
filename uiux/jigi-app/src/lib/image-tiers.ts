@@ -56,6 +56,30 @@ export const IMAGE_ASPECT_OPTIONS: readonly { id: ImageAspectRatio; label: strin
   { id: '16:9', label: 'Landscape 16:9' },
 ]
 
+function ratioValue(ratio: string): number | null {
+  const match = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(ratio.trim())
+  if (!match) return null
+  const w = Number(match[1])
+  const h = Number(match[2])
+  return w > 0 && h > 0 ? w / h : null
+}
+
+/** Maps any channel ratio (e.g. `1.91:1`, `6:5`) to the closest generator-supported ratio. */
+export function nearestSupportedAspect(ratio: string | null | undefined): ImageAspectRatio {
+  const target = ratio ? ratioValue(ratio) : null
+  if (target == null) return '1:1'
+  let best: ImageAspectRatio = '1:1'
+  let bestDistance = Infinity
+  for (const option of IMAGE_ASPECT_OPTIONS) {
+    const distance = Math.abs(Math.log(target / (ratioValue(option.id) as number)))
+    if (distance < bestDistance) {
+      best = option.id
+      bestDistance = distance
+    }
+  }
+  return best
+}
+
 export function formatCostUsd(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return ''
   if (value < 0.01) return '<$0.01'

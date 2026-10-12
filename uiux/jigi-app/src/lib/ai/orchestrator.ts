@@ -25,6 +25,7 @@ import type {
   BrandIncludeFlags,
   CampaignBrief,
   FallbackContext,
+  ImageAspectRatio,
 } from './types'
 
 interface ConceptContextInput extends ConceptContextForPrompt {}
@@ -341,7 +342,8 @@ export class AIOrchestrator {
     conceptId?: string,
     brandInclude?: BrandIncludeFlags,
     channelId?: string,
-    copyAnchor?: CopyImageAnchor
+    copyAnchor?: CopyImageAnchor,
+    aspectRatio?: ImageAspectRatio
   ): Promise<GenerationResult> {
     const generationMode = brand ? 'brand_grounded' : 'idea_first'
 
@@ -419,6 +421,7 @@ export class AIOrchestrator {
         brand_id: brandId,
         concept_id: conceptId,
         image_tier: imageTier,
+        ...(aspectRatio && { aspect_ratio: aspectRatio }),
         brand_context: brandContext,
         prompt_hash: promptHash,
         lineage,
