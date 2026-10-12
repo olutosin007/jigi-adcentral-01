@@ -37,7 +37,11 @@ const {
   mockGenerateGemini,
   mockBuildRouteChain,
   mockResolveRoute,
+  mockReplicateGenerate,
+  mockAzureGenerate,
 } = vi.hoisted(() => ({
+  mockReplicateGenerate: vi.fn(),
+  mockAzureGenerate: vi.fn(),
   mockGetUser: vi.fn(),
   mockInsert: vi.fn(),
   mockCreateChatCompletion: vi.fn(),
@@ -89,7 +93,7 @@ vi.mock('./lib/llm.js', () => ({
 }))
 
 vi.mock('./lib/replicate.js', () => ({
-  generateImageWithReplicateModel: vi.fn(),
+  generateImageWithReplicateModel: (...args: unknown[]) => mockReplicateGenerate(...args),
 }))
 
 vi.mock('./lib/google-gemini-image.js', () => ({
@@ -101,14 +105,15 @@ vi.mock('./lib/kling-image.js', () => ({
 }))
 
 vi.mock('./lib/azure-image.js', () => ({
-  generateImageWithAzure: vi.fn(),
+  generateImageWithAzure: (...args: unknown[]) => mockAzureGenerate(...args),
 }))
 
 vi.mock('./lib/azure-foundry-flux.js', () => ({
   generateImageWithFoundryFlux: vi.fn(),
 }))
 
-vi.mock('./lib/image-routing.js', () => ({
+vi.mock('./lib/image-routing.js', async (importOriginal) => ({
+  summarizeProviderError: (await importOriginal<typeof import('./lib/image-routing.js')>()).summarizeProviderError,
   buildRouteChain: (tier: string) => mockBuildRouteChain(tier),
   getImageRoutingCaps: vi.fn(() => ({
     tierDailyCaps: { draft: 300, refine: 120, final: 40 },
@@ -368,5 +373,73 @@ describe('POST /api/generate/image (handler)', () => {
     )
     expect(res._status).toBe(200)
     expect(mockGenerateGemini).toHaveBeenCalledWith(expect.objectContaining({ aspectRatio: '1:1' }))
+  })
+
+  it('one provider quota failure skips only that lane (no lane-wide lockout to paid fallback)', async () => {
+    const actual = await vi.importActual<typeof import('./lib/image-routing.js')>('./lib/image-routing.js')
+    const chain = [
+      { provider: 'google_gemini', model: 'gemini-3.1-flash-lite-image', costBucket: 'free', resolution: '1K' },
+      { provider: 'replicate', model: 'black-forest-labs/flux-schnell', costBucket: 'free', resolution: '1K' },
+      { provider: 'azure_openai', model: 'gpt-image-1.5', costBucket: 'paid_fallback', resolution: '1K' },
+    ]
+    mockBuildRouteChain.mockReturnValueOnce(chain)
+    mockResolveRoute.mockImplementation((...args: unknown[]) =>
+      (actual.resolveRoute as (...a: unknown[]) => unknown)(...args)
+    )
+    mockGenerateGemini.mockRejectedValueOnce(
+      new Error(
+        'Google Gemini image API error: 429 - { "error": { "message": "You exceeded your current quota. Quota exceeded for metric: generate_content_free_tier_requests, limit: 0", "status": "RESOURCE_EXHAUSTED" } }'
+      )
+    )
+    mockReplicateGenerate.mockResolvedValueOnce(['https://replicate.test/out.webp'])
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/webp' } })
+    )
+
+    const imageHandler = (await import('./generate/image.js')).default
+    const res = createMockRes()
+    await imageHandler(
+      req({ headers: { authorization: 'Bearer x' }, body: { prompt: 'p', campaign_id: 'c1', image_tier: 'draft' } }),
+      res
+    )
+
+    expect(res._status).toBe(200)
+    expect(mockGenerateGemini).toHaveBeenCalledTimes(1)
+    expect(mockReplicateGenerate).toHaveBeenCalledWith('black-forest-labs/flux-schnell', expect.anything())
+    expect(mockAzureGenerate).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
+    mockResolveRoute.mockReset()
+  })
+
+  it('returns one readable line per failed lane instead of raw provider JSON', async () => {
+    const actual = await vi.importActual<typeof import('./lib/image-routing.js')>('./lib/image-routing.js')
+    const chain = [
+      { provider: 'google_gemini', model: 'gemini-3.1-flash-lite-image', costBucket: 'free', resolution: '1K' },
+      { provider: 'replicate', model: 'black-forest-labs/flux-schnell', costBucket: 'free', resolution: '1K' },
+    ]
+    mockBuildRouteChain.mockReturnValueOnce(chain)
+    mockResolveRoute.mockImplementation((...args: unknown[]) =>
+      (actual.resolveRoute as (...a: unknown[]) => unknown)(...args)
+    )
+    mockGenerateGemini.mockRejectedValueOnce(
+      new Error('Google Gemini image API error: 429 - { "error": { "message": "You exceeded your current quota ... generate_content_free_tier_requests, limit: 0" } }')
+    )
+    mockReplicateGenerate.mockRejectedValueOnce(new Error('Replicate black-forest-labs/flux-schnell failed: NSFW content detected'))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const imageHandler = (await import('./generate/image.js')).default
+    const res = createMockRes()
+    await imageHandler(
+      req({ headers: { authorization: 'Bearer x' }, body: { prompt: 'p', campaign_id: 'c1', image_tier: 'draft' } }),
+      res
+    )
+
+    const error = String((res._json as { error?: string }).error)
+    expect(res._status).toBe(500)
+    expect(error).toContain('google_gemini: quota exhausted — this API key is on the free tier')
+    expect(error).toContain('replicate: Replicate black-forest-labs/flux-schnell failed: NSFW content detected')
+    expect(error).not.toContain('{')
+    errorSpy.mockRestore()
+    mockResolveRoute.mockReset()
   })
 })

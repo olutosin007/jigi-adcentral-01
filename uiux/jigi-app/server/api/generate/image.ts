@@ -14,6 +14,7 @@ import {
   hasFoundryFluxConfig,
   isRetryableProviderError,
   resolveRoute,
+  summarizeProviderError,
   type ImageTier,
   type ResolvedRoute,
 } from '../lib/image-routing.js'
@@ -78,15 +79,11 @@ function mapLegacyQualityToTier(quality?: LegacyImageQuality): ImageTier {
   return 'draft'
 }
 
-function isLikelyQuotaError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const message = error.message.toLowerCase()
-  return (
-    message.includes('quota') ||
-    message.includes('rate limit') ||
-    message.includes('resource exhausted') ||
-    message.includes('429')
-  )
+/** A provider's own quota only skips that lane; the tier daily cap is what locks the primary lane. */
+function describeRouteError(route: ResolvedRoute, error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Unknown provider error'
+  console.error(`[image] ${route.provider}/${route.provider_model} failed:`, message)
+  return `${route.provider}: ${summarizeProviderError(message)}`
 }
 
 function getUtcDayStartIso(date = new Date()): string {
@@ -328,7 +325,7 @@ export default async function handler(
       })
     }
 
-    let freeLaneExhausted = quotaState.tierCount >= routingCaps.tierDailyCaps[imageTier]
+    const freeLaneExhausted = quotaState.tierCount >= routingCaps.tierDailyCaps[imageTier]
     const paidFallbackBlocked = quotaState.paidCount >= routingCaps.globalPaidDailyCap
     const routeChain = buildRouteChain(imageTier)
 
@@ -366,18 +363,12 @@ export default async function handler(
             selectedRoute = retryRoute
             break
           } catch (retryError) {
-            routeErrors.push(`${route.provider}: ${retryError instanceof Error ? retryError.message : 'Unknown retry error'}`)
-            if (route.costBucket === 'free' && isLikelyQuotaError(retryError)) {
-              freeLaneExhausted = true
-            }
+            routeErrors.push(describeRouteError(route, retryError))
             continue
           }
         }
 
-        routeErrors.push(`${route.provider}: ${firstError instanceof Error ? firstError.message : 'Unknown provider error'}`)
-        if (route.costBucket === 'free' && isLikelyQuotaError(firstError)) {
-          freeLaneExhausted = true
-        }
+        routeErrors.push(describeRouteError(route, firstError))
       }
     }
 

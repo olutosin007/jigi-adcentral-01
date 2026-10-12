@@ -9,7 +9,13 @@ vi.mock('./env.js', () => ({
 }))
 
 import { IMAGE_MODELS } from './image-models.js'
-import { buildRouteChain, resolveRoute, type ImageTier } from './image-routing.js'
+import {
+  buildRouteChain,
+  isRetryableProviderError,
+  resolveRoute,
+  summarizeProviderError,
+  type ImageTier,
+} from './image-routing.js'
 
 const ALL_CREDS = {
   GOOGLE_AI_API_KEY: 'g',
@@ -128,5 +134,34 @@ describe('resolveRoute', () => {
 
     const exhausted = resolveRoute(chain, { tier: 'final', attempt: 0, quotaExhaustedFreeLane: true })
     expect(exhausted).toMatchObject({ provider: 'azure_openai', routing_reason: 'quota_exhausted' })
+  })
+})
+
+const GEMINI_FREE_TIER_429 =
+  'Google Gemini image API error: 429 - { "error": { "code": 429, "message": "You exceeded your current quota, please check your plan and billing details. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-3.1-flash-lite-image", "status": "RESOURCE_EXHAUSTED" } }'
+
+describe('provider error handling', () => {
+  it('does not retry hard quota errors, but still retries transient ones', () => {
+    expect(isRetryableProviderError(new Error(GEMINI_FREE_TIER_429))).toBe(false)
+    expect(isRetryableProviderError(new Error('503 temporarily unavailable'))).toBe(true)
+    expect(isRetryableProviderError(new Error('429 rate limit, retry in 2s'))).toBe(true)
+  })
+
+  it('summarises a Gemini free-tier quota error into an actionable line', () => {
+    const summary = summarizeProviderError(GEMINI_FREE_TIER_429)
+    expect(summary).toMatch(/free tier.*Enable billing/)
+    expect(summary).not.toContain('{')
+  })
+
+  it('summarises rate limits and credential failures', () => {
+    expect(summarizeProviderError('429 Too Many Requests')).toBe('rate limited — try again shortly.')
+    expect(summarizeProviderError('Kling API 401 Unauthorized')).toBe('credentials rejected — check the API key.')
+  })
+
+  it('strips trailing JSON and truncates long messages', () => {
+    expect(summarizeProviderError('Upstream error 500 - {"detail":"boom"}')).toBe('Upstream error 500')
+    const long = summarizeProviderError('x'.repeat(400))
+    expect(long.length).toBeLessThanOrEqual(160)
+    expect(long.endsWith('…')).toBe(true)
   })
 })

@@ -262,8 +262,14 @@ export function resolveRoute(
   }
 }
 
+/** Billing/plan quota (e.g. Gemini free tier `limit: 0`) — retrying the same provider cannot succeed. */
+export function isHardQuotaError(message: string): boolean {
+  return /exceeded your current quota|resource_exhausted|insufficient credit|billing/i.test(message)
+}
+
 export function isRetryableProviderError(error: unknown): boolean {
   if (!(error instanceof Error)) return false
+  if (isHardQuotaError(error.message)) return false
   const message = error.message.toLowerCase()
   return (
     message.includes('timeout') ||
@@ -275,3 +281,20 @@ export function isRetryableProviderError(error: unknown): boolean {
   )
 }
 
+
+const PROVIDER_ERROR_MAX = 160
+
+/** One readable line per failed lane for the client; full errors stay in server logs. */
+export function summarizeProviderError(message: string): string {
+  if (isHardQuotaError(message)) {
+    return /free[_ ]?tier/i.test(message)
+      ? 'quota exhausted — this API key is on the free tier, which has no image quota. Enable billing for the project.'
+      : 'quota exhausted — check plan and billing for this provider.'
+  }
+  if (/\b429\b|rate limit|too many requests/i.test(message)) return 'rate limited — try again shortly.'
+  if (/\b(401|403)\b|unauthori[sz]ed|permission denied|api key not valid|invalid api key/i.test(message)) {
+    return 'credentials rejected — check the API key.'
+  }
+  const firstLine = message.split('\n')[0].replace(/\s*[-:]\s*\{.*$/s, '').trim()
+  return firstLine.length > PROVIDER_ERROR_MAX ? `${firstLine.slice(0, PROVIDER_ERROR_MAX - 1)}…` : firstLine || 'unknown error'
+}
