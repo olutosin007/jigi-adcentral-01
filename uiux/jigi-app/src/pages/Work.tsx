@@ -52,10 +52,16 @@ export function Work() {
                   : 'Everything is moving.'}
           </p>
         </div>
-        <Button onClick={() => navigate('/app/campaigns/new')} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          New
-        </Button>
+        <div className="flex w-full sm:w-auto gap-2">
+          <Button variant="outline" onClick={() => navigate('/app/generate')} className="flex-1 sm:flex-none">
+            <Sparkles className="mr-2 h-4 w-4" />
+            Generate now
+          </Button>
+          <Button onClick={() => navigate('/app/campaigns/new')} className="flex-1 sm:flex-none">
+            <Plus className="mr-2 h-4 w-4" />
+            New
+          </Button>
+        </div>
       </header>
 
       {jobs.length > 0 && (

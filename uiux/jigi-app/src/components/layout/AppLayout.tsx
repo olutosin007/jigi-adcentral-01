@@ -13,7 +13,7 @@ import { TourAutoStart } from '@/components/tour/TourAutoStart'
 const pageTitles: Record<string, string> = {
   '/app/work': 'Work',
   '/app/overview': 'Overview',
-  '/app/quick-start': 'Quick Start',
+  '/app/generate': 'Generate',
   '/app/campaigns': 'Campaigns',
   '/app/brands': 'Brands',
   '/app/approved': 'Approved',

@@ -184,11 +184,11 @@ export function Dashboard() {
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                onClick={() => navigate('/app/campaigns/new?mode=idea_first')}
+                onClick={() => navigate('/app/generate')}
                 className="gap-2 transition-colors duration-200"
               >
                 <Sparkles className="h-4 w-4" />
-                Quick Idea
+                Generate now
               </Button>
               <Button
                 variant="outline"

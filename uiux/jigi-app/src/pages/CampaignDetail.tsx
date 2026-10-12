@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
@@ -45,6 +45,7 @@ import {
   isGenerationStage,
 } from '@/lib/campaign-workspace'
 import { buildPipelineGateInput, evaluateBriefReadiness } from '@/lib/pipeline-gates'
+import { parseDirectGenerateState } from '@/lib/direct-generate'
 import {
   countJobAssets,
   evaluateJobGates,
@@ -104,9 +105,11 @@ function resolveStage(searchParams: URLSearchParams): PipelineStage {
 
 export function CampaignDetail() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const stage = resolveStage(searchParams)
+  const [directRequest, setDirectRequest] = useState(() => parseDirectGenerateState(location.state))
   const creativeMode = parseCreativeMode(searchParams.get('mode'))
 
   const [isEditingBrief, setIsEditingBrief] = useState(false)
@@ -769,6 +772,11 @@ export function CampaignDetail() {
                   embeddedInWorkspace
                   stage={stage}
                   onStageChange={(s) => setStage(s)}
+                  directRequest={directRequest}
+                  onDirectRequestConsumed={() => {
+                    setDirectRequest(null)
+                    navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+                  }}
                 />
               )
             : null

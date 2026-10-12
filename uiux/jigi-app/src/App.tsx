@@ -12,7 +12,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { Work } from '@/pages/Work'
 import { CampaignDetail } from '@/pages/CampaignDetail'
 import { AssetReview } from '@/pages/AssetReview'
-import { QuickStart } from '@/pages/QuickStart'
+import { GenerateNow } from '@/pages/GenerateNow'
 import { Onboarding } from '@/pages/Onboarding'
 import { Brands } from '@/pages/Brands'
 import { BrandProfile } from '@/pages/BrandProfile'
@@ -114,7 +114,8 @@ export function App() {
             <Route path="overview" element={<Dashboard />} />
             
             {/* Journey entry points */}
-            <Route path="quick-start" element={<QuickStart />} />
+            <Route path="generate" element={<GenerateNow />} />
+            <Route path="quick-start" element={<Navigate to="/app/generate" replace />} />
             <Route path="onboarding" element={<Onboarding />} />
             
             {/* Brand management */}

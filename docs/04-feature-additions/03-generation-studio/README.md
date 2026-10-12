@@ -87,6 +87,7 @@ Unit tests are the contract. Each phase adds tests that fail when code drifts fr
 | 2026-10-12 | Keep `cost_bucket` values (`free` / `paid_fallback`) but relabel in UI as *Primary* / *Fallback* | All lanes are now paid; avoids a data migration on historic rows. |
 | 2026-10-12 | Studio stays on the light DESIGN.md surface | A dark studio surface changes DESIGN.md and needs explicit approval (open question below). |
 | 2026-10-12 | Video deferred to P5 | Needs async job infra; images deliver the visible win first. |
+| 2026-10-12 | Second entry route `/app/generate` ("Generate now") alongside campaign create | Generating should not require brand + brief up front. It creates a brandless idea-first campaign named `Quick: …` and auto-runs the request in Images or Concepts, so assets, review and upscale still have a home. `/app/quick-start` redirects here. Guarded by `direct-generate.test.ts`, `GenerateNow.test.tsx`, and GenerationPanel direct-request tests (runs once, waits for session). |
 
 ## Delivery log
 

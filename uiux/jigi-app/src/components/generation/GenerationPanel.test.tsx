@@ -42,7 +42,16 @@ const mockDraftConceptAsset = {
   updated_at: '2024-01-01',
 }
 
-const { mockCampaignAssetsData, mockSelectConceptMutate, mockSelectCopyMutate, mockBrandData } = vi.hoisted(() => ({
+const {
+  mockCampaignAssetsData,
+  mockSelectConceptMutate,
+  mockSelectCopyMutate,
+  mockBrandData,
+  mockGenerateImageMutate,
+  mockGenerateConceptsMutate,
+} = vi.hoisted(() => ({
+  mockGenerateImageMutate: vi.fn(),
+  mockGenerateConceptsMutate: vi.fn(),
   mockCampaignAssetsData: { current: [] as typeof mockDraftConceptAsset[] },
   mockSelectConceptMutate: vi.fn().mockResolvedValue({}),
   mockSelectCopyMutate: vi.fn().mockResolvedValue({}),
@@ -70,7 +79,7 @@ vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
   return {
     ...actual,
     useGenerateConcepts: () => ({
-      mutateAsync: vi.fn().mockResolvedValue({}),
+      mutateAsync: mockGenerateConceptsMutate,
       isPending: false,
       isError: false,
       reset: vi.fn(),
@@ -82,7 +91,7 @@ vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
       reset: vi.fn(),
     }),
     useGenerateImage: () => ({
-      mutateAsync: vi.fn().mockResolvedValue({ image: {} }),
+      mutateAsync: mockGenerateImageMutate,
       isPending: false,
       isError: false,
       reset: vi.fn(),
@@ -135,6 +144,8 @@ describe('GenerationPanel', () => {
     mockBrandData.current = undefined
     mockSelectConceptMutate.mockClear()
     mockSelectCopyMutate.mockClear()
+    mockGenerateImageMutate.mockResolvedValue({ image: {} })
+    mockGenerateConceptsMutate.mockResolvedValue({})
   })
 
   it('renders Concepts, Copy, Images tabs', () => {
@@ -306,5 +317,80 @@ describe('GenerationPanel', () => {
     expect(screen.getByTestId('image-composite-badge')).toHaveTextContent(/Built from: Summer Launch/i)
     const prompt = screen.getByLabelText('Generation prompt') as HTMLTextAreaElement
     expect(prompt.value).toContain('Bright')
+  })
+
+  describe('direct generate request (/app/generate)', () => {
+    const ideaFirstCampaign: Campaign = {
+      ...mockCampaign,
+      brand_id: null,
+      journey_mode: 'idea_first',
+      generation_mode: 'idea_first',
+      seed_idea: 'Cold brew on linen',
+      brief: { channels: [] },
+    }
+
+    it('auto-runs an image request once with its prompt, tier and aspect', async () => {
+      const onConsumed = vi.fn()
+      const { rerender } = render(
+        <GenerationPanel
+          campaign={ideaFirstCampaign}
+          userId="user-1"
+          stage="images"
+          directRequest={{ kind: 'image', prompt: 'Cold brew on linen', imageTier: 'final', aspectRatio: '4:5' }}
+          onDirectRequestConsumed={onConsumed}
+        />,
+        { wrapper: createWrapper() }
+      )
+      await vi.waitFor(() => expect(mockGenerateImageMutate).toHaveBeenCalledTimes(1))
+      expect(mockGenerateImageMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          campaignId: 'camp-1',
+          visualDirection: 'Cold brew on linen',
+          imageTier: 'final',
+          aspectRatio: '4:5',
+        })
+      )
+      expect(onConsumed).toHaveBeenCalledTimes(1)
+
+      rerender(
+        <GenerationPanel
+          campaign={ideaFirstCampaign}
+          userId="user-1"
+          stage="images"
+          directRequest={{ kind: 'image', prompt: 'Cold brew on linen', imageTier: 'final', aspectRatio: '4:5' }}
+          onDirectRequestConsumed={onConsumed}
+        />
+      )
+      expect(mockGenerateImageMutate).toHaveBeenCalledTimes(1)
+    })
+
+    it('waits for the session before running', () => {
+      render(
+        <GenerationPanel
+          campaign={ideaFirstCampaign}
+          stage="images"
+          directRequest={{ kind: 'image', prompt: 'Cold brew on linen', imageTier: 'draft', aspectRatio: '1:1' }}
+        />,
+        { wrapper: createWrapper() }
+      )
+      expect(mockGenerateImageMutate).not.toHaveBeenCalled()
+    })
+
+    it('runs a concepts request from the seed idea without duplicating it as requirements', async () => {
+      render(
+        <GenerationPanel
+          campaign={ideaFirstCampaign}
+          userId="user-1"
+          stage="concepts"
+          directRequest={{ kind: 'concepts', prompt: 'Cold brew on linen', imageTier: 'draft', aspectRatio: '1:1' }}
+        />,
+        { wrapper: createWrapper() }
+      )
+      await vi.waitFor(() => expect(mockGenerateConceptsMutate).toHaveBeenCalledTimes(1))
+      const call = mockGenerateConceptsMutate.mock.calls[0][0]
+      expect(call.brief.objective).toBe('Cold brew on linen')
+      expect(call.brief.requirements).toBeUndefined()
+      expect(mockGenerateImageMutate).not.toHaveBeenCalled()
+    })
   })
 })

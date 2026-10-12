@@ -52,6 +52,7 @@ import type { GenerationStage } from '@/lib/campaign-workspace'
 import { trackGenerateImagePath } from '@/lib/analytics'
 import { formatCostUsd, formatLaneLabel, nearestSupportedAspect } from '@/lib/image-tiers'
 import { applyPresetToPrompt, type BrandImagePreset } from '@/lib/brand-presets'
+import type { DirectGenerateRequest } from '@/lib/direct-generate'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,6 +85,15 @@ interface GenerationPanelProps {
   embeddedInWorkspace?: boolean
   stage?: GenerationStage
   onStageChange?: (stage: GenerationStage) => void
+  /** From `/app/generate`: run this once on arrival, then report it consumed. */
+  directRequest?: DirectGenerateRequest | null
+  onDirectRequestConsumed?: () => void
+}
+
+interface GenerateOverrides {
+  prompt?: string
+  imageTier?: ImageTier
+  aspectRatio?: ImageAspectRatio
 }
 
 export function GenerationPanel({
@@ -94,6 +104,8 @@ export function GenerationPanel({
   embeddedInWorkspace = false,
   stage,
   onStageChange,
+  directRequest,
+  onDirectRequestConsumed,
 }: GenerationPanelProps) {
   const navigate = useNavigate()
   const [internalTab, setInternalTab] = useState<GenerationType>('concepts')
@@ -329,13 +341,16 @@ export function GenerationPanel({
     }
   }, [activeTab, concepts, productionConceptAssetId, selectedConceptAssetId])
 
-  const handleGenerate = async () => {
+  const runGenerate = async (overrides: GenerateOverrides = {}) => {
     if (!userId) {
       toast.error('Session still loading — wait a moment and try again.')
       return
     }
 
-    const trimmedPrompt = prompt.trim()
+    const promptValue = overrides.prompt ?? prompt
+    const tierValue = overrides.imageTier ?? imageTier
+    const aspectValue = overrides.aspectRatio ?? aspectRatio
+    const trimmedPrompt = promptValue.trim()
     const brief = {
       ...campaign.brief,
       objective: campaign.brief?.objective || campaign.seed_idea || '',
@@ -387,21 +402,21 @@ export function GenerationPanel({
           imageConceptAsset?.id ?? anchorAsset?.parent_asset_id ?? undefined
         const usesProductionCopy = !!copyAnchor || !!productionCopyAssetId
         const visualDirection =
-          prompt.trim() ||
+          trimmedPrompt ||
           imageCompositeDescription ||
           'Professional advertising key art, on-brief and campaign-ready'
 
         trackGenerateImagePath(usesProductionCopy ? 'production_path' : 'explore_path', {
           campaign_id: campaign.id,
-          source: 'images_tab',
+          source: overrides.prompt !== undefined ? 'direct' : 'images_tab',
         })
 
         const result = await generateImage.mutateAsync({
           campaignId: campaign.id,
           brandId,
           conceptId: conceptIdForImage,
-          imageTier,
-          aspectRatio,
+          imageTier: tierValue,
+          aspectRatio: aspectValue,
           visualDirection,
           seedIdea: campaign.seed_idea,
           userId,
@@ -425,6 +440,32 @@ export function GenerationPanel({
       toast.error(msg)
     }
   }
+
+  const handleGenerate = () => runGenerate()
+
+  const directRequestHandledRef = useRef(false)
+  useEffect(() => {
+    if (!directRequest || directRequestHandledRef.current || !userId) return
+    const expectedTab: GenerationType = directRequest.kind === 'image' ? 'images' : 'concepts'
+    if (activeTab !== expectedTab) return
+    directRequestHandledRef.current = true
+    onDirectRequestConsumed?.()
+    if (directRequest.kind === 'image') {
+      lastAutoFilledPromptRef.current = ''
+      setPrompt(directRequest.prompt)
+      setImageTier(directRequest.imageTier)
+      setAspectRatio(directRequest.aspectRatio)
+      void runGenerate({
+        prompt: directRequest.prompt,
+        imageTier: directRequest.imageTier,
+        aspectRatio: directRequest.aspectRatio,
+      })
+    } else {
+      // The prompt is already the campaign's seed idea; repeating it as requirements adds noise.
+      void runGenerate({ prompt: '' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per arrival
+  }, [directRequest, userId, activeTab])
 
   const handleGenerateImageFromConcept = async (conceptAsset: CreativeAsset) => {
     const concept = conceptAsset.content as ConceptResult

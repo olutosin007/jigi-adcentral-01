@@ -69,7 +69,7 @@ describe('Dashboard', () => {
     const { container } = render(<Dashboard />, { wrapper: createWrapper() })
 
     expect(screen.getByRole('button', { name: 'Open review queue' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Quick Idea' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Generate now' })).not.toBeInTheDocument()
 
     const pendingTitle = screen.getByText('Pending Your Review')
     const activeCampaignsStat = screen.getByText('Active Campaigns')
@@ -85,7 +85,7 @@ describe('Dashboard', () => {
     const { container } = render(<Dashboard />, { wrapper: createWrapper() })
 
     expect(screen.getAllByRole('button', { name: 'New Campaign' }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Quick Idea' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Generate now' })).toBeInTheDocument()
 
     const recentTitle = screen.getByText('Recent Campaigns')
     const activeCampaignsStat = screen.getByText('Active Campaigns')
