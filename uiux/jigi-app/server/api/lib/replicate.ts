@@ -14,12 +14,62 @@ function getReplicateClient(): Replicate {
   return _replicate
 }
 
-export interface FluxGenerationOptions {
+export type ReplicateImageAspect = '1:1' | '4:5' | '16:9' | '9:16' | '4:3' | '3:4'
+export type ReplicateImageTier = 'draft' | 'refine' | 'final'
+
+export interface ReplicateImageRequest {
+  model: string
   prompt: string
-  aspect_ratio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '21:9' | '9:21'
-  num_outputs?: number
-  output_format?: 'webp' | 'jpg' | 'png'
-  output_quality?: number
+  aspectRatio: ReplicateImageAspect
+  tier: ReplicateImageTier
+}
+
+type ReplicateImageFamily = 'nano_banana' | 'seedream' | 'flux'
+
+export function replicateImageFamily(model: string): ReplicateImageFamily {
+  if (model.startsWith('google/nano-banana')) return 'nano_banana'
+  if (model.startsWith('bytedance/seedream')) return 'seedream'
+  return 'flux'
+}
+
+/** Seedream has no 4:5; 3:4 is the nearest portrait. */
+const SEEDREAM_ASPECT: Record<ReplicateImageAspect, string> = {
+  '1:1': '1:1',
+  '4:5': '3:4',
+  '16:9': '16:9',
+  '9:16': '9:16',
+  '4:3': '4:3',
+  '3:4': '3:4',
+}
+
+/**
+ * Each model family validates a different input schema (enums checked Oct 2026);
+ * sending one shape to all of them gets 422s.
+ */
+export function buildReplicateImageInput(request: ReplicateImageRequest): Record<string, unknown> {
+  const { model, prompt, aspectRatio, tier } = request
+  switch (replicateImageFamily(model)) {
+    case 'nano_banana':
+      // Default aspect is `match_input_image`, which is wrong for text-to-image.
+      return { prompt, aspect_ratio: aspectRatio, output_format: 'png' }
+    case 'seedream':
+      // enhance_prompt off: brand prompts are already assembled and must not be rewritten.
+      return {
+        prompt,
+        aspect_ratio: SEEDREAM_ASPECT[aspectRatio],
+        size: '2K',
+        max_images: 1,
+        enhance_prompt: false,
+      }
+    case 'flux':
+      return {
+        prompt,
+        aspect_ratio: aspectRatio,
+        num_outputs: 1,
+        output_format: 'webp',
+        output_quality: tier === 'final' ? 95 : tier === 'refine' ? 90 : 82,
+      }
+  }
 }
 
 /** Stay inside the 60s function budget (vercel.json) with room for upload + DB writes. */
@@ -118,23 +168,22 @@ export async function runReplicatePrediction(
   return prediction.output
 }
 
-export async function generateImageWithFlux(
-  options: FluxGenerationOptions
-): Promise<string[]> {
-  return generateImageWithReplicateModel('black-forest-labs/flux-schnell', options)
+const EXTENSION_CONTENT_TYPE: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
 }
 
-export async function generateImageWithReplicateModel(
-  model: string,
-  options: FluxGenerationOptions
-): Promise<string[]> {
-  const output = await runReplicatePrediction(model, {
-    prompt: options.prompt,
-    aspect_ratio: options.aspect_ratio || '1:1',
-    num_outputs: options.num_outputs || 1,
-    output_format: options.output_format || 'webp',
-    output_quality: options.output_quality || 90,
-  })
+/** Output CDNs sometimes serve `application/octet-stream`; fall back to the URL's extension. */
+export function replicateImageContentType(header: string | null, url: string): string {
+  if (header?.startsWith('image/')) return header.split(';')[0]
+  const ext = /\.([a-z0-9]+)(?:$|[?#])/i.exec(url)?.[1]?.toLowerCase()
+  return (ext && EXTENSION_CONTENT_TYPE[ext]) || 'image/png'
+}
+
+export async function generateImageWithReplicate(request: ReplicateImageRequest): Promise<string[]> {
+  const output = await runReplicatePrediction(request.model, buildReplicateImageInput(request))
   return replicateOutputUrls(output)
 }
 
@@ -143,13 +192,4 @@ export async function runReplicateModel(
   input: Record<string, unknown>
 ): Promise<unknown> {
   return runReplicatePrediction(model, input)
-}
-
-export async function generateImageWithFluxDev(
-  options: FluxGenerationOptions
-): Promise<string[]> {
-  return generateImageWithReplicateModel('black-forest-labs/flux-dev', {
-    ...options,
-    output_quality: options.output_quality || 90,
-  })
 }

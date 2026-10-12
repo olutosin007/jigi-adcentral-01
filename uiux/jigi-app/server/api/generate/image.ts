@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getSupabaseAdmin, getAuthenticatedUser } from '../lib/supabase.js'
-import { generateImageWithReplicateModel } from '../lib/replicate.js'
+import { generateImageWithReplicate, replicateImageContentType } from '../lib/replicate.js'
 import { generateImageWithGemini } from '../lib/google-gemini-image.js'
 import { generateImageWithKling } from '../lib/kling-image.js'
 import { generateImageWithAzure } from '../lib/azure-image.js'
@@ -164,12 +164,11 @@ async function executeProvider(
   }
 
   if (route.provider === 'replicate') {
-    const imageUrls = await generateImageWithReplicateModel(route.model, {
+    const imageUrls = await generateImageWithReplicate({
+      model: route.model,
       prompt,
-      aspect_ratio: toLegacyAspect(aspectRatio),
-      num_outputs: 1,
-      output_format: 'webp',
-      output_quality: route.image_tier === 'final' ? 95 : route.image_tier === 'refine' ? 90 : 82,
+      aspectRatio,
+      tier: route.image_tier,
     })
     const imageUrl = imageUrls[0]
     if (!imageUrl) {
@@ -181,7 +180,7 @@ async function executeProvider(
     }
     return {
       imageBuffer: await imageResponse.arrayBuffer(),
-      contentType: imageResponse.headers.get('content-type') || 'image/webp',
+      contentType: replicateImageContentType(imageResponse.headers.get('content-type'), imageUrl),
       modelUsed: route.model,
     }
   }

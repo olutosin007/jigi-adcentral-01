@@ -58,8 +58,8 @@ export const DEFAULT_KLING_MODEL_BY_TIER: Record<ImageTier, string> = {
 
 export const DEFAULT_REPLICATE_MODEL_BY_TIER: Record<ImageTier, string> = {
   draft: 'black-forest-labs/flux-schnell',
-  refine: 'black-forest-labs/flux-dev',
-  final: 'black-forest-labs/flux-dev',
+  refine: 'bytedance/seedream-4',
+  final: 'google/nano-banana',
 }
 
 const DEFAULT_AZURE_MODEL_BY_TIER: Record<ImageTier, string> = {
@@ -211,7 +211,10 @@ export function buildRouteChain(tier: ImageTier): RouteCandidate[] {
   }
 
   if (hasReplicateConfig()) {
-    chain.push({ provider: 'replicate', model: getReplicateModelForTier(tier), costBucket: 'free', resolution: '1K' })
+    const model = getReplicateModelForTier(tier)
+    // Seedream is requested at size 2K (flat price); other Replicate lanes return ~1MP.
+    const replicateResolution: ImageResolution = model.startsWith('bytedance/seedream') ? '2K' : '1K'
+    chain.push({ provider: 'replicate', model, costBucket: 'free', resolution: replicateResolution })
   }
 
   if (isPaidFallbackEnabled() && hasAzureImageConfig()) {

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { predictionTarget, replicateOutputUrls, runReplicatePrediction } from './replicate.js'
+import {
+  buildReplicateImageInput,
+  predictionTarget,
+  replicateImageContentType,
+  replicateImageFamily,
+  replicateOutputUrls,
+  runReplicatePrediction,
+} from './replicate.js'
 
 vi.mock('./env.js', () => ({ getServerEnv: () => 'test-token' }))
 
@@ -69,5 +76,66 @@ describe('replicateOutputUrls', () => {
     expect(replicateOutputUrls([{ url: () => new URL('https://c/x.png') }])).toEqual(['https://c/x.png'])
     expect(replicateOutputUrls(null)).toEqual([])
     expect(replicateOutputUrls(undefined)).toEqual([])
+  })
+})
+
+/** Enums copied from each model's live OpenAPI schema (Oct 2026). Update both if a model changes. */
+const SCHEMA_ASPECTS = {
+  nano_banana: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'],
+  seedream: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'],
+  flux: ['1:1', '16:9', '21:9', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '9:16', '9:21'],
+} as const
+const APP_ASPECTS = ['1:1', '4:5', '16:9', '9:16', '4:3', '3:4'] as const
+const MODELS = {
+  nano_banana: 'google/nano-banana',
+  seedream: 'bytedance/seedream-4',
+  flux: 'black-forest-labs/flux-schnell',
+} as const
+
+describe('buildReplicateImageInput', () => {
+  it('drift: every app aspect maps to a value each model schema accepts', () => {
+    for (const [family, model] of Object.entries(MODELS) as [keyof typeof MODELS, string][]) {
+      for (const aspectRatio of APP_ASPECTS) {
+        const input = buildReplicateImageInput({ model, prompt: 'p', aspectRatio, tier: 'draft' })
+        expect(SCHEMA_ASPECTS[family], `${model} ${aspectRatio}`).toContain(input.aspect_ratio)
+      }
+    }
+  })
+
+  it('nano banana: explicit aspect (default would match a missing input image) and a supported format', () => {
+    expect(buildReplicateImageInput({ model: MODELS.nano_banana, prompt: 'p', aspectRatio: '4:5', tier: 'final' })).toEqual({
+      prompt: 'p',
+      aspect_ratio: '4:5',
+      output_format: 'png',
+    })
+  })
+
+  it('seedream: 4:5 → 3:4, 2K, single image, prompt not rewritten', () => {
+    expect(buildReplicateImageInput({ model: MODELS.seedream, prompt: 'p', aspectRatio: '4:5', tier: 'refine' })).toEqual({
+      prompt: 'p',
+      aspect_ratio: '3:4',
+      size: '2K',
+      max_images: 1,
+      enhance_prompt: false,
+    })
+  })
+
+  it('flux: native aspect, quality by tier', () => {
+    const input = buildReplicateImageInput({ model: MODELS.flux, prompt: 'p', aspectRatio: '4:5', tier: 'final' })
+    expect(input).toMatchObject({ aspect_ratio: '4:5', num_outputs: 1, output_format: 'webp', output_quality: 95 })
+  })
+
+  it('classifies model families, including pinned versions', () => {
+    expect(replicateImageFamily('google/nano-banana-pro')).toBe('nano_banana')
+    expect(replicateImageFamily('bytedance/seedream-4.5')).toBe('seedream')
+    expect(replicateImageFamily('black-forest-labs/flux-dev:abc')).toBe('flux')
+  })
+})
+
+describe('replicateImageContentType', () => {
+  it('prefers an image/* header, else the URL extension, else png', () => {
+    expect(replicateImageContentType('image/webp; charset=binary', 'https://x/a.png')).toBe('image/webp')
+    expect(replicateImageContentType('application/octet-stream', 'https://x/a.jpg?sig=1')).toBe('image/jpeg')
+    expect(replicateImageContentType(null, 'https://x/a')).toBe('image/png')
   })
 })

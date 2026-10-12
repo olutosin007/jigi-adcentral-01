@@ -49,13 +49,13 @@ describe('buildRouteChain — lineup contract (README "Model lineup")', () => {
     ])
   })
 
-  it('refine: Kling 3.0 → Nano Banana 2.1 → Foundry → Replicate dev → Azure', () => {
+  it('refine: Kling 3.0 → Nano Banana 2.1 → Foundry → Replicate Seedream 4 → Azure', () => {
     setEnv(ALL_CREDS)
     expect(chainIds('refine')).toEqual([
       'kling:kling-v3',
       'google_gemini:gemini-nano-banana-2.1',
       'azure_foundry:flux-2-flex',
-      'replicate:black-forest-labs/flux-dev',
+      'replicate:bytedance/seedream-4',
       'azure_openai:gpt-image-1-mini',
     ])
   })
@@ -67,6 +67,15 @@ describe('buildRouteChain — lineup contract (README "Model lineup")', () => {
       ['google_gemini', 'gemini-nano-banana-2.1', '2K'],
       ['kling', 'kling-v3', '2K'],
     ])
+  })
+
+  it('Replicate-only account: Schnell drafts, Seedream refines, Nano Banana finals', () => {
+    setEnv({ REPLICATE_API_TOKEN: 'r' })
+    expect(chainIds('draft')).toEqual(['replicate:black-forest-labs/flux-schnell'])
+    expect(chainIds('refine')).toEqual(['replicate:bytedance/seedream-4'])
+    expect(chainIds('final')).toEqual(['replicate:google/nano-banana'])
+    expect(buildRouteChain('refine')[0].resolution).toBe('2K')
+    expect(buildRouteChain('final')[0].resolution).toBe('1K')
   })
 
   it('every routed model (except azure deployments) has a priced registry entry', () => {

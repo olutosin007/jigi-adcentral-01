@@ -67,6 +67,20 @@ export const IMAGE_MODELS: Record<string, ImageModelSpec> = {
     usdPerImage: { '1K': 0.025 },
     priceSource: 'estimate',
   },
+  'bytedance/seedream-4': {
+    id: 'bytedance/seedream-4',
+    provider: 'replicate',
+    label: 'Seedream 4 (Replicate)',
+    usdPerImage: { '1K': 0.03, '2K': 0.03 },
+    priceSource: 'estimate',
+  },
+  'google/nano-banana': {
+    id: 'google/nano-banana',
+    provider: 'replicate',
+    label: 'Nano Banana (Replicate)',
+    usdPerImage: { '1K': 0.039 },
+    priceSource: 'estimate',
+  },
   'flux-2-flex': {
     id: 'flux-2-flex',
     provider: 'azure_foundry',

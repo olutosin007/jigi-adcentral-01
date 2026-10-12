@@ -47,8 +47,8 @@
 | Tier | Primary | Fallbacks (in order) | Est. primary cost |
 |------|---------|----------------------|-------------------|
 | Draft | Kling Image 2.1 `kling-v2-1` | Nano Banana 2 Lite `gemini-3.1-flash-lite-image` → Azure Foundry FLUX → Replicate `flux-schnell` | $0.014 |
-| Refine | Kling Image 3.0 `kling-v3` | Nano Banana 2.1 → Azure Foundry FLUX → Replicate `flux-dev` | $0.028 |
-| Final | Nano Banana 2.1 `gemini-nano-banana-2.1` @2K | Kling Image 3.0 @2K → Azure Foundry FLUX → Replicate `flux-dev` | $0.050 |
+| Refine | Kling Image 3.0 `kling-v3` | Nano Banana 2.1 → Azure Foundry FLUX → Replicate `bytedance/seedream-4` @2K | $0.028 |
+| Final | Nano Banana 2.1 `gemini-nano-banana-2.1` @2K | Kling Image 3.0 @2K → Azure Foundry FLUX → Replicate `google/nano-banana` | $0.050 |
 | Upscale | Replicate `nightmareai/real-esrgan` ×2 | — | ~$0.002 (estimate) |
 
 Final stays on Nano Banana 2.1 (not the cheaper Kling 3.0 @2K) for its in-image text rendering — ad finals usually carry a headline. Swap with `GOOGLE_IMAGE_MODEL_FINAL` / chain order if the benchmark says otherwise. Without Kling credentials, every tier falls through to Nano Banana. Nano Banana 2 Lite and 2.1 list at the same $0.0336 @1K; Lite is kept for speed only.
@@ -87,6 +87,7 @@ Unit tests are the contract. Each phase adds tests that fail when code drifts fr
 | 2026-10-12 | Keep `cost_bucket` values (`free` / `paid_fallback`) but relabel in UI as *Primary* / *Fallback* | All lanes are now paid; avoids a data migration on historic rows. |
 | 2026-10-12 | Studio stays on the light DESIGN.md surface | A dark studio surface changes DESIGN.md and needs explicit approval (open question below). |
 | 2026-10-12 | Video deferred to P5 | Needs async job infra; images deliver the visible win first. |
+| 2026-10-12 | Replicate lanes upgraded: Refine → Seedream 4 (~$0.03, 2K), Final → Nano Banana (~$0.039); Draft stays Flux Schnell ($0.003) | With only Replicate configured (Google key on free tier, no Kling key), Flux Dev was the ceiling. Per-model input builder (`buildReplicateImageInput`) is drift-tested against each model's schema enums. Replicate throttles to 6 req/min while account credit < $5. |
 | 2026-10-12 | Second entry route `/app/generate` ("Generate now") alongside campaign create | Generating should not require brand + brief up front. It creates a brandless idea-first campaign named `Quick: …` and auto-runs the request in Images or Concepts, so assets, review and upscale still have a home. `/app/quick-start` redirects here. Guarded by `direct-generate.test.ts`, `GenerateNow.test.tsx`, and GenerationPanel direct-request tests (runs once, waits for session). |
 
 ## Delivery log

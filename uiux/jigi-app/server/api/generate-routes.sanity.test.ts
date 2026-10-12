@@ -93,7 +93,8 @@ vi.mock('./lib/llm.js', () => ({
 }))
 
 vi.mock('./lib/replicate.js', () => ({
-  generateImageWithReplicateModel: (...args: unknown[]) => mockReplicateGenerate(...args),
+  generateImageWithReplicate: (...args: unknown[]) => mockReplicateGenerate(...args),
+  replicateImageContentType: () => 'image/webp',
 }))
 
 vi.mock('./lib/google-gemini-image.js', () => ({
@@ -405,7 +406,9 @@ describe('POST /api/generate/image (handler)', () => {
 
     expect(res._status).toBe(200)
     expect(mockGenerateGemini).toHaveBeenCalledTimes(1)
-    expect(mockReplicateGenerate).toHaveBeenCalledWith('black-forest-labs/flux-schnell', expect.anything())
+    expect(mockReplicateGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'black-forest-labs/flux-schnell', tier: 'draft', aspectRatio: '1:1' })
+    )
     expect(mockAzureGenerate).not.toHaveBeenCalled()
     fetchSpy.mockRestore()
     mockResolveRoute.mockReset()
