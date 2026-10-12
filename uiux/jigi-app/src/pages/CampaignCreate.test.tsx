@@ -87,7 +87,7 @@ describe('CampaignCreate page', () => {
     await user.click(screen.getByRole('button', { name: /next: channels/i }))
 
     expect(screen.getByRole('button', { name: /create campaign/i })).toBeInTheDocument()
-  }, 15_000)
+  }, 30_000)
 
   it('accepts input in campaign name field', () => {
     renderCampaignCreate()

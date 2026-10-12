@@ -1,6 +1,6 @@
 # 03 — Generation Studio
 
-**Status:** In progress (P1–P4 on branch `feat/gen-studio`; P5 video deferred)
+**Status:** P1–P4 implemented on branch `feat/gen-studio` — ready for review (apply migrations 035 + 036; P5 video deferred)
 **Version:** 1.0
 **Created:** October 2026
 **Design system:** [`DESIGN.md`](../../../DESIGN.md) — refined utilitarian; teal = action, amber = pending / idea-first
@@ -69,6 +69,12 @@ Unit tests are the contract. Each phase adds tests that fail when code drifts fr
 | Tier → primary model order matches the lineup table above | `image-routing.test.ts` |
 | Client tier catalog cost/model == server registry | `image-catalog-drift.test.ts` |
 | Provider ids accepted by DB constraint == `ImageProvider` union | `image-provider-constraint.test.ts` (parses migration 035) |
+| Upscale access, validation, child-asset shape (parent, version + 1) | `upscale.test.ts`, `upscale-route.test.ts` |
+| Composer renders exactly the catalog tiers + costs | `TierPicker.test.tsx` |
+| Every channel ratio resolves to a supported aspect | `src/lib/image-tiers.test.ts` |
+| Selected aspect reaches `/api/generate/image` | `orchestrator.test.ts` |
+| Preset CHECK lists / length limits == client tiers, aspects, validation | `brand-preset-migration.test.ts` (parses migration 036) |
+| Applying a preset is idempotent | `brand-presets.test.ts` |
 | Submit/review never bypass API | existing `review-domain` tests (unchanged) |
 
 ---
@@ -81,6 +87,17 @@ Unit tests are the contract. Each phase adds tests that fail when code drifts fr
 | 2026-10-12 | Keep `cost_bucket` values (`free` / `paid_fallback`) but relabel in UI as *Primary* / *Fallback* | All lanes are now paid; avoids a data migration on historic rows. |
 | 2026-10-12 | Studio stays on the light DESIGN.md surface | A dark studio surface changes DESIGN.md and needs explicit approval (open question below). |
 | 2026-10-12 | Video deferred to P5 | Needs async job infra; images deliver the visible win first. |
+
+## Delivery log
+
+| Phase | Commit | Tests added |
+|-------|--------|-------------|
+| Docs | `c47163a` | — |
+| P1 Engine refresh | `5bfa0f5` | image-models, gemini/kling adapters, routing, catalog drift, provider constraint, route sanity |
+| P2 Upscale | `022c5b3` | upscale lib (13), upscale route (9), `useUpscaleImage` |
+| P3 Studio composer | `d3798c5` | TierPicker (6), ImageCard (6), image-tiers (7), orchestrator aspect (2) |
+| P4 Brand presets | `eedfc1f` | brand-presets (10), BrandPresetBar (6), 036 migration drift (4) |
+| Finalise | this commit | full suites green: frontend 393, server API 114 |
 
 ### Open questions (need product owner)
 
