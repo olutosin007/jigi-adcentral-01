@@ -28,7 +28,7 @@ export function AssetHeroPreview({ asset, className }: AssetHeroPreviewProps) {
       data-tour="decide-asset"
     >
       {asset.type === 'image' && imageUrl ? (
-        <div className="relative rounded-xl border border-border bg-[#F5F5F4] dark:bg-muted overflow-auto">
+        <div className="relative rounded-xl border border-border bg-muted overflow-auto">
           <img
             src={imageUrl}
             alt={getAssetTitle(asset)}

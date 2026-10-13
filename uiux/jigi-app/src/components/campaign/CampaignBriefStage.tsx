@@ -93,8 +93,8 @@ export function CampaignBriefStage({
             <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
               Seed Idea
             </label>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-950/30 dark:border-amber-800">
-              <p className="text-sm text-amber-900 dark:text-amber-100 italic">
+            <div className="p-3 bg-honey-soft border border-honey/40 rounded-lg dark:bg-honey-soft/30 dark:border-honey">
+              <p className="text-sm text-honey-text italic">
                 &quot;{campaign.seed_idea}&quot;
               </p>
             </div>

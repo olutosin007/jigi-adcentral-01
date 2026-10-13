@@ -52,7 +52,7 @@ export function EmptyState({
           })()
         )}
       </div>
-      <h3 className="mt-4 text-xl font-serif font-semibold tracking-tight text-foreground">
+      <h3 className="mt-4 text-xl font-display font-normal tracking-[-0.02em] text-foreground text-balance">
         {title}
       </h3>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">{description}</p>

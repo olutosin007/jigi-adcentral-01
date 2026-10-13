@@ -1,4 +1,6 @@
 import type { AssetStatus } from '@/lib/status'
+import { TONE_COLORS } from '@/design-system/tokens'
+import { TONE_SURFACE_CLASSES } from '@/design-system/tones'
 
 export type HandoffAudience = 'creator' | 'client'
 
@@ -21,12 +23,12 @@ const HUMAN_STATUS: Record<AssetStatus, HumanStatus> = {
 }
 
 export const HANDOFF_TONE_CLASSES: Record<HandoffTone, string> = {
-  muted: 'bg-muted text-muted-foreground border-border',
-  primary: 'bg-primary/10 text-primary border-primary/30',
-  pending: 'bg-[#FEF3C7] text-[#B45309] border-[#F59E0B]/30 dark:bg-[#422006] dark:text-[#FBBF24]',
-  warning: 'bg-warning/10 text-warning border-warning/30',
-  success: 'bg-success/10 text-success border-success/30',
-  destructive: 'bg-destructive/10 text-destructive border-destructive/30',
+  muted: TONE_SURFACE_CLASSES[TONE_COLORS.muted],
+  primary: TONE_SURFACE_CLASSES[TONE_COLORS.primary],
+  pending: TONE_SURFACE_CLASSES[TONE_COLORS.pending],
+  warning: TONE_SURFACE_CLASSES[TONE_COLORS.warning],
+  success: TONE_SURFACE_CLASSES[TONE_COLORS.success],
+  destructive: TONE_SURFACE_CLASSES[TONE_COLORS.destructive],
 }
 
 function resolve(status: string): HumanStatus {

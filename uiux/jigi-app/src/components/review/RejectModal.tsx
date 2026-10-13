@@ -83,7 +83,7 @@ export function RejectModal({
                 if (error) setError('')
               }}
               rows={4}
-              className={`resize-none ${error ? 'border-red-500' : ''}`}
+              className={`resize-none ${error ? 'border-brick' : ''}`}
               autoFocus
             />
             {error && (

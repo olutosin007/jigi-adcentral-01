@@ -75,7 +75,7 @@ export function JobContextRail({
                     'text-xs mt-0.5',
                     essentials.status === 'complete'
                       ? 'text-success'
-                      : 'text-[#B45309] dark:text-[#FBBF24]'
+                      : 'text-honey-text'
                   )}
                 >
                   {essentials.status === 'complete' ? 'Ready for grounded work' : 'Guidance only — kit incomplete'}
@@ -126,8 +126,8 @@ export function JobContextRail({
           )}
         </div>
         {journeyMode === 'idea_first' && seedIdea && (
-          <p className="text-sm italic text-foreground border-l-2 border-[#F59E0B]/60 pl-3">
-            <Lightbulb className="inline h-3.5 w-3.5 mr-1 text-[#D97706]" aria-hidden />
+          <p className="text-sm italic text-foreground border-l-2 border-clay/60 pl-3">
+            <Lightbulb className="inline h-3.5 w-3.5 mr-1 text-clay" aria-hidden />
             {seedIdea}
           </p>
         )}
@@ -159,7 +159,7 @@ export function JobContextRail({
           </div>
         )}
         {briefReadiness && !briefReadiness.ready && (
-          <p className="text-xs text-[#B45309] dark:text-[#FBBF24]">
+          <p className="text-xs text-honey-text">
             Brief incomplete — {briefReadiness.missing.slice(0, 2).join(', ')}
           </p>
         )}

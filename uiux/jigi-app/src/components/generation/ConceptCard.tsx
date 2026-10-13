@@ -128,10 +128,10 @@ export function ConceptCard({
       )}
 
       {(concept.validation_warnings?.length ?? 0) > 0 || (typeof concept.brand_alignment_score === 'number' && concept.brand_alignment_score < 60) ? (
-        <div className="mb-4 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+        <div className="mb-4 p-2 rounded-lg bg-honey-soft dark:bg-honey-soft/30 border border-honey/40 dark:border-honey">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-800 dark:text-amber-200">
+            <AlertTriangle className="w-3.5 h-3.5 text-honey-text flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-honey-text">
               {concept.brand_alignment_score != null && concept.brand_alignment_score < 60 && (
                 <p>Brand alignment: {concept.brand_alignment_score}/100</p>
               )}

@@ -213,7 +213,7 @@ export function JobDecisionsStage({
 
       {waiting.length > 0 && (
         <section className="space-y-2" aria-label="Waiting on client">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B45309] dark:text-[#FBBF24]">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-honey-text">
             Waiting on client
           </p>
           {waitingByRound.map(([round, group]) => (

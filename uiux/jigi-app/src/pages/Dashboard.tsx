@@ -17,6 +17,7 @@ import {
   useRecentCampaigns,
   useGenerationMixStats,
 } from '@/hooks/useDashboardQueries'
+import { PageTitle } from '@/design-system'
 
 function getUserDisplayName(
   user: { user_metadata?: { full_name?: string; name?: string }; email?: string } | null,
@@ -116,9 +117,9 @@ export function Dashboard() {
         style={{ animationDelay: '0ms' }}
       >
         <p className="text-sm text-muted-foreground mb-1">{todayDate}</p>
-        <h1 className="text-3xl font-serif font-semibold tracking-tight text-foreground mb-2">
+        <PageTitle className="mb-2">
           {greeting}, {userName}
-        </h1>
+        </PageTitle>
         <p className="text-muted-foreground">
           {isCreator
             ? 'Pick up where you left off on your campaigns.'

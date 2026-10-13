@@ -320,7 +320,7 @@ export function UploadCanvas({
             <p className="text-xs text-muted-foreground">Attach a brand to this job to run brand checks.</p>
           ) : (
             brandKit !== 'complete' && (
-              <p className="text-xs text-[#B45309] dark:text-[#FBBF24]">
+              <p className="text-xs text-honey-text">
                 Guidance only — complete the brand kit for stronger checks.
               </p>
             )

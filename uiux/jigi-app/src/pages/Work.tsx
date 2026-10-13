@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { HANDOFF_TONE_CLASSES, jobStageHref } from '@/lib/handoff'
 import { useWorkJobs, type WorkJob } from '@/hooks/useWorkQueries'
+import { PageTitle } from '@/design-system'
 
 export function Work() {
   const navigate = useNavigate()
@@ -39,9 +40,9 @@ export function Work() {
     <div className="p-4 md:p-6 lg:p-8 max-w-[1100px] mx-auto space-y-6" data-tour="work-home">
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-[2rem] leading-tight font-serif font-semibold tracking-tight text-foreground">
+          <PageTitle>
             Work
-          </h1>
+          </PageTitle>
           <p className="text-sm text-muted-foreground mt-1">
             {isLoading
               ? 'Loading your jobs…'
@@ -159,7 +160,7 @@ function WorkRow({ job }: { job: WorkJob }) {
               <span className="italic">No brand yet</span>
             )}
             {job.journeyMode === 'idea_first' && (
-              <span className="inline-flex items-center gap-1 text-[#B45309] dark:text-[#FBBF24]">
+              <span className="inline-flex items-center gap-1 text-honey-text">
                 <Lightbulb className="h-3 w-3" aria-hidden />
                 Idea-first
               </span>

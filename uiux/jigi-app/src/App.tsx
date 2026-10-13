@@ -21,6 +21,7 @@ import { CampaignCreate } from '@/pages/CampaignCreate'
 import { ApprovedAssets } from '@/pages/ApprovedAssets'
 import { ReviewQueue } from '@/pages/ReviewQueue'
 import { Settings } from '@/pages/Settings'
+import { DesignSystem } from '@/pages/DesignSystem'
 
 import { Login } from '@/pages/auth/Login'
 import { Signup } from '@/pages/auth/Signup'
@@ -81,6 +82,16 @@ export function App() {
           <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/r/:token" element={<GuestDecide />} />
+          {import.meta.env.DEV && (
+            <Route
+              path="/dev/design-system"
+              element={
+                <div className="min-h-screen bg-background p-6 sm:p-10">
+                  <DesignSystem />
+                </div>
+              }
+            />
+          )}
           
           {/* Setup routes (require auth but not full setup) */}
           <Route
@@ -148,6 +159,7 @@ export function App() {
             
             {/* Settings */}
             <Route path="settings" element={<Settings />} />
+            <Route path="design-system" element={<DesignSystem />} />
           </Route>
           
           {/* Fallback */}

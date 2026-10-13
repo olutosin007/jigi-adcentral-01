@@ -17,6 +17,7 @@ import {
 } from '@/lib/guest-review-api'
 import { trackDecision, trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
+import { PageTitle } from '@/design-system'
 
 type ViewState =
   | { kind: 'loading' }
@@ -82,7 +83,7 @@ function ShellHeader({ data }: { data?: GuestReviewPayload }) {
           )}
         </div>
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-card font-serif text-[10px] font-bold text-foreground">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-card font-sans text-[10px] font-bold text-foreground">
             J
           </span>
           Jigi
@@ -110,7 +111,7 @@ function CenteredMessage({
       <span className={cn('flex h-14 w-14 items-center justify-center rounded-full', tone)}>
         <Icon className="h-7 w-7" aria-hidden />
       </span>
-      <h1 className="mt-5 font-serif text-2xl font-semibold text-foreground">{title}</h1>
+      <PageTitle className="mt-5">{title}</PageTitle>
       <p className="mt-2 text-muted-foreground">{body}</p>
       {children}
     </div>

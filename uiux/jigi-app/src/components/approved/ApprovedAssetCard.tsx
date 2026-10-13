@@ -30,9 +30,9 @@ export function ApprovedAssetCard({ asset, onView, onDownload }: ApprovedAssetCa
       case 'image':
         return 'from-primary to-primary/80'
       case 'copy':
-        return 'from-purple-400 to-purple-600'
+        return 'from-orchid-8 to-orchid-9'
       case 'concept':
-        return 'from-amber-400 to-orange-500'
+        return 'from-honey to-honey'
       default:
         return 'from-muted-foreground to-muted-foreground/80'
     }

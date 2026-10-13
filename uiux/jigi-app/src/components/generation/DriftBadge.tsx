@@ -28,7 +28,7 @@ export function DriftBadge({ tooltip = DEFAULT_TOOLTIP, className }: DriftBadgeP
         <TooltipTrigger asChild>
           <Badge
             variant="outline"
-            className={`border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[9px] ${className ?? ''}`}
+            className={`border-honey/60 bg-honey/10 text-honey-text text-[9px] ${className ?? ''}`}
           >
             <AlertTriangle className="w-3 h-3 mr-0.5" />
             Review Required

@@ -143,7 +143,7 @@ export function CopyCard({
           {charBudgetLabel}
         </span>
         {(hasComplianceFail || cardWarning) && (
-          <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300">
+          <span className="inline-flex items-center gap-1 text-[11px] text-honey-text">
             <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden />
             {hasComplianceFail ? 'Compliance fail' : 'Review warning'}
           </span>
@@ -151,7 +151,7 @@ export function CopyCard({
       </div>
 
       {cardWarning && (
-        <p className="text-xs text-amber-800 dark:text-amber-200 mb-2 line-clamp-2">{cardWarning}</p>
+        <p className="text-xs text-honey-text mb-2 line-clamp-2">{cardWarning}</p>
       )}
 
       {keyLine && (

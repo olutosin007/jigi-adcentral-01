@@ -206,7 +206,7 @@ export function AssetDetailsSidebar({
               <CardTitle className="text-sm font-medium">Submission Note</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-foreground bg-honey-soft dark:bg-honey-soft/30 border border-honey/40 rounded-lg p-3">
                 {asset.submission_note}
               </p>
             </CardContent>

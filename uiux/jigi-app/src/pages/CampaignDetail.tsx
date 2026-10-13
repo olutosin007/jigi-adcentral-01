@@ -88,6 +88,7 @@ const DEFAULT_GATE_MAP: JobGateMap = {
 }
 
 import type { CreativeAsset } from '@/store/campaignStore'
+import { PageTitle } from '@/design-system'
 
 function getAssetDisplayName(asset: CreativeAsset): string {
   const content = asset.content as unknown as Record<string, unknown>
@@ -581,9 +582,9 @@ export function CampaignDetail() {
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-serif font-semibold tracking-tight text-foreground">
+            <PageTitle>
               {campaign.name}
-            </h1>
+            </PageTitle>
             <div className="flex items-center gap-2.5 flex-wrap text-[13px] mt-2">
               <span className="text-muted-foreground">
                 Last updated {formatDistanceToNow(new Date(campaign.updated_at), { addSuffix: true })}
@@ -599,7 +600,7 @@ export function CampaignDetail() {
               {campaign.journey_mode === 'idea_first' ? (
                 <Badge
                   variant="secondary"
-                  className="bg-[#FEF3C7] text-[#D97706] dark:bg-[#422006] dark:text-[#FBBF24] border-transparent text-[10px] font-semibold"
+                  className="bg-clay-soft text-clay-text border-transparent text-[10px] font-semibold"
                 >
                   <Lightbulb className="w-3 h-3 mr-1" />
                   Idea-first

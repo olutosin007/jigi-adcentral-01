@@ -95,8 +95,8 @@ export function RecentCampaignsWidget({ campaigns = [], isLoading }: RecentCampa
                     variant="outline"
                     className={
                       campaign.generationMode === 'brand_grounded'
-                        ? 'border-purple-200 text-purple-700 bg-purple-50'
-                        : 'border-amber-200 text-amber-700 bg-amber-50'
+                        ? 'border-orchid-5 text-orchid-10 bg-orchid-2'
+                        : 'border-honey/40 text-honey-text bg-honey-soft'
                     }
                   >
                     {campaign.generationMode === 'brand_grounded' ? (

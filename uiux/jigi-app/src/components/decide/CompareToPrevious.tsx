@@ -25,7 +25,7 @@ export function CompareToPrevious({ asset, previousContent, round, className }: 
             <figcaption className={cn('text-xs font-medium', side.muted ? 'text-muted-foreground' : 'text-foreground')}>
               {side.label}
             </figcaption>
-            <div className="rounded-xl border border-border bg-[#F5F5F4] dark:bg-muted">
+            <div className="rounded-xl border border-border bg-muted">
               {side.url ? (
                 <img src={side.url} alt={side.label} className="mx-auto block max-h-[60vh] max-w-full object-contain" />
               ) : (

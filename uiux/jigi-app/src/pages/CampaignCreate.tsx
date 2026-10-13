@@ -599,13 +599,13 @@ export function CampaignCreate() {
             </Card>
 
             {journeyMode === 'idea_first' && (
-              <Card className="border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/5">
+              <Card className="border-honey/30 bg-honey/10 dark:bg-honey/5">
                 <CardContent className="pt-6">
                   <div className="flex gap-3">
-                    <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <Lightbulb className="h-5 w-5 text-honey-text flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Idea-First Mode</p>
-                      <p className="text-sm text-amber-700 dark:text-amber-300/90 mt-1">
+                      <p className="text-sm font-medium text-honey-text">Idea-First Mode</p>
+                      <p className="text-sm text-honey-text dark:text-honey-text/90 mt-1">
                         Assets will be generated without brand constraints. You can attach a brand profile later.
                       </p>
                     </div>

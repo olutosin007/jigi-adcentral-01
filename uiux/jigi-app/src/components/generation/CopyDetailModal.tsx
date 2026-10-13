@@ -103,7 +103,7 @@ export function CopyDetailModal({
         <DialogHeader className="px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30 text-purple-700">
+              <div className="p-2 rounded-lg bg-orchid-2 dark:bg-orchid-3/30 text-orchid-10">
                 <FileText className="w-5 h-5" aria-hidden />
               </div>
               <div>
@@ -293,13 +293,13 @@ export function CopyDetailModal({
           ) : null}
 
           {hasPipelineValidation && (
-            <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
-              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wider mb-2">Validation</p>
+            <div className="p-4 rounded-lg border border-honey/40 dark:border-honey bg-honey-soft dark:bg-honey-soft/30">
+              <p className="text-xs font-semibold text-honey-text uppercase tracking-wider mb-2">Validation</p>
               {copy.exclusions_violated && (
                 <p className="text-sm text-destructive font-medium mb-2">Exclusions violated — approval blocked</p>
               )}
               {copy.truncation_suggestion && (
-                <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">{copy.truncation_suggestion}</p>
+                <p className="text-sm text-honey-text mb-2">{copy.truncation_suggestion}</p>
               )}
               {copy.brand_voice_score != null && copy.brand_voice_score < 50 && (
                 <p className="text-sm mb-2">
@@ -310,7 +310,7 @@ export function CopyDetailModal({
                 </p>
               )}
               {copy.validation_warnings?.map((w, i) => (
-                <p key={i} className="text-sm text-amber-800 dark:text-amber-200">
+                <p key={i} className="text-sm text-honey-text">
                   • {w}
                 </p>
               ))}

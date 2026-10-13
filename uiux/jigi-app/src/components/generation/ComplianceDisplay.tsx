@@ -53,11 +53,11 @@ export function ComplianceDisplay({ result, isLoading, onRecheck }: ComplianceDi
 
   if (!result) {
     return (
-      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4" data-tour="compliance-panel">
+      <div className="bg-paper rounded-xl border border-line p-4" data-tour="compliance-panel">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-500">No compliance check performed</span>
+            <Shield className="w-4 h-4 text-pewter" />
+            <span className="text-sm text-slate">No compliance check performed</span>
           </div>
           {onRecheck && (
             <Button variant="outline" size="sm" onClick={onRecheck}>

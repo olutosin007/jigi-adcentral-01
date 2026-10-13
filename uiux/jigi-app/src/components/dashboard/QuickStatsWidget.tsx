@@ -31,7 +31,7 @@ export function QuickStatsWidget({ stats, isLoading }: QuickStatsWidgetProps) {
         label="Active Campaigns"
         value={stats?.activeCampaigns ?? 0}
         icon={FolderOpen}
-        iconClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+        iconClassName="bg-dusk-soft text-dusk-text dark:bg-dusk-soft/40"
       />
       <StatCard
         label="Approved This Week"

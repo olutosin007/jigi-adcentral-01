@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { CreativeAsset, ConceptContent, CopyContent, ImageContent } from '@/store/campaignStore'
+import { PageTitle } from '@/design-system'
 
 const ASSET_TYPE_OPTIONS = [
   { value: 'all', label: 'All types' },
@@ -239,7 +240,7 @@ export function ApprovedAssets() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-serif font-semibold tracking-tight">Approved Assets</h1>
+          <PageTitle>Approved Assets</PageTitle>
           <p className="text-muted-foreground">
             {totalAssets} approved asset{totalAssets !== 1 ? 's' : ''} ready for use
           </p>

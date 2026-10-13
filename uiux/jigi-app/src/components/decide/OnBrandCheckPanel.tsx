@@ -62,7 +62,7 @@ export function OnBrandCheckPanel({ asset, kit, onRunCheck, isChecking, classNam
       ) : (
         <>
           {summary.guidanceOnly && (
-            <p className="rounded-md bg-[#FEF3C7] px-2.5 py-1.5 text-xs text-[#B45309] dark:bg-[#422006] dark:text-[#FBBF24]">
+            <p className="rounded-md bg-honey-soft px-2.5 py-1.5 text-xs text-honey-text">
               Guidance only — the brand kit is incomplete, so these checks can’t be conclusive.
             </p>
           )}

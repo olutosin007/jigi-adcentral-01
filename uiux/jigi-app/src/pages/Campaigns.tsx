@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { evaluateBriefReadiness } from '@/lib/brief-readiness'
 import { BriefIncompleteBanner } from '@/components/campaign/BriefIncompleteBanner'
 import type { Campaign } from '@/store/campaignStore'
+import { PageTitle } from '@/design-system'
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -149,9 +150,9 @@ export function Campaigns() {
     <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-serif font-semibold tracking-tight text-foreground">
+          <PageTitle>
             Campaigns
-          </h1>
+          </PageTitle>
           <p className="text-muted-foreground">View and manage your creative campaigns</p>
         </div>
         <Button

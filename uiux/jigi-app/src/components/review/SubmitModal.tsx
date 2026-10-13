@@ -68,7 +68,7 @@ export function SubmitModal({
           <div className="space-y-2">
             <Label className="text-sm font-medium">Asset</Label>
             <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-              <div className="w-2 h-2 rounded-full bg-teal-500" />
+              <div className="w-2 h-2 rounded-full bg-orchid-9" />
               <span className="font-medium text-sm">{assetName}</span>
               <span className="text-xs text-muted-foreground capitalize">
                 ({assetType})

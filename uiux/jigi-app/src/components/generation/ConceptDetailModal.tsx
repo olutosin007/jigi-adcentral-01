@@ -57,7 +57,7 @@ export function ConceptDetailModal({
         <DialogHeader className="px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-700">
+              <div className="p-2 rounded-lg bg-honey-soft dark:bg-honey-soft/30 text-honey-text">
                 <Lightbulb className="w-5 h-5" />
               </div>
               <div>
@@ -111,13 +111,13 @@ export function ConceptDetailModal({
           )}
 
           {(concept.brand_alignment_score != null || (concept.validation_warnings?.length ?? 0) > 0) && (
-            <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
-              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wider mb-2">Validation</p>
+            <div className="p-4 rounded-lg border border-honey/40 dark:border-honey bg-honey-soft dark:bg-honey-soft/30">
+              <p className="text-xs font-semibold text-honey-text uppercase tracking-wider mb-2">Validation</p>
               {concept.brand_alignment_score != null && (
                 <p className="text-sm mb-2">
                   Brand alignment: <strong>{concept.brand_alignment_score}/100</strong>
                   {concept.brand_alignment_score < 60 && (
-                    <span className="text-amber-700 dark:text-amber-300 ml-2">(below 60 — review recommended)</span>
+                    <span className="text-honey-text ml-2">(below 60 — review recommended)</span>
                   )}
                 </p>
               )}
@@ -125,7 +125,7 @@ export function ConceptDetailModal({
                 <p className="text-sm text-muted-foreground mb-2">{concept.brand_alignment_rationale}</p>
               )}
               {concept.validation_warnings?.map((w, i) => (
-                <p key={i} className="text-sm text-amber-800 dark:text-amber-200">• {w}</p>
+                <p key={i} className="text-sm text-honey-text">• {w}</p>
               ))}
             </div>
           )}

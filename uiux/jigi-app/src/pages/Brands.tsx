@@ -26,7 +26,7 @@ const statusLabels = {
 
 const statusStyles = {
   complete: 'bg-success/10 text-success border-success/30',
-  partial: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  partial: 'bg-honey-soft text-honey-text dark:bg-honey-soft/40 border-honey/40 dark:border-honey',
   starter: 'bg-muted text-muted-foreground border-border',
 } as const
 
@@ -310,7 +310,7 @@ function BrandCard({ brand, onNavigate, onArchive, onUnarchive, onDelete }: Bran
           </div>
           <div className="flex items-center gap-2">
             {isArchived && (
-              <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-400">
+              <Badge variant="outline" className="text-xs border-honey/50 text-honey-text">
                 Archived
               </Badge>
             )}
@@ -375,7 +375,7 @@ function BrandCard({ brand, onNavigate, onArchive, onUnarchive, onDelete }: Bran
           {brand.onboarding_completed ? 'Profile complete' : 'Setup in progress'}
         </CardDescription>
         {status === 'partial' && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+          <p className="text-xs text-honey-text mt-2">
             Complete your brand profile for better results
           </p>
         )}

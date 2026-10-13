@@ -245,7 +245,7 @@ export function JobSendStage({
         )}
 
         {brandKit && brandKit !== 'complete' && (
-          <p className="text-xs text-[#B45309] dark:text-[#FBBF24]">
+          <p className="text-xs text-honey-text">
             {brandKit === 'none'
               ? 'No brand attached — nothing has been checked against a brand.'
               : 'Brand kit is incomplete — brand checks are guidance only.'}

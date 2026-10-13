@@ -1342,7 +1342,7 @@ export function GenerationPanel({
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-medium text-foreground truncate">{name}</p>
                     {asset.drift_status === 'review_required' && (
-                      <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium shrink-0" title="Brief updated; review recommended">
+                      <span className="text-[9px] text-honey-text font-medium shrink-0" title="Brief updated; review recommended">
                         Review
                       </span>
                     )}

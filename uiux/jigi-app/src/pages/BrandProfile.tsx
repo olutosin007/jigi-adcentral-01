@@ -31,7 +31,7 @@ const statusLabels = {
 
 const statusColors = {
   complete: 'bg-success/10 text-success',
-  partial: 'bg-amber-100 text-amber-800',
+  partial: 'bg-honey-soft text-honey-text',
   starter: 'bg-muted text-muted-foreground',
 }
 
@@ -277,7 +277,7 @@ export function BrandProfile() {
               )}
               <div className="flex items-center gap-2 mt-1">
                 {isArchived && (
-                  <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-400">
+                  <Badge variant="outline" className="text-xs border-honey/50 text-honey-text">
                     Archived
                   </Badge>
                 )}
@@ -669,7 +669,7 @@ export function BrandProfile() {
                     {preferredWords.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {preferredWords.map((word) => (
-                          <Badge key={word} className="bg-green-100 text-green-700">
+                          <Badge key={word} className="bg-forest-soft text-forest-text">
                             {word}
                           </Badge>
                         ))}

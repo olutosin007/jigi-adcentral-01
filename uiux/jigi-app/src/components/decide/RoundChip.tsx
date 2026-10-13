@@ -15,7 +15,7 @@ export function RoundChip({ round, suffix = 'Needs your decision', className }: 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border border-[#F59E0B]/30 bg-[#FEF3C7] px-2.5 py-1 text-xs font-medium text-[#B45309] dark:bg-[#422006] dark:text-[#FBBF24]',
+        'inline-flex items-center gap-1.5 rounded-full border border-honey/40 bg-honey-soft px-2.5 py-1 text-xs font-medium text-honey-text',
         className
       )}
       data-testid="round-chip"

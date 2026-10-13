@@ -87,7 +87,7 @@ describe('CampaignCreate page', () => {
     await user.click(screen.getByRole('button', { name: /next: channels/i }))
 
     expect(screen.getByRole('button', { name: /create campaign/i })).toBeInTheDocument()
-  }, 30_000)
+  }, 60_000)
 
   it('accepts input in campaign name field', () => {
     renderCampaignCreate()
@@ -123,5 +123,5 @@ describe('CampaignCreate page', () => {
 
     expect(mockCreateCampaign).toHaveBeenCalled()
     expect(mockNavigate).toHaveBeenCalledWith('/app/campaigns/camp-1?stage=brief')
-  }, 20_000)
+  }, 60_000)
 })

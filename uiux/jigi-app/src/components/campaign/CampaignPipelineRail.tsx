@@ -85,7 +85,7 @@ export function CampaignPipelineRail({
                   <span className="flex-1">{item.label}</span>
                   {badge > 0 && (
                     <span
-                      className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] dark:bg-[#422006] dark:text-[#FBBF24]"
+                      className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full bg-honey-soft text-honey-text"
                       aria-label={`${badge} pending`}
                     >
                       {badge}

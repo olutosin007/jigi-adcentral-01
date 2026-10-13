@@ -18,6 +18,7 @@ import {
   type DirectGenerateKind,
   type DirectGenerateRequest,
 } from '@/lib/direct-generate'
+import { PageTitle } from '@/design-system'
 
 const KIND_OPTIONS: { id: DirectGenerateKind; label: string; hint: string; icon: typeof ImageIcon }[] = [
   { id: 'image', label: 'Image', hint: 'Straight to visuals', icon: ImageIcon },
@@ -64,9 +65,9 @@ export function GenerateNow() {
   return (
     <div className="mx-auto max-w-2xl py-6 space-y-6">
       <header>
-        <h1 className="text-[2rem] leading-tight font-serif font-semibold tracking-tight text-foreground">
+        <PageTitle>
           Generate now
-        </h1>
+        </PageTitle>
         <p className="text-sm text-muted-foreground mt-1">
           Skip the brief. Describe what you want — add a brand, brief and reviewers later.
         </p>

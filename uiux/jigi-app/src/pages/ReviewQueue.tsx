@@ -10,6 +10,7 @@ import { AssetThumb } from '@/components/job/JobAssetRow'
 import { useReviewQueue, useRecentlyReviewed } from '@/hooks/useCampaignQueries'
 import { useAuthStore } from '@/store/authStore'
 import { getAssetTitle } from '@/lib/handoff'
+import { PageTitle } from '@/design-system'
 
 /** Authenticated approver home ("Inbox"). Route stays /app/review for link stability. */
 export function ReviewQueue() {
@@ -69,9 +70,9 @@ export function ReviewQueue() {
   return (
     <div className="p-6 md:p-8 max-w-[960px] mx-auto space-y-8" data-tour="review-queue">
       <div>
-        <h1 className="text-[2rem] leading-tight font-serif font-semibold tracking-tight text-foreground">
+        <PageTitle>
           Inbox
-        </h1>
+        </PageTitle>
         <p className="text-muted-foreground mt-1">
           {totalPending === 0
             ? 'Nothing needs your decision right now'
