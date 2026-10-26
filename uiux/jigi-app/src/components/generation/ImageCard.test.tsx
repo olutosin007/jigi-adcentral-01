@@ -52,7 +52,10 @@ describe('ImageCard', () => {
 
   it('keeps Submit for draft images', () => {
     const onSubmit = vi.fn()
-    render(<ImageCard image={baseImage} status="draft" onSubmit={onSubmit} />)
+    render(
+      <ImageCard image={baseImage} status="draft" onSubmit={onSubmit} brandCheck="warn" />
+    )
+    expect(screen.getByTestId('brand-check-badge')).toHaveTextContent(/Brand check/i)
     fireEvent.click(screen.getByRole('button', { name: /Submit/ }))
     expect(onSubmit).toHaveBeenCalled()
   })

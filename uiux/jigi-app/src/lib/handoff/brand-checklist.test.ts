@@ -43,4 +43,17 @@ describe('buildBrandChecklist', () => {
     const checks = Array.from({ length: 20 }, (_, i) => ({ name: `c${i}`, status: 'pass' }))
     expect(buildBrandChecklist({ compliance_check: { checks } })).toHaveLength(8)
   })
+
+  it('surfaces Brand Guardian items and palette match from content', () => {
+    const items = buildBrandChecklist({
+      content: {
+        brand_guardian: {
+          items: [{ label: 'Avoided word “cheap”', status: 'fail' }],
+        },
+        colour_compliance: { bio_palette_match: 0.55 },
+      },
+    })
+    expect(items.find((i) => /cheap/i.test(i.label))?.status).toBe('fail')
+    expect(items.find((i) => i.label.startsWith('Palette match'))?.status).toBe('warn')
+  })
 })

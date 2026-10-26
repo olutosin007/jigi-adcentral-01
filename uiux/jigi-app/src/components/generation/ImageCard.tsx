@@ -31,6 +31,8 @@ interface ImageCardProps {
   isUpscaling?: boolean
   version?: number
   showActions?: boolean
+  /** Soft Brand Guardian cue — feeds existing OnBrandCheckPanel, not a second panel. */
+  brandCheck?: 'ok' | 'warn' | 'fail' | null
 }
 
 const ASPECT_CLASS: Record<string, string> = {
@@ -56,6 +58,7 @@ export function ImageCard({
   isUpscaling = false,
   version,
   showActions = true,
+  brandCheck = null,
 }: ImageCardProps) {
   const canUpscale = !!onUpscale && !image.upscaled_from
   const aspectClass = ASPECT_CLASS[image.aspect_ratio ?? '1:1'] ?? 'aspect-square'
@@ -129,11 +132,21 @@ export function ImageCard({
             <DriftBadge />
           </div>
         )}
-        {status && (
-          <div className="absolute top-2 right-2">
-            <StatusBadge status={status} />
-          </div>
-        )}
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+          {status && <StatusBadge status={status} />}
+          {brandCheck && brandCheck !== 'ok' && (
+            <span
+              className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium bg-background/90 ${
+                brandCheck === 'fail'
+                  ? 'text-destructive border-destructive/40'
+                  : 'text-warning border-warning/40'
+              }`}
+              data-testid="brand-check-badge"
+            >
+              Brand check
+            </span>
+          )}
+        </div>
         {version != null && version > 1 && (
           <span
             className="absolute bottom-2 right-2 rounded-md bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground"

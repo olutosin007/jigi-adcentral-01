@@ -92,6 +92,36 @@ export function buildBrandChecklist(source: ChecklistSource): BrandCheckItem[] {
     items.push({ label: `Brand alignment · ${alignment}%`, status: scoreStatus(alignment) })
   }
 
+  // Brand Guardian soft-gate summary (voice / palette) — written by generate/submit paths.
+  const guardian = asRecord(content?.brand_guardian)
+  if (Array.isArray(guardian?.items)) {
+    for (const raw of guardian.items as unknown[]) {
+      const g = asRecord(raw)
+      if (!g || typeof g.label !== 'string') continue
+      const status =
+        g.status === 'pass' || g.status === 'fail' || g.status === 'warn'
+          ? g.status
+          : g.status === 'warning'
+            ? 'warn'
+            : null
+      if (!status) continue
+      items.push({
+        label: g.label.slice(0, 80),
+        status,
+        detail: typeof g.detail === 'string' ? g.detail.slice(0, 160) : undefined,
+      })
+    }
+  }
+
+  const colour = asRecord(content?.colour_compliance)
+  const paletteMatch = toPercent(colour?.bio_palette_match)
+  if (paletteMatch != null) {
+    items.push({
+      label: `Palette match · ${paletteMatch}%`,
+      status: scoreStatus(paletteMatch),
+    })
+  }
+
   const rank = { fail: 0, warn: 1, pass: 2 }
   return items.sort((a, b) => rank[a.status] - rank[b.status]).slice(0, MAX_ITEMS)
 }

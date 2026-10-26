@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { Send, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import {
+  softGateForSubmit,
+  type GuardianSeverity,
+} from '@/lib/brand-governance'
 import {
   Dialog,
   DialogContent,
@@ -28,6 +33,8 @@ interface SubmitModalProps {
   onSubmit: (targetStatus: AssetStatus, note?: string) => void
   isSubmitting: boolean
   allowAgencyReview?: boolean
+  /** Brand Guardian soft-gate — never blocks the API; confirm on fail. */
+  guardianSeverity?: GuardianSeverity
 }
 
 export function SubmitModal({
@@ -38,11 +45,21 @@ export function SubmitModal({
   onSubmit,
   isSubmitting,
   allowAgencyReview = true,
+  guardianSeverity = 'ok',
 }: SubmitModalProps) {
   const [target, setTarget] = useState<AssetStatus>('submitted')
   const [note, setNote] = useState('')
+  const [confirmedFail, setConfirmedFail] = useState(false)
+  const gate = softGateForSubmit(guardianSeverity)
 
   const handleSubmit = () => {
+    if (gate.needsConfirm && !confirmedFail) {
+      setConfirmedFail(true)
+      return
+    }
+    if (gate.toast === 'warn' && gate.message) {
+      toast.message(gate.message)
+    }
     onSubmit(target, note.trim() || undefined)
   }
 
@@ -50,6 +67,7 @@ export function SubmitModal({
     if (!newOpen) {
       setNote('')
       setTarget('submitted')
+      setConfirmedFail(false)
     }
     onOpenChange(newOpen)
   }
@@ -111,6 +129,17 @@ export function SubmitModal({
               className="resize-none"
             />
           </div>
+
+          {gate.needsConfirm && (
+            <p
+              className="text-sm text-coral-text bg-coral-soft border border-coral/40 rounded-md px-3 py-2"
+              role="status"
+              data-testid="brand-guardian-soft-gate"
+            >
+              {gate.message}
+              {confirmedFail ? ' Click Send again to confirm.' : ''}
+            </p>
+          )}
         </div>
 
         <DialogFooter>
@@ -135,7 +164,7 @@ export function SubmitModal({
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" />
-                Send
+                {gate.needsConfirm && !confirmedFail ? 'Review issues' : 'Send'}
               </>
             )}
           </Button>

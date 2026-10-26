@@ -260,7 +260,7 @@ Full DAM · Meta/Google ads publish · Slack/Teams as approval source of truth �
 | 1 | Done | `e68dc49` | Strategy copy on Work, Generate now, Brands, Decide |
 
 | 2 | Done | `4661468` | Live smoke skipped (no FAL_KEY); 141 server tests |
-| 3 | Pending | | |
+| 3 | Done | | Brand Guardian soft-gate; PRD07 Implemented (v1 evolved) |
 | 4 | Pending | | |
 | 5 | Pending | | |
 

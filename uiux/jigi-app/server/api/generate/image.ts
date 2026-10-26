@@ -1,4 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import {
+  buildBrandGuardianPayload,
+  mergeBrandGuardianIntoContent,
+} from '../../../src/lib/brand-governance/index.js'
 import { getSupabaseAdmin, getAuthenticatedUser } from '../lib/supabase.js'
 import { generateImageWithReplicate, replicateImageContentType } from '../lib/replicate.js'
 import { generateImageWithFal, falImageContentType } from '../lib/fal.js'
@@ -42,7 +46,7 @@ interface GenerateImageRequest {
   quality?: LegacyImageQuality
   brand_context?: {
     name: string
-    voice?: { tone?: string[] }
+    voice?: { tone?: string[]; preferred_words?: string[]; avoided_words?: string[] }
     identity?: {
       colours?: { primary?: string; secondary?: string; accent?: string }
       logo_url?: string
@@ -444,27 +448,41 @@ export default async function handler(
       created_by: user.id,
       type: 'image',
       generation_mode: body.brand_id ? 'brand_grounded' : 'idea_first',
-      content: {
-        url: publicUrl,
-        prompt_used: body.prompt,
-        enhanced_prompt: enhancedPrompt,
-        model: providerResult.modelUsed,
-        concept_id: body.concept_id,
-        ...(body.copy_asset_id && { copy_asset_id: body.copy_asset_id }),
-        ...(body.copy_headline_anchor && { copy_headline_anchor: body.copy_headline_anchor }),
-        ...(body.copy_key_message && { copy_key_message: body.copy_key_message }),
-        ...(body.copy_body_snippet && { copy_body_snippet: body.copy_body_snippet }),
-        aspect_ratio: aspectRatio,
-        revised_prompt: providerResult.revisedPrompt,
-        image_provider: selectedRoute.image_provider,
-        image_tier: selectedRoute.image_tier,
-        routing_reason: selectedRoute.routing_reason,
-        cost_bucket: selectedRoute.cost_bucket,
-        provider_model: selectedRoute.provider_model,
-        route_attempt: selectedRoute.route_attempt,
-        image_resolution: selectedRoute.resolution,
-        estimated_cost_usd: estimatedCostUsd,
-      },
+      content: (() => {
+        const baseContent = {
+          url: publicUrl,
+          prompt_used: body.prompt,
+          enhanced_prompt: enhancedPrompt,
+          model: providerResult.modelUsed,
+          concept_id: body.concept_id,
+          ...(body.copy_asset_id && { copy_asset_id: body.copy_asset_id }),
+          ...(body.copy_headline_anchor && { copy_headline_anchor: body.copy_headline_anchor }),
+          ...(body.copy_key_message && { copy_key_message: body.copy_key_message }),
+          ...(body.copy_body_snippet && { copy_body_snippet: body.copy_body_snippet }),
+          aspect_ratio: aspectRatio,
+          revised_prompt: providerResult.revisedPrompt,
+          image_provider: selectedRoute.image_provider,
+          image_tier: selectedRoute.image_tier,
+          routing_reason: selectedRoute.routing_reason,
+          cost_bucket: selectedRoute.cost_bucket,
+          provider_model: selectedRoute.provider_model,
+          route_attempt: selectedRoute.route_attempt,
+          image_resolution: selectedRoute.resolution,
+          estimated_cost_usd: estimatedCostUsd,
+        }
+        const voice = body.brand_context?.voice
+        if (!voice?.preferred_words?.length && !voice?.avoided_words?.length) {
+          return baseContent
+        }
+        return mergeBrandGuardianIntoContent(
+          baseContent,
+          buildBrandGuardianPayload({
+            content: baseContent,
+            preferredWords: voice.preferred_words,
+            avoidedWords: voice.avoided_words,
+          })
+        )
+      })(),
       status: 'draft',
     }
     if (body.lineage?.cco_version != null) assetInsert.cco_version = body.lineage.cco_version

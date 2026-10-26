@@ -34,13 +34,13 @@ export function OnBrandCheckPanel({ asset, kit, onRunCheck, isChecking, classNam
   return (
     <section
       className={cn('rounded-[10px] border border-border bg-card p-4 space-y-3', className)}
-      aria-label="On-brand check"
+      aria-label="Brand Guardian"
       data-tour="on-brand-check"
     >
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
           <ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden />
-          On-brand check
+          Brand Guardian
         </p>
         {kit !== 'none' && (
           <span

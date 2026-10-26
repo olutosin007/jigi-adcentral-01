@@ -37,6 +37,8 @@ import { UploadModal } from '@/components/upload/UploadModal'
 import { BrandIncompleteBanner } from '@/components/brands/BrandIncompleteBanner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { deriveBrandEssentials } from '@/lib/brand-profile-status'
+import { buildBrandChecklist } from '@/lib/handoff'
+import { guardianSeverityFromItems } from '@/lib/brand-governance'
 import { generateText } from '@/lib/api-client'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
 import type { BrandIncludeFlags, ConceptResult, CopyImageAnchor, CopyResult, ImageAspectRatio, ImageResult } from '@/lib/ai'
@@ -1235,6 +1237,7 @@ export function GenerationPanel({
                   isUpscaling={upscalingAssetId === asset.id}
                   version={asset.version}
                   showActions={true}
+                  brandCheck={guardianSeverityFromItems(buildBrandChecklist(asset))}
                 />
               ))}
             </div>

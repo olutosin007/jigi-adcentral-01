@@ -3,6 +3,10 @@ import { getSupabaseAdmin, getAuthenticatedUser } from '../lib/supabase.js'
 import { sendEmail, createSubmissionEmailHtml } from '../lib/resend.js'
 import { fetchRoundHistory, insertStatusHistory } from '../lib/status-history.js'
 import { nextRound, roundLabel } from '../../../src/lib/handoff/rounds.js'
+import {
+  buildBrandGuardianPayload,
+  mergeBrandGuardianIntoContent,
+} from '../../../src/lib/brand-governance/index.js'
 
 interface SubmitAssetRequest {
   asset_id: string
@@ -113,11 +117,31 @@ export default async function handler(
     const round = newStatus === 'submitted' ? nextRound(await fetchRoundHistory(supabaseAdmin, body.asset_id)) : null
     const isRevision = round !== null && round >= 2
 
+    let nextContent = asset.content
+    if (campaign?.brand_id) {
+      const { data: brandRow } = await supabaseAdmin
+        .from('brands')
+        .select('voice')
+        .eq('id', campaign.brand_id)
+        .maybeSingle()
+      const voice = (brandRow?.voice ?? {}) as {
+        preferred_words?: string[]
+        avoided_words?: string[]
+      }
+      const guardian = buildBrandGuardianPayload({
+        content: asset.content,
+        preferredWords: voice.preferred_words,
+        avoidedWords: voice.avoided_words,
+      })
+      nextContent = mergeBrandGuardianIntoContent(asset.content, guardian)
+    }
+
     const { data: updated, error: updateError } = await supabaseAdmin
       .from('creative_assets')
       .update({
         status: newStatus,
         submission_note: body.message || null,
+        content: nextContent,
         updated_at: new Date().toISOString(),
       })
       .eq('id', body.asset_id)

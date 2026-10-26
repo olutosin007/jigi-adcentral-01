@@ -67,7 +67,11 @@ import { parseCreativeMode, stageToUploadType, type CreativeMode } from '@/lib/u
 import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
 import { deriveBrandEssentials } from '@/lib/brand-profile-status'
 import { trackEvent } from '@/lib/analytics'
-import { latestLinkByAsset, type BrandKitLevel } from '@/lib/handoff'
+import { buildBrandChecklist, latestLinkByAsset, type BrandKitLevel } from '@/lib/handoff'
+import {
+  guardianSeverityFromItems,
+  type GuardianSeverity,
+} from '@/lib/brand-governance'
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground border-border',
@@ -123,6 +127,7 @@ export function CampaignDetail() {
     id: string
     name: string
     type: string
+    guardianSeverity: GuardianSeverity
   } | null>(null)
 
   const queryClient = useQueryClient()
@@ -390,6 +395,7 @@ export function CampaignDetail() {
       id: asset.id,
       name: getAssetDisplayName(asset),
       type: asset.type,
+      guardianSeverity: guardianSeverityFromItems(buildBrandChecklist(asset)),
     })
   }
 
@@ -793,6 +799,7 @@ export function CampaignDetail() {
         onSubmit={handleSubmitModalConfirm}
         isSubmitting={submitAsset.isPending}
         allowAgencyReview={true}
+        guardianSeverity={submitModalAsset?.guardianSeverity ?? 'ok'}
       />
 
       {id && (
