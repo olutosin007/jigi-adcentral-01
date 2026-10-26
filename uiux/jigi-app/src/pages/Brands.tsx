@@ -176,7 +176,7 @@ export function Brands() {
           description={
             showArchived
               ? 'You have no archived brands.'
-              : 'Create your first brand profile to get started with creative generation.'
+              : 'Put guidelines in once — they gate work before clients see it. Then generate or upload on brand.'
           }
           action={
             !showArchived ? (

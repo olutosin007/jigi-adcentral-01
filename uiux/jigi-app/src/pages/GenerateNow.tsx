@@ -69,7 +69,7 @@ export function GenerateNow() {
           Generate now
         </PageTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Skip the brief. Describe what you want — add a brand, brief and reviewers later.
+          Idea-first: describe what you want and generate now. Attach a brand kit, brief and reviewers whenever you are ready — the same handoff still ends in a client yes.
         </p>
       </header>
 

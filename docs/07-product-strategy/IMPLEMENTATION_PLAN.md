@@ -256,8 +256,9 @@ Full DAM · Meta/Google ads publish · Slack/Teams as approval source of truth �
 
 | Wave | Status | Commit | Notes |
 |------|--------|--------|-------|
-| 0 | Done | (pending commit) | Baseline 475 + 134 tests green; branch `feat/strategy-execution` |
-| 1 | Pending | | |
+| 0 | Done | `b73fdc9` | Baseline 475 + 134 tests green; branch `feat/strategy-execution` |
+| 1 | Done | (pending) | Strategy copy on Work, Generate now, Brands, Decide |
+
 | 2 | Pending | | |
 | 3 | Pending | | |
 | 4 | Pending | | |

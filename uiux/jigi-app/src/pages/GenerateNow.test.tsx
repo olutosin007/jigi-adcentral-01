@@ -45,6 +45,12 @@ describe('GenerateNow page', () => {
     )
   })
 
+  it('names idea-first and brand kit in the supporting line', () => {
+    renderPage()
+    expect(screen.getByText(/Idea-first/i)).toBeInTheDocument()
+    expect(screen.getByText(/brand kit/i)).toBeInTheDocument()
+  })
+
   it('validates the prompt before creating anything', () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: /^Generate/ }))

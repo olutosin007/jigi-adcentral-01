@@ -262,6 +262,9 @@ export function GuestDecide() {
                     </p>
                   </section>
                 )}
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Needs your decision — recorded for the audit trail
+                </p>
                 <OnBrandCheckPanel asset={view.data.asset} kit={view.data.brand_kit ?? 'none'} />
                 <details className="group rounded-[10px] border border-border bg-card p-4">
                   <summary className="cursor-pointer list-none text-sm font-medium text-foreground flex items-center justify-between">

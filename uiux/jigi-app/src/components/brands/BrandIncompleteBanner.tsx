@@ -28,10 +28,11 @@ export function BrandIncompleteBanner({
         <AlertTriangle className="h-5 w-5 text-honey-text flex-shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-medium text-honey-text">
-            Brand profile incomplete — results may drift
+            Put guidelines in once — they gate work before clients see it
           </p>
           <p className="text-sm text-honey-text/90 mt-0.5">
-            {missingText} ({essentials.score}/{essentials.maxScore} essentials)
+            Brand kit incomplete — results may drift. {missingText} ({essentials.score}/
+            {essentials.maxScore} essentials)
           </p>
         </div>
       </div>

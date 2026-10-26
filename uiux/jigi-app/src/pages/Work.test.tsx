@@ -46,6 +46,11 @@ describe('Work', () => {
     expect(screen.getByRole('button', { name: 'New job' })).toBeInTheDocument()
   })
 
+  it('surfaces the strategy tagline on the Work home', () => {
+    renderWork()
+    expect(screen.getAllByText(/On-brand drafts\. Client yes\. Same place/i).length).toBeGreaterThanOrEqual(1)
+  })
+
   it('shows exactly one next action per job and links to the target stage', () => {
     mockJobs.current = [
       job({ id: 'a', name: 'Spring launch', counts: { ...EMPTY_JOB_COUNTS, total: 2, changes: 2 } }),

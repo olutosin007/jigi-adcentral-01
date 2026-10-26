@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { HANDOFF_TONE_CLASSES, jobStageHref } from '@/lib/handoff'
 import { useWorkJobs, type WorkJob } from '@/hooks/useWorkQueries'
-import { PageTitle } from '@/design-system'
+import { Eyebrow, PageTitle } from '@/design-system'
 
 export function Work() {
   const navigate = useNavigate()
@@ -40,6 +40,7 @@ export function Work() {
     <div className="p-4 md:p-6 lg:p-8 max-w-[1100px] mx-auto space-y-6" data-tour="work-home">
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
+          <Eyebrow className="mb-1">On-brand drafts. Client yes. Same place.</Eyebrow>
           <PageTitle>
             Work
           </PageTitle>
@@ -114,7 +115,7 @@ export function Work() {
         <EmptyState
           icon={Sparkles}
           title="Start your first job"
-          description="Bring in a brief, generate or upload creative, and send it for a client decision — all in one place."
+          description="On-brand drafts. Client yes. Same place. Generate or upload creative, then send a Decide link — no email archaeology."
           action={{ label: 'New job', onClick: () => navigate('/app/campaigns/new') }}
         />
       ) : visibleJobs.length === 0 ? (
