@@ -20,6 +20,7 @@ import {
 const ALL_CREDS = {
   GOOGLE_AI_API_KEY: 'g',
   KLING_API_KEY: 'k',
+  FAL_KEY: 'fal',
   REPLICATE_API_TOKEN: 'r',
   AZURE_FOUNDRY_FLUX_ENDPOINT: 'https://foundry',
   AZURE_FOUNDRY_FLUX_API_KEY: 'f',
@@ -38,22 +39,24 @@ const chainIds = (tier: ImageTier) => buildRouteChain(tier).map((c) => `${c.prov
 beforeEach(() => setEnv({}))
 
 describe('buildRouteChain — lineup contract (README "Model lineup")', () => {
-  it('draft: Kling 2.1 → Nano Banana Lite → Foundry → Replicate schnell → Azure', () => {
+  it('draft: Kling 2.1 → Nano Banana Lite → fal Schnell → Foundry → Replicate → Azure', () => {
     setEnv(ALL_CREDS)
     expect(chainIds('draft')).toEqual([
       'kling:kling-v2-1',
       'google_gemini:gemini-3.1-flash-lite-image',
+      'fal:fal-ai/flux/schnell',
       'azure_foundry:flux-2-flex',
       'replicate:black-forest-labs/flux-schnell',
       'azure_openai:gpt-image-1-mini',
     ])
   })
 
-  it('refine: Kling 3.0 → Nano Banana 2.1 → Foundry → Replicate Seedream 4 → Azure', () => {
+  it('refine: Kling 3.0 → Nano Banana 2.1 → fal Seedream → Foundry → Replicate → Azure', () => {
     setEnv(ALL_CREDS)
     expect(chainIds('refine')).toEqual([
       'kling:kling-v3',
       'google_gemini:gemini-nano-banana-2.1',
+      'fal:fal-ai/bytedance/seedream/v4/text-to-image',
       'azure_foundry:flux-2-flex',
       'replicate:bytedance/seedream-4',
       'azure_openai:gpt-image-1-mini',
@@ -74,6 +77,15 @@ describe('buildRouteChain — lineup contract (README "Model lineup")', () => {
     expect(chainIds('draft')).toEqual(['replicate:black-forest-labs/flux-schnell'])
     expect(chainIds('refine')).toEqual(['replicate:bytedance/seedream-4'])
     expect(chainIds('final')).toEqual(['replicate:google/nano-banana'])
+    expect(buildRouteChain('refine')[0].resolution).toBe('2K')
+    expect(buildRouteChain('final')[0].resolution).toBe('1K')
+  })
+
+  it('fal-only account: Schnell drafts, Seedream refines, Nano Banana finals', () => {
+    setEnv({ FAL_KEY: 'fal' })
+    expect(chainIds('draft')).toEqual(['fal:fal-ai/flux/schnell'])
+    expect(chainIds('refine')).toEqual(['fal:fal-ai/bytedance/seedream/v4/text-to-image'])
+    expect(chainIds('final')).toEqual(['fal:fal-ai/nano-banana'])
     expect(buildRouteChain('refine')[0].resolution).toBe('2K')
     expect(buildRouteChain('final')[0].resolution).toBe('1K')
   })

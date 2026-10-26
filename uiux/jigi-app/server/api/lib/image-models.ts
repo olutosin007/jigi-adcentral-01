@@ -7,6 +7,7 @@
 export type ImageProvider =
   | 'google_gemini'
   | 'kling'
+  | 'fal'
   | 'replicate'
   | 'azure_openai'
   | 'azure_foundry'
@@ -52,6 +53,27 @@ export const IMAGE_MODELS: Record<string, ImageModelSpec> = {
     label: 'Kling Image 3.0',
     usdPerImage: { '1K': 0.028, '2K': 0.028 },
     priceSource: 'list',
+  },
+  'fal-ai/flux/schnell': {
+    id: 'fal-ai/flux/schnell',
+    provider: 'fal',
+    label: 'FLUX Schnell (fal)',
+    usdPerImage: { '1K': 0.003 },
+    priceSource: 'estimate',
+  },
+  'fal-ai/bytedance/seedream/v4/text-to-image': {
+    id: 'fal-ai/bytedance/seedream/v4/text-to-image',
+    provider: 'fal',
+    label: 'Seedream 4 (fal)',
+    usdPerImage: { '1K': 0.03, '2K': 0.03 },
+    priceSource: 'estimate',
+  },
+  'fal-ai/nano-banana': {
+    id: 'fal-ai/nano-banana',
+    provider: 'fal',
+    label: 'Nano Banana (fal)',
+    usdPerImage: { '1K': 0.039 },
+    priceSource: 'estimate',
   },
   'black-forest-labs/flux-schnell': {
     id: 'black-forest-labs/flux-schnell',

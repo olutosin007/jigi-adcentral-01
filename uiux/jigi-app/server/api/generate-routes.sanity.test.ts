@@ -97,6 +97,12 @@ vi.mock('./lib/replicate.js', () => ({
   replicateImageContentType: () => 'image/webp',
 }))
 
+vi.mock('./lib/fal.js', () => ({
+  generateImageWithFal: vi.fn(),
+  falImageContentType: () => 'image/png',
+  hasFalConfig: () => false,
+}))
+
 vi.mock('./lib/google-gemini-image.js', () => ({
   generateImageWithGemini: (args: unknown) => mockGenerateGemini(args),
 }))

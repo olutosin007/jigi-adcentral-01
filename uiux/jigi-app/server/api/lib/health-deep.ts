@@ -163,6 +163,12 @@ export async function runDeepHealthCheck(): Promise<DeepHealthResult> {
       : 'no retired model overrides',
   }
 
+  const falKey = getServerEnv('FAL_KEY', false)
+  checks['image_provider_fal'] = {
+    ok: !!falKey,
+    detail: falKey ? 'configured' : 'missing FAL_KEY',
+  }
+
   const replicateToken = getServerEnv('REPLICATE_API_TOKEN', false)
   checks['image_provider_replicate'] = {
     ok: !!replicateToken,

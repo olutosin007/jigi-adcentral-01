@@ -1,6 +1,7 @@
 import { getBooleanEnv, getNumberEnv, getServerEnv } from './env.js'
 import { pickModel, type ImageProvider, type ImageResolution, type ImageTier } from './image-models.js'
 import { hasKlingConfig } from './kling-image.js'
+import { hasFalConfig } from './fal.js'
 
 export type { ImageProvider, ImageTier, ImageResolution } from './image-models.js'
 export type RoutingReason =
@@ -56,6 +57,12 @@ export const DEFAULT_KLING_MODEL_BY_TIER: Record<ImageTier, string> = {
   final: 'kling-v3',
 }
 
+export const DEFAULT_FAL_MODEL_BY_TIER: Record<ImageTier, string> = {
+  draft: 'fal-ai/flux/schnell',
+  refine: 'fal-ai/bytedance/seedream/v4/text-to-image',
+  final: 'fal-ai/nano-banana',
+}
+
 export const DEFAULT_REPLICATE_MODEL_BY_TIER: Record<ImageTier, string> = {
   draft: 'black-forest-labs/flux-schnell',
   refine: 'bytedance/seedream-4',
@@ -107,6 +114,10 @@ export function getKlingModelForTier(tier: ImageTier): string {
 
 function getReplicateModelForTier(tier: ImageTier): string {
   return modelFromEnv(['REPLICATE_IMAGE_MODEL'], tier, DEFAULT_REPLICATE_MODEL_BY_TIER[tier])
+}
+
+export function getFalModelForTier(tier: ImageTier): string {
+  return modelFromEnv(['FAL_IMAGE_MODEL'], tier, DEFAULT_FAL_MODEL_BY_TIER[tier])
 }
 
 function getAzureModelForTier(tier: ImageTier): string {
@@ -204,6 +215,13 @@ export function buildRouteChain(tier: ImageTier): RouteCandidate[] {
     if (provider === 'google_gemini' && hasGeminiImageConfig()) {
       chain.push({ provider, model: getGeminiModelForTier(tier), costBucket: 'free', resolution })
     }
+  }
+
+  // D-ROUTER: fal before Foundry / Replicate (open-weight + video-ready substrate).
+  if (hasFalConfig()) {
+    const model = getFalModelForTier(tier)
+    const falResolution: ImageResolution = model.includes('seedream') ? '2K' : '1K'
+    chain.push({ provider: 'fal', model, costBucket: 'free', resolution: falResolution })
   }
 
   if (hasFoundryFluxConfig()) {

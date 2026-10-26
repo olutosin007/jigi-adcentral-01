@@ -7,15 +7,17 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { ImageProvider } from './image-models.js'
 
+/** Latest migration that defines the full image_provider CHECK list. */
 const MIGRATION = path.resolve(
   __dirname,
-  '../../../../../supabase/migrations/035_image_providers_gemini_kling.sql'
+  '../../../../../supabase/migrations/037_image_provider_fal.sql'
 )
 
 /** Compile-time exhaustive list of the ImageProvider union. */
 const PROVIDERS: Record<ImageProvider, true> = {
   google_gemini: true,
   kling: true,
+  fal: true,
   replicate: true,
   azure_openai: true,
   azure_foundry: true,
@@ -23,12 +25,15 @@ const PROVIDERS: Record<ImageProvider, true> = {
 }
 
 function checkLists(sql: string): string[][] {
-  return [...sql.matchAll(/image_provider IN \(([^)]+)\)/g)].map((m) =>
-    m[1].split(',').map((v) => v.trim().replace(/'/g, ''))
+  return [...sql.matchAll(/image_provider IN \(([^)]+)\)/gs)].map((m) =>
+    m[1]
+      .split(',')
+      .map((v) => v.trim().replace(/'/g, '').replace(/\s+/g, ''))
+      .filter(Boolean)
   )
 }
 
-describe('migration 035 image_provider CHECK', () => {
+describe('migration 037 image_provider CHECK', () => {
   const sql = fs.readFileSync(MIGRATION, 'utf8')
   const lists = checkLists(sql)
 
@@ -38,7 +43,7 @@ describe('migration 035 image_provider CHECK', () => {
     expect(sql).toContain('ALTER TABLE image_routing_events')
   })
 
-  it('accepts exactly the ImageProvider union', () => {
+  it('accepts exactly the ImageProvider union (includes fal)', () => {
     for (const list of lists) {
       expect([...list].sort()).toEqual(Object.keys(PROVIDERS).sort())
     }

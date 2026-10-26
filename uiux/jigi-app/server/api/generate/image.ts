@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getSupabaseAdmin, getAuthenticatedUser } from '../lib/supabase.js'
 import { generateImageWithReplicate, replicateImageContentType } from '../lib/replicate.js'
+import { generateImageWithFal, falImageContentType } from '../lib/fal.js'
 import { generateImageWithGemini } from '../lib/google-gemini-image.js'
 import { generateImageWithKling } from '../lib/kling-image.js'
 import { generateImageWithAzure } from '../lib/azure-image.js'
@@ -160,6 +161,28 @@ async function executeProvider(
       imageBuffer: generated.buffer,
       contentType: generated.contentType,
       modelUsed: generated.model,
+    }
+  }
+
+  if (route.provider === 'fal') {
+    const imageUrls = await generateImageWithFal({
+      model: route.model,
+      prompt,
+      aspectRatio,
+      tier: route.image_tier,
+    })
+    const imageUrl = imageUrls[0]
+    if (!imageUrl) {
+      throw new Error('fal did not return an image URL')
+    }
+    const imageResponse = await fetch(imageUrl)
+    if (!imageResponse.ok) {
+      throw new Error('Failed to fetch fal generated image')
+    }
+    return {
+      imageBuffer: await imageResponse.arrayBuffer(),
+      contentType: falImageContentType(imageResponse.headers.get('content-type'), imageUrl),
+      modelUsed: route.model,
     }
   }
 
