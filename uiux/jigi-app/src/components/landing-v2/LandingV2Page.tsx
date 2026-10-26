@@ -11,7 +11,6 @@ import {
   Workflow,
   CheckCircle2,
   ArrowRight,
-  Play,
   ShieldCheck,
   History,
   MessageSquare,
@@ -50,6 +49,9 @@ function Navbar() {
           <a href="#features" className="hover:text-white transition-colors">
             Features
           </a>
+          <Link to="/pricing" className="hover:text-white transition-colors">
+            Pricing
+          </Link>
           <a href="#results" className="hover:text-white transition-colors">
             Results
           </a>
@@ -139,8 +141,7 @@ function Hero() {
             transition={{ duration: 0.8, delay: 0.5 }}
             className="text-lg md:text-xl text-white/60 max-w-2xl mb-12 font-light leading-relaxed"
           >
-            Generate production-ready creative from a single text prompt. Route it through structured
-            review, and ship approved assets without the workflow chaos.
+            On-brand drafts. Client yes. Same place.
           </motion.p>
 
           <motion.div
@@ -150,19 +151,18 @@ function Hero() {
             className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto"
           >
           <Link
-            to="/app/dashboard"
+            to="/signup"
             className="btn-filled w-full sm:w-auto px-8 py-4 rounded-full font-medium hover:bg-white/90 transition-all flex items-center justify-center gap-2 group text-[#030303]"
           >
-              Start Creating
+              Start free
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <a
-              href="#cta"
+            <Link
+              to="/pricing"
               className="w-full sm:w-auto px-8 py-4 rounded-full border border-white/20 text-white font-medium hover:bg-white/5 transition-all flex items-center justify-center gap-2"
             >
-              <Play className="w-4 h-4" />
-              Book Demo
-            </a>
+              See pricing
+            </Link>
           </motion.div>
         </div>
       </div>
@@ -401,17 +401,17 @@ function CTA() {
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
-            to="/app/dashboard"
+            to="/signup"
             className="btn-filled px-8 py-4 rounded-full font-medium hover:bg-white/90 transition-all flex items-center justify-center gap-2 text-[#030303]"
           >
-            Start Free
+            Start free
           </Link>
-          <a
-            href="#cta"
+          <Link
+            to="/pricing"
             className="px-8 py-4 rounded-full border border-white/20 text-white font-medium hover:bg-white/5 transition-all"
           >
-            Book a Demo
-          </a>
+            See pricing
+          </Link>
         </div>
         <p className="mt-6 text-xs text-white/40 uppercase tracking-widest">
           Exclusive access for agency partners
@@ -442,6 +442,11 @@ function Footer() {
                 <a href="#features" className="hover:text-white transition-colors">
                   Features
                 </a>
+              </li>
+              <li>
+                <Link to="/pricing" className="hover:text-white transition-colors">
+                  Pricing
+                </Link>
               </li>
               <li>
                 <a href="#" className="hover:text-white transition-colors">

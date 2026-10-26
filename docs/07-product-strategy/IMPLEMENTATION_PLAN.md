@@ -2,7 +2,7 @@
 
 **Purpose:** Single executable plan for Cursor agents after **one human approval**.  
 **Audience:** Cursor / gstack agents (primary) · Product owner (approval only)  
-**Status:** Approved as written · Executing  
+**Status:** Executed through Wave 5  
 **Version:** 1.0 · October 2026  
 **Strategy source:** [PRODUCT_STRATEGY.md](./PRODUCT_STRATEGY.md)  
 **Product seed:** [`docs/gstack/PRODUCT_BRIEF.md`](../gstack/PRODUCT_BRIEF.md)  
@@ -242,12 +242,12 @@ Full DAM · Meta/Google ads publish · Slack/Teams as approval source of truth �
 
 ## 7. Definition of Done (whole plan)
 
-- [ ] Waves 0–5 committed on `feat/strategy-execution`  
-- [ ] `pnpm test` + `pnpm test:server-api` + tsc green  
-- [ ] fal provider in router (live smoke optional)  
-- [ ] Brand Guardian v1 visible on assets / Decide (soft-gate)  
-- [ ] `/pricing` live in app router  
-- [ ] PRODUCT_STRATEGY remains the external narrative; this plan Delivery Log complete  
+- [x] Waves 0–5 committed on `feat/strategy-execution`  
+- [x] `pnpm test` + `pnpm test:server-api` + tsc green  
+- [x] fal provider in router (live smoke optional)  
+- [x] Brand Guardian v1 visible on assets / Decide (soft-gate)  
+- [x] `/pricing` live in app router  
+- [x] PRODUCT_STRATEGY remains the external narrative; this plan Delivery Log complete  
 - [ ] Open PR **only if** user asks after execution  
 
 ---
@@ -261,8 +261,8 @@ Full DAM · Meta/Google ads publish · Slack/Teams as approval source of truth �
 
 | 2 | Done | `4661468` | Live smoke skipped (no FAL_KEY); 141 server tests |
 | 3 | Done | `85ad991` | Brand Guardian soft-gate; PRD07 Implemented (v1 evolved) |
-| 4 | Done | | North-star events + decision latency stub; GuestDecide green |
-| 5 | Pending | | |
+| 4 | Done | `c0cd9e4` | North-star events + decision latency stub; GuestDecide green |
+| 5 | Done | | Pricing + landing CTAs + video scaffold + partner one-pager |
 
 ---
 

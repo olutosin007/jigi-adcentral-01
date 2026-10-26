@@ -266,7 +266,7 @@ describe('GenerationPanel', () => {
       { wrapper: createWrapper() }
     )
 
-    expect(screen.getByText(/Brand profile incomplete — results may drift/i)).toBeInTheDocument()
+    expect(screen.getByText(/Brand kit incomplete — results may drift/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /complete brand kit/i })).toBeInTheDocument()
   })
 

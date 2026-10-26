@@ -1,7 +1,7 @@
 # Phase 5 — Video (Deferred)
 
 **Initiative:** [Generation Studio](./README.md)
-**Status:** Deferred — design notes only
+**Status:** Deferred (provider) — scaffold shipped Wave 5 (`038_generation_jobs`, `POST /api/generate/video` → 501, `VIDEO_ENABLED=false`, no UI)
 
 ---
 

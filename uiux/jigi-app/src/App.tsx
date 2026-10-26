@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 
 import { LandingPage } from '@/pages/Landing'
 import { LandingV2 } from '@/pages/LandingV2'
+import { Pricing } from '@/pages/Pricing'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Dashboard } from '@/pages/Dashboard'
@@ -74,6 +75,7 @@ export function App() {
           <Route path="/" element={<LandingV2 />} />
           <Route path="/landing-v1" element={<LandingPage />} />
           <Route path="/landing-v2" element={<LandingV2 />} />
+          <Route path="/pricing" element={<Pricing />} />
           
           {/* Auth routes */}
           <Route path="/login" element={<Login />} />

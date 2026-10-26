@@ -36,7 +36,7 @@
 | **P2** | [PHASE-02-UPSCALE-FINAL.md](./PHASE-02-UPSCALE-FINAL.md) | `POST /api/generate/upscale` → versioned child asset | Magnific-style final step before review |
 | **P3** | [PHASE-03-STUDIO-COMPOSER.md](./PHASE-03-STUDIO-COMPOSER.md) | Cost-aware tier picker, aspect ratio, Remix/Upscale on cards | Studio patterns inside DESIGN.md |
 | **P4** | [PHASE-04-BRAND-PRESETS.md](./PHASE-04-BRAND-PRESETS.md) | Brand-scoped image presets | Brand memory in one click |
-| **P5** | [PHASE-05-VIDEO-DEFERRED.md](./PHASE-05-VIDEO-DEFERRED.md) | Kling video, async jobs | Deferred — design notes only |
+| **P5** | [PHASE-05-VIDEO-DEFERRED.md](./PHASE-05-VIDEO-DEFERRED.md) | Kling video, async jobs | Scaffold only (`generation_jobs` + 501 API); provider deferred |
 
 **Order:** P1 → P2 → P3 → P4 (strict; P3 consumes the P1 catalog and P2 endpoint).
 
