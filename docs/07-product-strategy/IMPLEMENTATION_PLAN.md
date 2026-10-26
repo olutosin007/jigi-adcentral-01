@@ -259,7 +259,7 @@ Full DAM · Meta/Google ads publish · Slack/Teams as approval source of truth �
 | 0 | Done | `b73fdc9` | Baseline 475 + 134 tests green; branch `feat/strategy-execution` |
 | 1 | Done | `e68dc49` | Strategy copy on Work, Generate now, Brands, Decide |
 
-| 2 | Pending | | |
+| 2 | Done | `4661468` | Live smoke skipped (no FAL_KEY); 141 server tests |
 | 3 | Pending | | |
 | 4 | Pending | | |
 | 5 | Pending | | |
