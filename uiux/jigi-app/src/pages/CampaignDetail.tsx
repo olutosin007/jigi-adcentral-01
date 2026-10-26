@@ -66,7 +66,7 @@ import { UploadCanvas, CreativeModeToggle } from '@/components/upload/UploadCanv
 import { parseCreativeMode, stageToUploadType, type CreativeMode } from '@/lib/upload-intake'
 import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
 import { deriveBrandEssentials } from '@/lib/brand-profile-status'
-import { trackEvent } from '@/lib/analytics'
+import { trackEvent, trackSubmitted } from '@/lib/analytics'
 import { buildBrandChecklist, latestLinkByAsset, type BrandKitLevel } from '@/lib/handoff'
 import {
   guardianSeverityFromItems,
@@ -408,6 +408,10 @@ export function CampaignDetail() {
         userId: user.id,
         targetStatus,
         note,
+      })
+      trackSubmitted({
+        target: targetStatus,
+        asset_type: submitModalAsset.type,
       })
       setSubmitModalAsset(null)
       toast.success(targetStatus === 'submitted' ? 'Sent to client' : 'Sent for internal check')

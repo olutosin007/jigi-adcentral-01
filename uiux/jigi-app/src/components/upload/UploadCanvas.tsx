@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useCreateUploadedCopy, useUploadAsset } from '@/hooks/useCampaignQueries'
-import { trackEvent } from '@/lib/analytics'
+import { trackCandidateCreated, trackEvent } from '@/lib/analytics'
 import { validateFileSize } from '@/lib/upload'
 import {
   allowedTypesForFile,
@@ -120,6 +120,7 @@ export function UploadCanvas({
       }
       patch(item.key, { status: 'done' })
       trackEvent('candidate_added', { source: 'uploaded', type: item.type })
+      trackCandidateCreated({ source: 'uploaded', asset_type: item.type })
       return true
     } catch (e) {
       patch(item.key, { status: 'error', error: errorMessage(e) })
@@ -148,6 +149,7 @@ export function UploadCanvas({
     try {
       await createUploadedCopy.mutateAsync({ campaignId, userId, text })
       trackEvent('candidate_added', { source: 'uploaded', type: 'copy' })
+      trackCandidateCreated({ source: 'uploaded', asset_type: 'copy' })
       setCopyText('')
       toast.success('Copy added to this job')
     } catch (e) {

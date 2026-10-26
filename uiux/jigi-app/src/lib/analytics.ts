@@ -60,6 +60,32 @@ export type DecideVia = 'guest' | 'app'
  * North-star decision event. `hours_to_decision` is measured from the last
  * send; `approved_first_round` feeds approved_first_round_rate.
  */
+/** North-star: a reviewable candidate exists (AI generate or upload). */
+export function trackCandidateCreated(props: {
+  source: 'ai' | 'uploaded'
+  asset_type: string
+  at?: string
+}): void {
+  trackEvent('candidate_created', {
+    source: props.source,
+    asset_type: props.asset_type,
+    at: props.at ?? new Date().toISOString(),
+  })
+}
+
+/** North-star: asset left the studio toward a human decision. */
+export function trackSubmitted(props: {
+  target: string
+  asset_type?: string
+  at?: string
+}): void {
+  trackEvent('submitted', {
+    target: props.target,
+    asset_type: props.asset_type,
+    at: props.at ?? new Date().toISOString(),
+  })
+}
+
 export function trackDecision(input: {
   via: DecideVia
   action: 'approve' | 'request_changes' | 'reject'
@@ -70,10 +96,11 @@ export function trackDecision(input: {
   now?: Date
 }): void {
   const sent = input.sentAt ? new Date(input.sentAt).getTime() : NaN
+  const at = (input.now ?? new Date()).toISOString()
   const hours = Number.isNaN(sent)
     ? null
     : Math.max(0, Math.round((((input.now ?? new Date()).getTime() - sent) / 3_600_000) * 10) / 10)
-  trackEvent('decide_completed', {
+  const props = {
     via: input.via,
     decide_via: input.via,
     action: input.action,
@@ -82,5 +109,8 @@ export function trackDecision(input: {
     approved_first_round: input.action === 'approve' && input.round <= 1,
     asset_type: input.assetType,
     candidate_source: input.candidateSource ?? 'ai',
-  })
+    at,
+  }
+  trackEvent('decide_completed', props)
+  trackEvent('decision_made', props)
 }

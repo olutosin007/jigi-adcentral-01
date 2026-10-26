@@ -123,6 +123,12 @@ describe('semantic mappings', () => {
     expect(JOURNEY_COLORS.brand_first).not.toBe(JOURNEY_COLORS.idea_first)
   })
 
+  it('Honey is pending; Clay is idea-first', () => {
+    expect(TONE_COLORS.pending).toBe('honey')
+    expect(JOURNEY_COLORS.idea_first).toBe('clay')
+    expect(HANDOFF_TONE_CLASSES.pending).toContain('honey')
+  })
+
   it('Krona One is only used at display sizes', () => {
     for (const t of TYPE_SCALE.filter((t) => t.font === 'display')) {
       expect(parseFloat(t.size) * 16).toBeGreaterThanOrEqual(DISPLAY_MIN_PX)

@@ -6,6 +6,7 @@ import { selectCampaignAsset, upscaleImage } from '@/lib/api-client'
 import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type CopyImageAnchor, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ImageAspectRatio, type ComplianceResult } from '@/lib/ai'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
 import type { Brand } from '@/store/brandStore'
+import { trackCandidateCreated } from '@/lib/analytics'
 
 interface AssetFilters {
   type?: 'concept' | 'copy' | 'image'
@@ -307,6 +308,7 @@ export function useGenerateConcepts() {
   return useMutation({
     mutationFn: generateAndSaveConcepts,
     onSuccess: (_, variables) => {
+      trackCandidateCreated({ source: 'ai', asset_type: 'concept' })
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', variables.campaignId],
       })
@@ -320,6 +322,7 @@ export function useGenerateCopy() {
   return useMutation({
     mutationFn: generateAndSaveCopy,
     onSuccess: (_, variables) => {
+      trackCandidateCreated({ source: 'ai', asset_type: 'copy' })
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', variables.campaignId],
       })
@@ -633,6 +636,7 @@ export function useGenerateImage() {
   return useMutation({
     mutationFn: generateAndSaveImage,
     onSuccess: (_, variables) => {
+      trackCandidateCreated({ source: 'ai', asset_type: 'image' })
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', variables.campaignId],
       })
