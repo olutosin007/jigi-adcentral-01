@@ -262,7 +262,7 @@ Full DAM · Meta/Google ads publish · Slack/Teams as approval source of truth �
 | 2 | Done | `4661468` | Live smoke skipped (no FAL_KEY); 141 server tests |
 | 3 | Done | `85ad991` | Brand Guardian soft-gate; PRD07 Implemented (v1 evolved) |
 | 4 | Done | `c0cd9e4` | North-star events + decision latency stub; GuestDecide green |
-| 5 | Done | | Pricing + landing CTAs + video scaffold + partner one-pager |
+| 5 | Done | `612ebcc` | Pricing + landing CTAs + video scaffold + partner one-pager |
 
 ---
 
