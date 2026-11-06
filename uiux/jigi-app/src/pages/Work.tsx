@@ -10,12 +10,15 @@ import { cn } from '@/lib/utils'
 import { HANDOFF_TONE_CLASSES, jobStageHref } from '@/lib/handoff'
 import { useWorkJobs, type WorkJob } from '@/hooks/useWorkQueries'
 import { Eyebrow, PageTitle } from '@/design-system'
+import { ActivationChecklist } from '@/components/activation/ActivationChecklist'
+import { useActivationProgress } from '@/hooks/useActivationProgress'
 
 export function Work() {
   const navigate = useNavigate()
   const { data: jobs = [], isLoading, error, refetch } = useWorkJobs()
   const [query, setQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
+  useActivationProgress(jobs)
 
   const visibleJobs = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -65,6 +68,8 @@ export function Work() {
           </Button>
         </div>
       </header>
+
+      <ActivationChecklist />
 
       {jobs.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">

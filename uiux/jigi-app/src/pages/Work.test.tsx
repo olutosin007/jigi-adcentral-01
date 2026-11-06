@@ -5,11 +5,19 @@ import { MemoryRouter } from 'react-router-dom'
 import { Work } from './Work'
 import { EMPTY_JOB_COUNTS, getJobNextAction } from '@/lib/handoff'
 import type { WorkJob } from '@/hooks/useWorkQueries'
+import { useActivationStore } from '@/store/activationStore'
 
 const { mockJobs } = vi.hoisted(() => ({ mockJobs: { current: [] as WorkJob[] } }))
 
 vi.mock('@/hooks/useWorkQueries', () => ({
   useWorkJobs: () => ({ data: mockJobs.current, isLoading: false, error: null, refetch: vi.fn() }),
+}))
+
+vi.mock('@/store/authStore', () => ({
+  useAuthStore: (sel?: (s: { user: { id: string } | null }) => unknown) => {
+    const state = { user: { id: 'user-1' } }
+    return typeof sel === 'function' ? sel(state) : state
+  },
 }))
 
 function job(partial: Partial<WorkJob> & Pick<WorkJob, 'id' | 'name'>): WorkJob {
@@ -38,12 +46,20 @@ function renderWork() {
 describe('Work', () => {
   beforeEach(() => {
     mockJobs.current = []
+    localStorage.clear()
+    useActivationStore.setState({ completed: {}, dismissed: false, userId: null })
   })
 
   it('shows empty state with a new job CTA', () => {
     renderWork()
     expect(screen.getByText('Start your first job')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New job' })).toBeInTheDocument()
+  })
+
+  it('surfaces the activation checklist until ticks are complete', () => {
+    renderWork()
+    expect(screen.getByTestId('activation-checklist')).toHaveTextContent(/Ship a decision, not a folder/)
+    expect(screen.getByRole('link', { name: 'Generate now' })).toHaveAttribute('href', '/app/generate')
   })
 
   it('surfaces the strategy tagline on the Work home', () => {

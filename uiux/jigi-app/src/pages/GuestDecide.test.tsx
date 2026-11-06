@@ -99,10 +99,27 @@ describe('GuestDecide', () => {
     expect(send).not.toBeDisabled()
   })
 
-  it('shows human copy for expired links', async () => {
+  it('shows human copy for expired Decide links', async () => {
     fetchMock.mockReturnValueOnce(jsonResponse({ state: 'expired', error: 'x' }, 410))
     renderPage()
-    expect(await screen.findByText('This link has expired')).toBeInTheDocument()
+    expect(await screen.findByText('This Decide link has expired')).toBeInTheDocument()
+    expect(screen.getByText(/Ask your agency for a new Decide link/)).toBeInTheDocument()
+  })
+
+  it('shows recovery copy for invalid Decide links', async () => {
+    fetchMock.mockReturnValueOnce(jsonResponse({ state: 'not_found', error: 'x' }, 404))
+    renderPage()
+    expect(await screen.findByText('This Decide link isn’t active')).toBeInTheDocument()
+    expect(screen.getByText(/Check the URL is complete/)).toBeInTheDocument()
+  })
+
+  it('shows Decide eyebrow and Brand Guardian one-liner', async () => {
+    fetchMock.mockReturnValueOnce(jsonResponse(payload))
+    renderPage()
+    expect(await screen.findByTestId('guest-decide-eyebrow')).toHaveTextContent(
+      /Needs your decision — recorded for the audit trail/
+    )
+    expect(screen.getByText(/Brand Guardian flags palette and voice/)).toBeInTheDocument()
   })
 
   it('shows the recorded decision when already decided', async () => {

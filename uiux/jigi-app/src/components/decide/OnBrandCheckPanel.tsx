@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -7,6 +8,7 @@ import {
   type BrandKitLevel,
   type ChecklistSource,
 } from '@/lib/handoff'
+import { trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 const ITEM_ICONS = { pass: CheckCircle2, warn: AlertTriangle, fail: XCircle }
@@ -22,6 +24,7 @@ interface OnBrandCheckPanelProps {
 
 /** Shared by guest Decide, authenticated review and the creator's views. */
 export function OnBrandCheckPanel({ asset, kit, onRunCheck, isChecking, className }: OnBrandCheckPanelProps) {
+  const seen = useRef(false)
   const summary = summarizeBrandCheck(
     {
       validation_scores: (asset.validation_scores ?? null) as Record<string, unknown> | null,
@@ -30,6 +33,12 @@ export function OnBrandCheckPanel({ asset, kit, onRunCheck, isChecking, classNam
     kit
   )
   const items = kit === 'none' ? [] : buildBrandChecklist(asset)
+
+  useEffect(() => {
+    if (seen.current) return
+    seen.current = true
+    trackEvent('brand_check_seen', { kit })
+  }, [kit])
 
   return (
     <section

@@ -47,10 +47,22 @@ const DONE_COPY: Record<GuestDecision, { title: string; body: string; icon: type
 }
 
 const ERROR_COPY: Partial<Record<GuestLinkState, { title: string; body: string }>> = {
-  expired: { title: 'This link has expired', body: 'Ask the person who sent it for a fresh link.' },
-  revoked: { title: 'This link was withdrawn', body: 'The team pulled it back — they may send a new version.' },
-  used_up: { title: 'This link has been used', body: 'Ask the person who sent it for a fresh link.' },
-  not_found: { title: 'We could not find this review', body: 'Check the link is complete, or ask for a new one.' },
+  expired: {
+    title: 'This Decide link has expired',
+    body: 'Ask your agency for a new Decide link — the creative may already have a fresh round ready.',
+  },
+  revoked: {
+    title: 'This Decide link was withdrawn',
+    body: 'The team pulled it back. Ask them to send a new Decide link when ready.',
+  },
+  used_up: {
+    title: 'This Decide link has already been used',
+    body: 'Ask your agency for a fresh Decide link if you need to review again.',
+  },
+  not_found: {
+    title: 'This Decide link isn’t active',
+    body: 'Check the URL is complete, or ask your agency for a new Decide link.',
+  },
 }
 
 function ShellHeader({ data }: { data?: GuestReviewPayload }) {
@@ -224,8 +236,8 @@ export function GuestDecide() {
 
       {view.kind === 'ready' && (
         <>
-          <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-40 pt-6 md:px-8 lg:pb-32">
-            <div className="flex flex-col gap-6 lg:flex-row">
+          <main className="mx-auto w-full max-w-[1400px] flex-1 px-3 pb-44 pt-4 sm:px-4 md:px-8 md:pb-32 md:pt-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
               {comparing && canCompare ? (
                 <CompareToPrevious
                   asset={view.data.asset}
@@ -236,7 +248,7 @@ export function GuestDecide() {
               ) : (
                 <AssetHeroPreview asset={view.data.asset} className="lg:w-[68%]" />
               )}
-              <aside className="lg:flex-1 space-y-5">
+              <aside className="lg:flex-1 space-y-4 sm:space-y-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <RoundChip round={round} />
                   {canCompare && (
@@ -262,9 +274,18 @@ export function GuestDecide() {
                     </p>
                   </section>
                 )}
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Needs your decision — recorded for the audit trail
-                </p>
+                <div>
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                    data-testid="guest-decide-eyebrow"
+                  >
+                    Needs your decision — recorded for the audit trail
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                    Brand Guardian flags palette and voice issues beside the creative. It guides — you still
+                    make the call.
+                  </p>
+                </div>
                 <OnBrandCheckPanel asset={view.data.asset} kit={view.data.brand_kit ?? 'none'} />
                 <details className="group rounded-[10px] border border-border bg-card p-4">
                   <summary className="cursor-pointer list-none text-sm font-medium text-foreground flex items-center justify-between">
@@ -311,8 +332,8 @@ export function GuestDecide() {
             </div>
           </main>
 
-          <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
-            <div className="mx-auto max-w-[1400px] px-4 py-3 md:px-8">
+          <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 safe-area-pb">
+            <div className="mx-auto max-w-[1400px] px-3 py-3 sm:px-4 md:px-8">
               <DecideActions onAction={setPendingAction} disabled={submitting} />
             </div>
           </div>

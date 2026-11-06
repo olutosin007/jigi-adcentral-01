@@ -156,6 +156,23 @@ export function GenerateNow() {
         </div>
       </div>
 
+      <aside
+        className="rounded-[10px] border border-border bg-clay-soft/40 px-4 py-3 text-sm"
+        data-testid="idea-first-enrichment-nudge"
+      >
+        <p className="font-medium text-clay-text">Idea-first is fine — brand can follow</p>
+        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+          Generate now, then attach guidelines so Brand Guardian can gate work before the client Decide
+          link. Never blocks sending.
+        </p>
+        <Link
+          to="/app/brands"
+          className="mt-2 inline-flex text-xs font-medium text-primary hover:underline"
+        >
+          Add brand guidelines
+        </Link>
+      </aside>
+
       <p className="text-sm text-muted-foreground">
         Need a brand-grounded brief and client review?{' '}
         <Link to="/app/campaigns/new" className="font-medium text-primary hover:underline">

@@ -47,8 +47,19 @@ describe('GenerateNow page', () => {
 
   it('names idea-first and brand kit in the supporting line', () => {
     renderPage()
-    expect(screen.getByText(/Idea-first/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Idea-first/i).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/brand kit/i)).toBeInTheDocument()
+  })
+
+  it('shows a non-blocking idea-first enrichment nudge to brand guidelines', () => {
+    renderPage()
+    const nudge = screen.getByTestId('idea-first-enrichment-nudge')
+    expect(nudge).toHaveTextContent(/Idea-first is fine/)
+    expect(nudge).toHaveTextContent(/Never blocks sending/)
+    expect(screen.getByRole('link', { name: /Add brand guidelines/ })).toHaveAttribute(
+      'href',
+      '/app/brands'
+    )
   })
 
   it('validates the prompt before creating anything', () => {

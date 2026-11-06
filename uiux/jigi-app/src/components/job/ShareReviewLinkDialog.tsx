@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCreateReviewLink } from '@/hooks/useReviewLinks'
 import { getAssetTitle } from '@/lib/handoff'
+import { trackEvent } from '@/lib/analytics'
+import { useActivationStore } from '@/store/activationStore'
 import type { CreativeAsset } from '@/store/campaignStore'
 
 interface ShareReviewLinkDialogProps {
@@ -49,7 +51,9 @@ export function ShareReviewLinkDialog({ asset, campaignId, onOpenChange }: Share
         send_email: sendEmail && !!email.trim(),
       })
       setUrl(result.url)
-      if (result.email_sent) toast.success(`Review link emailed to ${email.trim()}`)
+      trackEvent('decide_link_created', { asset_id: asset.id, emailed: Boolean(result.email_sent) })
+      useActivationStore.getState().markTick('decide_link_sent')
+      if (result.email_sent) toast.success(`Decide link emailed to ${email.trim()}`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not create link')
     }
@@ -60,10 +64,16 @@ export function ShareReviewLinkDialog({ asset, campaignId, onOpenChange }: Share
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
-      toast.success('Link copied')
+      toast.success('Decide link copied')
+      useActivationStore.getState().markTick('decide_link_sent')
     } catch {
       toast.error('Copy failed — select the link and copy it manually')
     }
+  }
+
+  const openPreview = () => {
+    if (!url) return
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -72,20 +82,23 @@ export function ShareReviewLinkDialog({ asset, campaignId, onOpenChange }: Share
         <DialogHeader>
           <DialogTitle>Share for a decision</DialogTitle>
           <DialogDescription>
-            Anyone with this link can approve, request changes or decline “{getAssetTitle(asset)}” — no account
-            needed. Links expire after 14 days.
+            Anyone with this Guest Decide link can approve, request changes or decline “{getAssetTitle(asset)}” —
+            no account needed. Links expire after 14 days.
           </DialogDescription>
         </DialogHeader>
 
         {url ? (
-          <div className="space-y-2">
-            <Label htmlFor="share-url">Review link</Label>
+          <div className="space-y-3">
+            <Label htmlFor="share-url">Decide link</Label>
             <div className="flex gap-2">
               <Input id="share-url" readOnly value={url} onFocus={(e) => e.currentTarget.select()} />
-              <Button variant="outline" onClick={copy} aria-label="Copy link">
+              <Button variant="outline" onClick={copy} aria-label="Copy Decide link">
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Practice tip: open the link yourself to complete activation — labelled as your decision either way.
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -110,7 +123,15 @@ export function ShareReviewLinkDialog({ asset, campaignId, onOpenChange }: Share
 
         <DialogFooter>
           {url ? (
-            <Button onClick={() => onOpenChange(false)}>Done</Button>
+            <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Done
+              </Button>
+              <Button variant="outline" onClick={openPreview}>
+                Open Decide preview
+              </Button>
+              <Button onClick={copy}>{copied ? 'Copied' : 'Copy Decide link'}</Button>
+            </div>
           ) : (
             <>
               <Button variant="ghost" onClick={() => onOpenChange(false)}>

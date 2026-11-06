@@ -36,8 +36,20 @@ function creativeSteps({ campaignId }: BuildTourOptions): Step[] {
   return [
     {
       icon: null,
-      title: 'Your workspace',
-      content: 'This is your navigation. Everything an agency creative needs — brands, campaigns, and approved assets — lives here.',
+      title: 'Work — ship decisions',
+      content:
+        'Your jobs live here. Outcome: on-brand drafts, a Guest Decide link, and a client yes — same place. Use the checklist until you send your first Decide link.',
+      selector: sel('work-home'),
+      side: 'bottom',
+      pointerPadding: 8,
+      pointerRadius: 12,
+      nextRoute: '/app/generate',
+    },
+    {
+      icon: null,
+      title: 'Generate or go idea-first',
+      content:
+        'Describe what you want and generate now, or attach a brand kit whenever you are ready. Brand Guardian still gates before the client sees it.',
       selector: sel('sidebar-nav'),
       side: 'right',
       pointerPadding: 8,
@@ -46,8 +58,9 @@ function creativeSteps({ campaignId }: BuildTourOptions): Step[] {
     },
     {
       icon: null,
-      title: 'Start with a brand',
-      content: 'Create or confirm the brand you are working for. Its colours, voice, and visual style ground every generation so results come back on-brand.',
+      title: 'Brand guidelines (optional early)',
+      content:
+        'Put guidelines in once — colours and voice drive Brand Guardian. Idea-first users can defer this without blocking a Decide link.',
       selector: sel('brand-create'),
       side: 'bottom',
       pointerPadding: 6,
@@ -56,19 +69,18 @@ function creativeSteps({ campaignId }: BuildTourOptions): Step[] {
     },
     {
       icon: null,
-      title: 'Write the brief',
-      content: 'Describe the objective, audience, and channels. The brief drives the concept, copy, and image the AI produces.',
+      title: 'Brief or campaign',
+      content: 'Describe the objective, audience, and channels when you need a structured job — or skip straight from Generate now.',
       selector: sel('brief-form'),
       side: 'right',
       pointerPadding: 8,
       pointerRadius: 12,
-      // Jump to the seeded campaign's detail page where generation lives.
       ...(campaignId ? { nextRoute: `/app/campaigns/${campaignId}` } : {}),
     },
     {
       icon: null,
-      title: 'Generate creative',
-      content: 'Generate concepts, copy, and imagery here. Iterate freely — everything stays in draft until you submit.',
+      title: 'Produce a candidate',
+      content: 'Generate or upload. Everything stays draft until you send for a decision.',
       selector: sel('generation-panel'),
       side: 'left',
       pointerPadding: 8,
@@ -76,8 +88,9 @@ function creativeSteps({ campaignId }: BuildTourOptions): Step[] {
     },
     {
       icon: null,
-      title: 'Check it is on-brand',
-      content: 'Compliance and drift feedback tell you how well the output matches the brand before anyone reviews it.',
+      title: 'Brand Guardian',
+      content:
+        'Machine checks sit beside the asset — flag, fix, then decide. Soft-gate on submit: warn or confirm, never hard-block the API.',
       selector: sel('compliance-panel'),
       side: 'top',
       pointerPadding: 6,
@@ -85,8 +98,9 @@ function creativeSteps({ campaignId }: BuildTourOptions): Step[] {
     },
     {
       icon: null,
-      title: 'Submit for review',
-      content: 'Happy with it? Submit to the brand for approval. Approvers are notified instantly.',
+      title: 'Send a Decide link',
+      content:
+        'Submit, then copy the Guest Decide link. That link is the decision — not a Drive folder. Clients need no account.',
       selector: sel('submit-action'),
       side: 'top',
       pointerPadding: 6,
@@ -95,8 +109,8 @@ function creativeSteps({ campaignId }: BuildTourOptions): Step[] {
     },
     {
       icon: null,
-      title: 'Approved assets land here',
-      content: 'Once a brand approves your work, it appears here ready to open and export.',
+      title: 'Approved = the clear yes',
+      content: 'When the client approves, the asset lands here with an audit trail you can prove.',
       selector: sel('approved-assets'),
       side: 'top',
       pointerPadding: 8,
@@ -104,8 +118,9 @@ function creativeSteps({ campaignId }: BuildTourOptions): Step[] {
     },
     {
       icon: null,
-      title: 'See the other side',
-      content: 'That is the creative\u2019s journey. Switch to the Brand Approver view here to walk the review flow \u2014 we\u2019ll pick up that tour automatically.',
+      title: 'Walk the client side',
+      content:
+        'Switch to Brand Approver to see Decide / review — or open a Guest Decide link yourself to practice.',
       selector: sel('role-switch'),
       side: 'bottom',
       pointerPadding: 6,
@@ -174,8 +189,9 @@ function approverSteps({ assetId }: BuildTourOptions): Step[] {
     },
     {
       icon: null,
-      title: 'Approve, request changes, or reject',
-      content: 'Make the call. The creative is notified immediately, and every action is recorded for the audit trail.',
+      title: 'Yes with confidence',
+      content:
+        'Approve, request changes, or decline. Brand Guardian flags issues beside the creative — you still make the call. Every action is audited.',
       selector: sel('review-actions'),
       side: 'top',
       pointerPadding: 6,

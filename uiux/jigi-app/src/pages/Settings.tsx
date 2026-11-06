@@ -24,6 +24,8 @@ import { USER_ROLES } from '@/lib/validations/brand'
 import { uploadAvatar, isAllowedAvatarType } from '@/lib/avatar-upload'
 import { useTourLauncher } from '@/hooks/useTourLauncher'
 import { useTourStore } from '@/store/tourStore'
+import { ActivationFunnelStub } from '@/components/activation/ActivationFunnelStub'
+import { useActivationStore } from '@/store/activationStore'
 
 function getProfileInitial(name: string | null, email: string): string {
   const first = (name?.trim() || email?.[0] || 'U').toUpperCase().slice(0, 1)
@@ -35,6 +37,7 @@ export function Settings() {
   const setTheme = useThemeStore((s) => s.setTheme)
   const { startCreativeTour, startApproverTour } = useTourLauncher()
   const resetTours = useTourStore((s) => s.resetAll)
+  const resetActivation = useActivationStore((s) => s.reset)
   const { profile, updateProfile, user } = useAuthStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -303,12 +306,18 @@ export function Settings() {
                   className="text-muted-foreground"
                   onClick={() => {
                     resetTours()
+                    resetActivation()
                     toast.success('Walkthroughs reset — they\u2019ll auto-start again next visit')
                   }}
                 >
                   Reset walkthroughs
                 </Button>
               </div>
+              {import.meta.env.DEV ? (
+                <div className="mt-4 border-t border-border pt-4">
+                  <ActivationFunnelStub />
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>
