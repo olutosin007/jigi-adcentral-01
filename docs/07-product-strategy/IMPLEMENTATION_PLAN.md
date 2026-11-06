@@ -258,11 +258,11 @@ Full DAM · Meta/Google ads publish · Slack/Teams as approval source of truth �
 |------|--------|--------|-------|
 | 0 | Done | `b73fdc9` | Baseline 475 + 134 tests green; branch `feat/strategy-execution` |
 | 1 | Done | `e68dc49` | Strategy copy on Work, Generate now, Brands, Decide |
-| 2 | Done | `4661468` | Live smoke skipped (no `FAL_KEY`); still absent 2026-11-06 — not a Stop Condition (W2.8); 141 server tests |
+| 2 | Done | `4661468` | Live smoke skipped at ship (no key); **passed 2026-11-06** via `scripts/smoke-fal.mjs` after `FAL_KEY` set; 141 server tests |
 | 3 | Done | `85ad991` | Brand Guardian soft-gate; PRD07 Implemented (v1 evolved) |
 | 4 | Done | `c0cd9e4` | North-star events + decision latency stub; GuestDecide green |
 | 5 | Done | `612ebcc` | Pricing + landing CTAs + video scaffold + partner one-pager |
-| Close-out | Docs | — | README + PRODUCT_BRIEF marked executed; PR #1 merged to `main`; fal smoke remains optional until `FAL_KEY` set; `.cursor/sandbox.json` allows `api.github.com` for agent `gh` |
+| Close-out | Docs | — | README + PRODUCT_BRIEF marked executed; PR #1 merged; fal live smoke passed; `.cursor/sandbox.json` allows `api.github.com` + fal hosts |
 
 ---
 

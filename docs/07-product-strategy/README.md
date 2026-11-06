@@ -35,4 +35,4 @@ Engineering seed remains [`docs/gstack/PRODUCT_BRIEF.md`](../gstack/PRODUCT_BRIE
 |------|--------|
 | Product strategy | Ready for external use (post research/evolution audit) |
 | Implementation plan | **Executed through Wave 5** — [PR #1](https://github.com/Neocept-global/jigi-adcentral/pull/1) merged to `main` |
-| fal live smoke | Skipped — `FAL_KEY` not set in `.env.local` (plan W2.8; not a Stop Condition) |
+| fal live smoke | **Passed** 2026-11-06 — `scripts/smoke-fal.mjs` (Flux Schnell → image URL) |

@@ -10,7 +10,12 @@
       "registry.npmjs.org",
       "registry.npmmirror.com",
       "*.supabase.co",
-      "supabase.com"
+      "supabase.com",
+      "fal.ai",
+      "*.fal.ai",
+      "fal.run",
+      "*.fal.run",
+      "queue.fal.run"
     ]
   }
 }
