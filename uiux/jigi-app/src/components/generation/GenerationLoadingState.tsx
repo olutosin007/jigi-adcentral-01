@@ -20,6 +20,11 @@ export function GenerationLoadingState({ type, count = 4 }: GenerationLoadingSta
             This may take 30–60 seconds.
           </p>
         )}
+        {(type === 'concept' || type === 'copy') && (
+          <p className="text-xs text-muted-foreground pl-6">
+            Usually takes 5–15 seconds while the model writes your {type === 'concept' ? 'concepts' : 'copy'}.
+          </p>
+        )}
       </div>
 
       {type === 'concept' && (

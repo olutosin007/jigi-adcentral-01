@@ -1,9 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/store/authStore'
 import { uploadFileToStorage, isAllowedMimeType, validateFileSize } from '@/lib/upload'
-import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ComplianceResult } from '@/lib/ai'
+import { selectCampaignAsset, upscaleImage } from '@/lib/api-client'
+import { aiOrchestrator, type BrandConstraints, type BrandIncludeFlags, type CampaignBrief, type CopyImageAnchor, type FallbackContext, type ConceptResult, type CopyResult, type ImageResult, type ImageAspectRatio, type ComplianceResult } from '@/lib/ai'
 import type { Campaign, CreativeAsset } from '@/store/campaignStore'
 import type { Brand } from '@/store/brandStore'
+import { trackCandidateCreated } from '@/lib/analytics'
 
 interface AssetFilters {
   type?: 'concept' | 'copy' | 'image'
@@ -90,13 +93,26 @@ interface GenerateCopyParams {
   brief: CampaignBrief
   seedIdea?: string
   format?: string
+  /** Sets `parent_asset_id` and feeds `concept_context` into the copy prompt */
   conceptAssetId?: string
   conceptContext?: Pick<ConceptResult, 'theme' | 'headlines' | 'visual_direction'>
   userId?: string
 }
 
+async function resolveActorUserId(explicitUserId?: string): Promise<string> {
+  if (explicitUserId) return explicitUserId
+  const fromStore = useAuthStore.getState().user?.id
+  if (fromStore) return fromStore
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user?.id) {
+    throw new Error('You must be signed in to generate creative.')
+  }
+  return data.user.id
+}
+
 async function generateAndSaveConcepts(params: GenerateConceptsParams) {
-  const { campaignId, brandId, brief, seedIdea, userId } = params
+  const { campaignId, brandId, brief, seedIdea, userId: explicitUserId } = params
+  const userId = await resolveActorUserId(explicitUserId)
 
   let brandConstraints: BrandConstraints | undefined
   if (brandId) {
@@ -112,6 +128,7 @@ async function generateAndSaveConcepts(params: GenerateConceptsParams) {
             heading: brand.identity?.fonts?.heading || 'Inter',
             body: brand.identity?.fonts?.body || 'Inter',
           },
+          visual_style: brand.identity?.visual_style,
           logo_url: brand.identity?.logo_url,
         },
         voice: {
@@ -143,6 +160,19 @@ async function generateAndSaveConcepts(params: GenerateConceptsParams) {
   )
 
   const concepts = result.data as ConceptResult[]
+
+  if (concepts.length === 0) {
+    throw new Error('No concepts were returned. Please try again.')
+  }
+
+  const serverSaved = result.metadata?.saved_assets as CreativeAsset[] | undefined
+  if (serverSaved && serverSaved.length > 0) {
+    return {
+      concepts,
+      assets: serverSaved,
+      metadata: result.metadata,
+    }
+  }
 
   const lineage = result.metadata?.lineage
   const promptHash = result.metadata?.prompt_hash
@@ -199,6 +229,7 @@ async function generateAndSaveCopy(params: GenerateCopyParams) {
             heading: brand.identity?.fonts?.heading || 'Inter',
             body: brand.identity?.fonts?.body || 'Inter',
           },
+          visual_style: brand.identity?.visual_style,
         },
         voice: {
           tone: brand.voice?.tone || [],
@@ -226,7 +257,8 @@ async function generateAndSaveCopy(params: GenerateCopyParams) {
     userId,
     brandId,
     campaignId,
-    conceptContext
+    conceptContext,
+    conceptAssetId
   )
 
   const variants = result.data as CopyResult[]
@@ -276,6 +308,7 @@ export function useGenerateConcepts() {
   return useMutation({
     mutationFn: generateAndSaveConcepts,
     onSuccess: (_, variables) => {
+      trackCandidateCreated({ source: 'ai', asset_type: 'concept' })
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', variables.campaignId],
       })
@@ -289,6 +322,7 @@ export function useGenerateCopy() {
   return useMutation({
     mutationFn: generateAndSaveCopy,
     onSuccess: (_, variables) => {
+      trackCandidateCreated({ source: 'ai', asset_type: 'copy' })
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', variables.campaignId],
       })
@@ -335,6 +369,43 @@ export function useDeleteAsset() {
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', result.campaignId],
       })
+      queryClient.invalidateQueries({
+        queryKey: ['campaign', result.campaignId],
+      })
+    },
+  })
+}
+
+export function useSelectConcept(campaignId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (assetId: string | null) =>
+      selectCampaignAsset({
+        campaign_id: campaignId,
+        selection: 'concept',
+        asset_id: assetId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] })
+      queryClient.invalidateQueries({ queryKey: ['campaign-assets', campaignId] })
+    },
+  })
+}
+
+export function useSelectCopy(campaignId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (assetId: string | null) =>
+      selectCampaignAsset({
+        campaign_id: campaignId,
+        selection: 'copy',
+        asset_id: assetId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] })
+      queryClient.invalidateQueries({ queryKey: ['campaign-assets', campaignId] })
     },
   })
 }
@@ -483,10 +554,12 @@ interface GenerateImageParams {
   userId?: string
   brandInclude?: BrandIncludeFlags
   channelId?: string
+  copyAnchor?: CopyImageAnchor
+  aspectRatio?: ImageAspectRatio
 }
 
 async function generateAndSaveImage(params: GenerateImageParams) {
-  const { campaignId, brandId, conceptId, visualDirection, imageTier, seedIdea, userId, brandInclude, channelId } = params
+  const { campaignId, brandId, conceptId, visualDirection, imageTier, seedIdea, userId, brandInclude, channelId, copyAnchor, aspectRatio } = params
 
   let brandConstraints: BrandConstraints | undefined
   if (brandId) {
@@ -502,6 +575,7 @@ async function generateAndSaveImage(params: GenerateImageParams) {
             heading: brand.identity?.fonts?.heading || 'Inter',
             body: brand.identity?.fonts?.body || 'Inter',
           },
+          visual_style: brand.identity?.visual_style,
           logo_url: brand.identity?.logo_url,
         },
         voice: {
@@ -531,7 +605,9 @@ async function generateAndSaveImage(params: GenerateImageParams) {
     imageTier || 'draft',
     conceptId,
     brandInclude,
-    channel
+    channel,
+    copyAnchor,
+    aspectRatio
   )
 
   const imageData = (result.data as ImageResult[])[0]
@@ -559,6 +635,21 @@ export function useGenerateImage() {
 
   return useMutation({
     mutationFn: generateAndSaveImage,
+    onSuccess: (_, variables) => {
+      trackCandidateCreated({ source: 'ai', asset_type: 'image' })
+      queryClient.invalidateQueries({
+        queryKey: ['campaign-assets', variables.campaignId],
+      })
+    },
+  })
+}
+
+export function useUpscaleImage() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ assetId, scale }: { assetId: string; campaignId: string; scale?: 2 | 4 }) =>
+      upscaleImage({ asset_id: assetId, scale }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['campaign-assets', variables.campaignId],
@@ -732,7 +823,7 @@ async function fetchReviewQueue(filters?: ReviewQueueFilters): Promise<ReviewQue
       campaigns!inner(id, name, brand_id, brands(id, name))
     `)
     .in('status', ['submitted', 'brand_review'])
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: true })
 
   if (filters?.status) {
     query = query.eq('status', filters.status)
@@ -766,7 +857,11 @@ async function fetchReviewQueue(filters?: ReviewQueueFilters): Promise<ReviewQue
     grouped[campaignId].assets.push(asset as unknown as CreativeAsset)
   }
 
-  return Object.values(grouped)
+  return Object.values(grouped).sort((a, b) => {
+    const aOldest = a.assets[0]?.updated_at ?? a.assets[0]?.created_at ?? ''
+    const bOldest = b.assets[0]?.updated_at ?? b.assets[0]?.created_at ?? ''
+    return new Date(aOldest).getTime() - new Date(bOldest).getTime()
+  })
 }
 
 export function useReviewQueue(filters?: ReviewQueueFilters) {

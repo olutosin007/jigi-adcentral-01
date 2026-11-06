@@ -1,0 +1,114 @@
+{
+  "generated_at": "2026-06-30T19:28:02.439Z",
+  "api_base": "http://localhost:3000",
+  "judge_model": null,
+  "image_enabled": false,
+  "brand": "Coca-Cola",
+  "thresholds": {
+    "avoidedWordPenalty": 25,
+    "conceptAlignmentMin": 75,
+    "copyToneMin": 80,
+    "compositePass": 75,
+    "imageOnBrandPass": 75
+  },
+  "overall_composite": 92,
+  "results": [
+    {
+      "id": "summer_refresh",
+      "label": "Summer refreshment",
+      "errors": [],
+      "concepts": [
+        {
+          "theme": "Summer Togetherness",
+          "headlines": [
+            "Share the Magic of Summer!",
+            "Ice-Cold Moments, Together!",
+            "Refreshment that Brings Us Closer!"
+          ],
+          "visual_direction": "Imagery of diverse groups of friends enjoying summer activities, such as picnics and beach outings, with Coca-Cola bottles prominently featured. The scenes should be bright and filled with natural sunlight, highlighting the refreshing aspect of the drink and the joy of shared moments.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "refreshing",
+              "share",
+              "together",
+              "ice-cold",
+              "enjoy"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        },
+        {
+          "theme": "Chill & Enjoy",
+          "headlines": [
+            "Ice-Cold Refreshment Awaits!",
+            "Chill Out with Coca-Cola This Summer!",
+            "Enjoy Every Sip of Happiness!"
+          ],
+          "visual_direction": "Use vibrant, close-up shots of Coca-Cola cans and bottles sweating in the summer heat, surrounded by ice and fresh summer fruits. Include people laughing and enjoying the drink in the background, emphasizing the joy and refreshment that Coca-Cola brings to warm days.",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "refreshing",
+              "happiness",
+              "ice-cold",
+              "enjoy"
+            ],
+            "keyMessagePresent": true,
+            "modelAlignment": null,
+            "score": 100
+          }
+        }
+      ],
+      "conceptScore": 100,
+      "copy": [
+        {
+          "headline": "Share the Magic of Summer!",
+          "body": "Gather your friends and make every moment count with an ice-cold Coca-Cola. Experience the refreshing taste that brings us closer and fills our hearts with happiness. Let’s enjoy the summer sun together!",
+          "cta": "Grab Your Coca-Cola!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "refreshing",
+              "share",
+              "happiness",
+              "together",
+              "ice-cold",
+              "enjoy"
+            ],
+            "charCount": 251,
+            "channelCharLimit": 125,
+            "withinLimit": false,
+            "modelTone": 90,
+            "score": 85
+          }
+        },
+        {
+          "headline": "Refreshment that Brings Us Closer!",
+          "body": "This summer, let’s create moments filled with laughter and joy. An ice-cold Coca-Cola is the perfect companion for every adventure, whether it’s a beach day or a backyard BBQ. Share the happiness with friends and savor the real magic of togetherness!",
+          "cta": "Cheers to Summer Fun!",
+          "score": {
+            "avoidedHits": [],
+            "preferredHits": [
+              "real magic",
+              "share",
+              "happiness",
+              "together",
+              "ice-cold"
+            ],
+            "charCount": 307,
+            "channelCharLimit": 125,
+            "withinLimit": false,
+            "modelTone": 85,
+            "score": 83
+          }
+        }
+      ],
+      "copyScore": 84,
+      "composite": 92,
+      "pass": true
+    }
+  ]
+}

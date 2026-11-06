@@ -37,9 +37,9 @@ const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   approval: 'text-success bg-success/10',
   rejection: 'text-destructive bg-destructive/10',
   changes_requested: 'text-warning bg-warning/10',
-  nudge_reminder: 'text-purple-600 bg-purple-100',
-  comment_added: 'text-cyan-600 bg-cyan-100',
-  comment_reply: 'text-cyan-600 bg-cyan-100',
+  nudge_reminder: 'text-orchid-9 bg-orchid-3',
+  comment_added: 'text-dusk-text bg-dusk-soft',
+  comment_reply: 'text-dusk-text bg-dusk-soft',
   comment_resolved: 'text-success bg-success/10',
 }
 

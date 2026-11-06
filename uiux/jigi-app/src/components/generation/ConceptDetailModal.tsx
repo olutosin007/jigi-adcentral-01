@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
-import { Lightbulb, Sparkles, Trash2, Copy, X } from 'lucide-react'
+import { Lightbulb, Sparkles, Trash2, Copy, X, FileText, Send } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { canSubmitAssetForReview } from '@/lib/status'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import type { ConceptResult } from '@/lib/ai'
 
@@ -11,18 +13,11 @@ interface ConceptDetailModalProps {
   onOpenChange: (open: boolean) => void
   concept: ConceptResult | null
   status?: string
+  /** Primary flow: jump to Copy tab with this concept selected */
+  onGoToCopy?: () => void
   onGenerateImage?: () => void
   onDelete?: () => void
-}
-
-const statusStyles: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  agency_review: 'bg-purple-100 text-purple-800',
-  submitted: 'bg-primary/10 text-primary',
-  brand_review: 'bg-amber-100 text-amber-800',
-  changes_requested: 'bg-warning/10 text-warning',
-  approved: 'bg-success/10 text-success',
-  rejected: 'bg-destructive/10 text-destructive',
+  onSubmit?: () => void
 }
 
 export function ConceptDetailModal({
@@ -30,8 +25,10 @@ export function ConceptDetailModal({
   onOpenChange,
   concept,
   status = 'draft',
+  onGoToCopy,
   onGenerateImage,
   onDelete,
+  onSubmit,
 }: ConceptDetailModalProps) {
   const textToCopy = useMemo(() => {
     if (!concept) return ''
@@ -60,7 +57,7 @@ export function ConceptDetailModal({
         <DialogHeader className="px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-700">
+              <div className="p-2 rounded-lg bg-honey-soft dark:bg-honey-soft/30 text-honey-text">
                 <Lightbulb className="w-5 h-5" />
               </div>
               <div>
@@ -82,9 +79,7 @@ export function ConceptDetailModal({
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Concept Theme</p>
               <h3 className="text-xl font-semibold text-foreground mt-1">{concept.theme}</h3>
             </div>
-            <Badge className={`text-[10px] ${statusStyles[status] || statusStyles.draft}`}>
-              {status.replace('_', ' ')}
-            </Badge>
+            <StatusBadge status={status} />
           </div>
 
           <div>
@@ -116,13 +111,13 @@ export function ConceptDetailModal({
           )}
 
           {(concept.brand_alignment_score != null || (concept.validation_warnings?.length ?? 0) > 0) && (
-            <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
-              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wider mb-2">Validation</p>
+            <div className="p-4 rounded-lg border border-honey/40 dark:border-honey bg-honey-soft dark:bg-honey-soft/30">
+              <p className="text-xs font-semibold text-honey-text uppercase tracking-wider mb-2">Validation</p>
               {concept.brand_alignment_score != null && (
                 <p className="text-sm mb-2">
                   Brand alignment: <strong>{concept.brand_alignment_score}/100</strong>
                   {concept.brand_alignment_score < 60 && (
-                    <span className="text-amber-700 dark:text-amber-300 ml-2">(below 60 — review recommended)</span>
+                    <span className="text-honey-text ml-2">(below 60 — review recommended)</span>
                   )}
                 </p>
               )}
@@ -130,31 +125,65 @@ export function ConceptDetailModal({
                 <p className="text-sm text-muted-foreground mb-2">{concept.brand_alignment_rationale}</p>
               )}
               {concept.validation_warnings?.map((w, i) => (
-                <p key={i} className="text-sm text-amber-800 dark:text-amber-200">• {w}</p>
+                <p key={i} className="text-sm text-honey-text">• {w}</p>
               ))}
             </div>
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-border flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
           <Button variant="outline" size="sm" onClick={handleCopy} className="hover:bg-muted transition-colors">
-            <Copy className="w-4 h-4 mr-1.5" />
+            <Copy className="w-4 h-4 mr-1.5" aria-hidden />
             Copy
           </Button>
-          <div className="flex items-center gap-2">
-            {onDelete && status === 'draft' && (
-              <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 transition-colors" onClick={onDelete}>
-                <Trash2 className="w-4 h-4 mr-1.5" />
-                Delete
-              </Button>
-            )}
-            {onGenerateImage && (
-              <Button size="sm" className="transition-colors" onClick={onGenerateImage}>
-                <Sparkles className="w-4 h-4 mr-1.5" />
-                Generate Image
-              </Button>
-            )}
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {onSubmit && canSubmitAssetForReview(status) && (
+                <Button
+                  size="sm"
+                  className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  onClick={onSubmit}
+                >
+                  <Send className="w-4 h-4 mr-1.5" aria-hidden />
+                  Submit for Review
+                </Button>
+              )}
+              {onDelete && status === 'draft' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:bg-destructive/10 transition-colors"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="w-4 h-4 mr-1.5" aria-hidden />
+                  Delete
+                </Button>
+              )}
+              {onGenerateImage && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" className="transition-colors" onClick={onGenerateImage}>
+                      <Sparkles className="w-4 h-4 mr-1.5" aria-hidden />
+                      Generate image
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    Key art often works best after you have copy—still fine to generate from the visual direction now.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {onGoToCopy && (
+                <Button
+                  size="sm"
+                  className="transition-colors"
+                  onClick={onGoToCopy}
+                >
+                  <FileText className="w-4 h-4 mr-1.5" aria-hidden />
+                  Generate copy
+                </Button>
+              )}
+            </div>
+          </TooltipProvider>
         </div>
       </DialogContent>
     </Dialog>

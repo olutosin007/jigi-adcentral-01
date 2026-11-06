@@ -5,6 +5,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { fetchCCO } from '@/lib/cco'
+import { buildConceptContextPromptBlock } from '@/lib/ai/prompts'
 import { buildBioFromBrand } from './bio-builder'
 import { substitutePlaceholders } from './substitution'
 import { getTemplate } from './templates'
@@ -36,17 +37,14 @@ async function computePromptHash(prompt: string): Promise<string> {
 export async function assemblePrompt(
   input: AssemblePromptInput
 ): Promise<AssemblePromptResult | null> {
-  const { campaignId, brandId, track, channelId } = input
+  const { campaignId, brandId, track, channelId, conceptContext } = input
 
-  const [ccoResult, brand] = await Promise.all([
-    fetchCCO(campaignId),
-    fetchBrand(brandId),
-  ])
-
+  const ccoResult = await fetchCCO(campaignId)
   if (!ccoResult.success || !ccoResult.cco) {
     return null
   }
 
+  const brand = brandId ? await fetchBrand(brandId) : null
   const bio: BioContext | null = buildBioFromBrand(brand)
   const { cco, truncated, truncatedSections } = truncateCCOForBudget(ccoResult.cco)
 
@@ -59,7 +57,14 @@ export async function assemblePrompt(
   }
 
   const template = getTemplate(track as TrackType)
-  const prompt = substitutePlaceholders(template, bio, cco, channelId)
+  let prompt = substitutePlaceholders(template, bio, cco, channelId)
+
+  if (conceptContext && (track === 'copy' || track === 'concept')) {
+    prompt += buildConceptContextPromptBlock(
+      conceptContext,
+      cco.strategic_context?.key_message
+    )
+  }
 
   const hash = await computePromptHash(prompt)
   const tokenEstimate = estimateTokenCount(prompt)

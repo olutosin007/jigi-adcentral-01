@@ -1,8 +1,9 @@
 # PRD 07 — Brand Consistency Pre-Review Audit
 
-**Status:** Draft  
-**Version:** 1.0  
-**Created:** March 2026
+**Status:** Implemented (v1 evolved — Brand Guardian soft-gate on OnBrandCheck / checklist)  
+**Version:** 1.1  
+**Created:** March 2026  
+**Updated:** October 2026
 
 ---
 

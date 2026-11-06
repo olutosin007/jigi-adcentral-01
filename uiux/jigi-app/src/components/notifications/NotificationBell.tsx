@@ -50,6 +50,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           size="sm"
           className="relative h-9 w-9 p-0"
           aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+          data-tour="notification-bell"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (

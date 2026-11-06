@@ -47,7 +47,7 @@ type OrgType = 'brand' | 'agency'
 
 export function OrganisationSetup() {
   const navigate = useNavigate()
-  const { user, fetchProfile, updateProfile } = useAuthStore()
+  const { user, fetchProfile } = useAuthStore()
   const { setOrganisation } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedType, setSelectedType] = useState<OrgType | null>(null)
@@ -123,15 +123,10 @@ export function OrganisationSetup() {
         type: data.type,
       })
 
-      const journeyResult = await updateProfile({ journey_mode: 'brand_first' })
-      if (!journeyResult.success) {
-        throw new Error(journeyResult.error || 'Failed to save journey preference')
-      }
-
       await fetchProfile()
 
       toast.success('Organisation created!')
-      navigate('/app/onboarding')
+      navigate('/setup/journey')
     } catch (error) {
       console.error('Organisation setup error:', error)
       const message = error instanceof Error ? error.message : 'Failed to create organisation'

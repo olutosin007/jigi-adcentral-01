@@ -1,10 +1,16 @@
-import { supabase } from './supabase'
+import { useAuthStore } from '@/store/authStore'
+import { getSupabaseSessionSingleFlight } from './supabase-session'
+import type { ImageAspectRatio, ImageProviderId } from './ai/types'
 
 const API_BASE = '/api'
+const API_TIMEOUT_MS = 90_000
 
 async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
+  const fromStore = useAuthStore.getState().session?.access_token ?? null
+  if (fromStore) return fromStore
+
+  const { session } = await getSupabaseSessionSingleFlight()
+  return session?.access_token ?? null
 }
 
 async function apiRequest<T>(
@@ -19,17 +25,30 @@ async function apiRequest<T>(
     ...options.headers,
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.error || `API error: ${response.status}`)
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `API error: ${response.status}`)
+    }
+
+    return response.json()
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Generation timed out after 90 seconds. Please try again.')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return response.json()
 }
 
 export interface GenerateTextRequest {
@@ -66,6 +85,7 @@ export interface GenerateTextResponse {
   model: string
   latency_ms: number
   tokens_used: number
+  saved_assets?: Record<string, unknown>[]
 }
 
 export async function generateText(
@@ -82,7 +102,7 @@ export interface GenerateImageRequest {
   campaign_id: string
   brand_id?: string
   concept_id?: string
-  aspect_ratio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+  aspect_ratio?: ImageAspectRatio
   image_tier?: 'draft' | 'refine' | 'final'
   quality?: 'draft' | 'standard' | 'high'
   brand_context?: {
@@ -97,6 +117,11 @@ export interface GenerateImageRequest {
   prompt_hash?: string
   /** Asset lineage (CCO version, etc.) for drift detection */
   lineage?: { cco_version?: number; bio_version?: number; generation_timestamp?: string }
+  /** Copy variant used as messaging anchor for the image prompt */
+  copy_asset_id?: string
+  copy_headline_anchor?: string
+  copy_key_message?: string
+  copy_body_snippet?: string
 }
 
 export interface GenerateImageResponse {
@@ -109,10 +134,11 @@ export interface GenerateImageResponse {
   }
   image_url: string
   model: string
-  image_provider: 'google_imagen' | 'replicate' | 'azure_openai' | 'azure_foundry'
+  image_provider: ImageProviderId
   image_tier: 'draft' | 'refine' | 'final'
   routing_reason: 'default' | 'retry' | 'quota_exhausted' | 'budget_guard'
   cost_bucket: 'free' | 'paid_fallback'
+  estimated_cost_usd?: number | null
   latency_ms: number
 }
 
@@ -120,6 +146,25 @@ export async function generateImage(
   request: GenerateImageRequest
 ): Promise<GenerateImageResponse> {
   return apiRequest<GenerateImageResponse>('/generate/image', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export interface UpscaleImageRequest {
+  asset_id: string
+  scale?: 2 | 4
+}
+
+export interface UpscaleImageResponse {
+  asset: { id: string; campaign_id: string; content: Record<string, unknown>; version: number }
+  image_url: string
+  model: string
+  estimated_cost_usd: number | null
+}
+
+export async function upscaleImage(request: UpscaleImageRequest): Promise<UpscaleImageResponse> {
+  return apiRequest<UpscaleImageResponse>('/generate/upscale', {
     method: 'POST',
     body: JSON.stringify(request),
   })
@@ -165,6 +210,78 @@ export async function reviewAsset(
   request: ReviewAssetRequest
 ): Promise<ReviewAssetResponse> {
   return apiRequest<ReviewAssetResponse>('/assets/review', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export interface ReviewLink {
+  id: string
+  asset_id: string
+  campaign_id: string
+  brand_id: string | null
+  created_by: string
+  recipient_name: string | null
+  recipient_email: string | null
+  expires_at: string
+  revoked_at: string | null
+  max_uses: number | null
+  use_count: number
+  first_opened_at: string | null
+  last_used_at: string | null
+  decided_at: string | null
+  decision: 'approve' | 'reject' | 'request_changes' | null
+  guest_name: string | null
+  guest_email?: string | null
+  created_at: string
+}
+
+export interface CreateReviewLinkRequest {
+  asset_id: string
+  recipient_name?: string
+  recipient_email?: string
+  expires_in_days?: number
+  send_email?: boolean
+  message?: string
+}
+
+export interface CreateReviewLinkResponse {
+  link: ReviewLink
+  url: string
+  token: string
+  email_sent: boolean
+}
+
+export async function createReviewLink(
+  request: CreateReviewLinkRequest
+): Promise<CreateReviewLinkResponse> {
+  return apiRequest<CreateReviewLinkResponse>('/review-links', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function revokeReviewLink(linkId: string): Promise<{ link: ReviewLink }> {
+  return apiRequest<{ link: ReviewLink }>('/review-links?action=revoke', {
+    method: 'POST',
+    body: JSON.stringify({ link_id: linkId }),
+  })
+}
+
+export interface SelectCampaignAssetRequest {
+  campaign_id: string
+  selection: 'concept' | 'copy'
+  asset_id: string | null
+}
+
+export interface SelectCampaignAssetResponse {
+  campaign: Record<string, unknown>
+}
+
+export async function selectCampaignAsset(
+  request: SelectCampaignAssetRequest
+): Promise<SelectCampaignAssetResponse> {
+  return apiRequest<SelectCampaignAssetResponse>('/campaigns/select', {
     method: 'POST',
     body: JSON.stringify(request),
   })

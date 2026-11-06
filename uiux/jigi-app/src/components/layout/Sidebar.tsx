@@ -1,12 +1,11 @@
+import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboardIcon,
-  FolderOpenIcon,
-  ClipboardListIcon,
+  BriefcaseIcon,
+  InboxIcon,
   SettingsIcon,
   ChevronRightIcon,
   Building2Icon,
-  SparklesIcon,
   CheckCircleIcon,
   PanelLeftCloseIcon,
   PanelLeftIcon,
@@ -14,6 +13,8 @@ import {
 import type { ComponentType } from 'react'
 import { useRecentCampaigns, useDashboardStats } from '@/hooks/useDashboardQueries'
 import { useAuthStore } from '@/store/authStore'
+import { isReviewerRole } from '@/lib/roles'
+import { useEffectiveRole } from '@/hooks/useEffectiveRole'
 import { useAppStore } from '@/store'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -51,24 +52,17 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
-    title: 'Create',
+    title: 'Studio',
     items: [
-      { label: 'Quick Start', icon: SparklesIcon, href: '/app/quick-start' },
-      { label: 'Dashboard', icon: LayoutDashboardIcon, href: '/app/dashboard' },
-    ],
-  },
-  {
-    title: 'Manage',
-    items: [
-      { label: 'Campaigns', icon: FolderOpenIcon, href: '/app/campaigns' },
+      { label: 'Work', icon: BriefcaseIcon, href: '/app/work' },
       { label: 'Brands', icon: Building2Icon, href: '/app/brands' },
-      { label: 'Approved Assets', icon: CheckCircleIcon, href: '/app/approved' },
+      { label: 'Approved', icon: CheckCircleIcon, href: '/app/approved' },
     ],
   },
   {
     title: 'Review',
     items: [
-      { label: 'Review Queue', icon: ClipboardListIcon, href: '/app/review' },
+      { label: 'Inbox', icon: InboxIcon, href: '/app/review' },
     ],
   },
   {
@@ -88,16 +82,29 @@ interface SidebarContentProps {
 function SidebarContent({ collapsed = false, onNavigate, onToggle }: SidebarContentProps) {
   const location = useLocation()
   const { user, profile } = useAuthStore()
+  const effectiveRole = useEffectiveRole()
   const { data: recentCampaignsData, isLoading: recentLoading } = useRecentCampaigns(5)
   const { data: dashboardStats } = useDashboardStats(user?.id ?? '')
 
   const displayName =
     profile?.name ?? user?.user_metadata?.full_name ?? (user?.email?.split('@')[0] || 'User')
-  const roleLabel = getRoleLabel(profile?.role)
+  const roleLabel = getRoleLabel(effectiveRole ?? undefined)
+
+  const visibleNavSections = useMemo(
+    () =>
+      navSections.filter(
+        (section) => section.title !== 'Review' || isReviewerRole(effectiveRole)
+      ),
+    [effectiveRole]
+  )
 
   const isActive = (href: string) => {
-    if (href === '/app/dashboard') {
-      return location.pathname === '/app/dashboard' || location.pathname === '/app'
+    if (href === '/app/work') {
+      return (
+        location.pathname === '/app' ||
+        location.pathname.startsWith('/app/work') ||
+        location.pathname.startsWith('/app/campaigns')
+      )
     }
     return location.pathname.startsWith(href)
   }
@@ -192,9 +199,9 @@ function SidebarContent({ collapsed = false, onNavigate, onToggle }: SidebarCont
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin" data-tour="sidebar-nav">
         <TooltipProvider delayDuration={0}>
-          {navSections.map((section, sectionIdx) => (
+          {visibleNavSections.map((section, sectionIdx) => (
             <div
               key={section.title}
               className={sectionIdx > 0 ? 'mt-4 pt-4 border-t border-border dark:border-sidebar-border' : ''}
@@ -209,7 +216,7 @@ function SidebarContent({ collapsed = false, onNavigate, onToggle }: SidebarCont
                   const active = isActive(item.href)
                   const Icon = item.icon
                   const rawBadge =
-                    item.label === 'Review Queue'
+                    item.href === '/app/review'
                       ? (dashboardStats?.pendingReview ?? 0)
                       : (item.badge ?? 0)
                   const badgeCount = typeof rawBadge === 'number' ? rawBadge : Number(rawBadge) || 0

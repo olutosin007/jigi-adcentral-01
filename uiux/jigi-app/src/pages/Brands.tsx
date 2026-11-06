@@ -14,6 +14,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DeleteBrandDialog } from '@/components/brands/DeleteBrandDialog'
+import { QuickCreateBrandDialog } from '@/components/brands/QuickCreateBrandDialog'
 import { useBrandStore, type Brand } from '@/store/brandStore'
 import { toast } from 'sonner'
 
@@ -25,7 +26,7 @@ const statusLabels = {
 
 const statusStyles = {
   complete: 'bg-success/10 text-success border-success/30',
-  partial: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  partial: 'bg-honey-soft text-honey-text dark:bg-honey-soft/40 border-honey/40 dark:border-honey',
   starter: 'bg-muted text-muted-foreground border-border',
 } as const
 
@@ -53,6 +54,7 @@ export function Brands() {
   const [showArchived, setShowArchived] = useState(false)
   const [deleteDialogBrand, setDeleteDialogBrand] = useState<Brand | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
 
   const { brands, isLoading, error, fetchBrands, deleteBrand, archiveBrand, unarchiveBrand } = useBrandStore()
@@ -68,6 +70,10 @@ export function Brands() {
   }, [brands, debouncedSearch])
 
   const handleCreateBrand = () => {
+    setQuickCreateOpen(true)
+  }
+
+  const handleFullWizard = () => {
     navigate('/app/onboarding')
   }
 
@@ -170,11 +176,11 @@ export function Brands() {
           description={
             showArchived
               ? 'You have no archived brands.'
-              : 'Create your first brand profile to get started with creative generation.'
+              : 'Put guidelines in once — they gate work before clients see it. Then generate or upload on brand.'
           }
           action={
             !showArchived ? (
-              <Button onClick={handleCreateBrand}>
+              <Button onClick={handleCreateBrand} data-tour="brand-create">
                 <Plus className="mr-2 h-4 w-4" />
                 Create brand
               </Button>
@@ -192,10 +198,15 @@ export function Brands() {
           <h1 className="text-2xl font-semibold text-foreground">Brands</h1>
           <p className="text-muted-foreground">Manage your brand profiles and guidelines</p>
         </div>
-        <Button onClick={handleCreateBrand} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Add brand
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button onClick={handleCreateBrand} className="w-full sm:w-auto" data-tour="brand-create">
+            <Plus className="mr-2 h-4 w-4" />
+            Add brand
+          </Button>
+          <Button variant="outline" onClick={handleFullWizard} className="w-full sm:w-auto">
+            Full setup wizard
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -257,6 +268,8 @@ export function Brands() {
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
       />
+
+      <QuickCreateBrandDialog open={quickCreateOpen} onOpenChange={setQuickCreateOpen} />
     </div>
   )
 }
@@ -297,7 +310,7 @@ function BrandCard({ brand, onNavigate, onArchive, onUnarchive, onDelete }: Bran
           </div>
           <div className="flex items-center gap-2">
             {isArchived && (
-              <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-400">
+              <Badge variant="outline" className="text-xs border-honey/50 text-honey-text">
                 Archived
               </Badge>
             )}
@@ -362,7 +375,7 @@ function BrandCard({ brand, onNavigate, onArchive, onUnarchive, onDelete }: Bran
           {brand.onboarding_completed ? 'Profile complete' : 'Setup in progress'}
         </CardDescription>
         {status === 'partial' && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+          <p className="text-xs text-honey-text mt-2">
             Complete your brand profile for better results
           </p>
         )}

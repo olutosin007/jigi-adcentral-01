@@ -14,7 +14,7 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
   const renderConceptPreview = (content: ConceptResult & { file_url?: string }) => (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orchid-9 to-orchid-9 flex items-center justify-center">
           <Lightbulb className="h-6 w-6 text-white" />
         </div>
         <div>
@@ -72,7 +72,7 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
         (content.validation_warnings?.length ?? 0) > 0 ||
         content.truncation_suggestion ||
         (content.brand_voice_score != null && content.brand_voice_score < 50)) && (
-        <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 space-y-2">
+        <div className="p-4 rounded-lg border border-honey/40 dark:border-honey bg-honey-soft dark:bg-honey-soft/30 space-y-2">
           {content.exclusions_violated && (
             <div className="flex items-start gap-2 text-destructive">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -80,7 +80,7 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
             </div>
           )}
           {content.truncation_suggestion && (
-            <p className="text-sm text-amber-800 dark:text-amber-200">{content.truncation_suggestion}</p>
+            <p className="text-sm text-honey-text">{content.truncation_suggestion}</p>
           )}
           {content.brand_voice_score != null && content.brand_voice_score < 50 && (
             <div>
@@ -91,7 +91,7 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
             </div>
           )}
           {content.validation_warnings?.map((w, i) => (
-            <p key={i} className="text-sm text-amber-800 dark:text-amber-200">• {w}</p>
+            <p key={i} className="text-sm text-honey-text">• {w}</p>
           ))}
         </div>
       )}
@@ -141,7 +141,7 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
         (content.validation_warnings?.length ?? 0) > 0 ||
         (content.colour_compliance?.bio_palette_match != null &&
           content.colour_compliance.bio_palette_match < 40)) && (
-        <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 space-y-2">
+        <div className="p-4 rounded-lg border border-honey/40 dark:border-honey bg-honey-soft dark:bg-honey-soft/30 space-y-2">
           {content.safe_zones_violated && (
             <div className="flex items-start gap-2 text-destructive">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -150,12 +150,12 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
           )}
           {content.colour_compliance?.bio_palette_match != null &&
             content.colour_compliance.bio_palette_match < 40 && (
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+              <p className="text-sm text-honey-text">
                 Colour compliance: {content.colour_compliance.bio_palette_match}/100 (below 40)
               </p>
             )}
           {content.validation_warnings?.map((w, i) => (
-            <p key={i} className="text-sm text-amber-800 dark:text-amber-200">• {w}</p>
+            <p key={i} className="text-sm text-honey-text">• {w}</p>
           ))}
         </div>
       )}
@@ -205,7 +205,7 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
   )
 
   return (
-    <div className="p-8 overflow-y-auto h-full">
+    <div className="p-8 overflow-y-auto h-full" data-tour="asset-preview">
       {/* Generation Mode Badge */}
       {generationMode && (
         <div className="mb-6">
@@ -214,7 +214,7 @@ export function AssetPreviewArea({ asset, generationMode }: AssetPreviewAreaProp
             className={
               generationMode === 'brand_grounded'
                 ? 'border-primary/50 bg-primary/10 text-primary'
-                : 'border-purple-200 bg-purple-50 dark:bg-purple-950/30 text-purple-700'
+                : 'border-orchid-5 bg-orchid-2 dark:bg-orchid-3/30 text-orchid-10'
             }
           >
             {generationMode === 'brand_grounded' ? 'Brand-Grounded' : 'Idea-First'}

@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { ExternalLink, Calendar, User, Folder, Tag, MessageSquare, RefreshCw, GitBranch, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ComplianceDisplay } from '@/components/generation/ComplianceDisplay'
 import { DriftBadge } from '@/components/generation/DriftBadge'
 import { StatusHistoryTimeline } from './StatusHistoryTimeline'
+import { OnBrandCheckPanel } from '@/components/decide/OnBrandCheckPanel'
+import { deriveBrandEssentials } from '@/lib/brand-profile-status'
 import { CommentsSidebar, type Comment } from '@/components/comments'
 import { getStatusConfig } from '@/lib/status'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -67,9 +70,10 @@ export function AssetDetailsSidebar({
   const [showComments, setShowComments] = useState(false)
   const statusConfig = getStatusConfig(asset.status)
   const StatusIcon = statusConfig.icon
+  const brandKit = asset.brand ? deriveBrandEssentials(asset.brand.identity, asset.brand.voice).status : 'none'
 
   return (
-    <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-muted/30 overflow-y-auto h-full">
+    <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l bg-muted/30 overflow-y-auto h-full" data-tour="asset-details">
       <div className="p-6 space-y-6">
         {/* Status Card */}
         <Card>
@@ -83,9 +87,7 @@ export function AssetDetailsSidebar({
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={`${statusConfig.bgColor} ${statusConfig.color}`}>
-                    {statusConfig.label}
-                  </Badge>
+                  <StatusBadge status={asset.status} audience="client" />
                   {asset.drift_status === 'review_required' && (
                     <DriftBadge tooltip="Brief updated after this asset was generated. Re-validate to update scores and clear this flag." />
                   )}
@@ -97,6 +99,13 @@ export function AssetDetailsSidebar({
             </div>
           </CardContent>
         </Card>
+
+        <OnBrandCheckPanel
+          asset={asset}
+          kit={brandKit}
+          onRunCheck={onRevalidate ?? onCheckCompliance}
+          isChecking={isRevalidating || isCheckingCompliance}
+        />
 
         {/* Asset Details */}
         <Card>
@@ -197,7 +206,7 @@ export function AssetDetailsSidebar({
               <CardTitle className="text-sm font-medium">Submission Note</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-foreground bg-honey-soft dark:bg-honey-soft/30 border border-honey/40 rounded-lg p-3">
                 {asset.submission_note}
               </p>
             </CardContent>

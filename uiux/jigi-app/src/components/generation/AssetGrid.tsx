@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { AssetCard } from './AssetCard'
 import { toast } from 'sonner'
 import type { CreativeAsset } from '@/store/campaignStore'
+import { getValidTransitions, type AssetStatus } from '@/lib/status'
 
 interface AssetGridProps {
   assets: CreativeAsset[]
@@ -50,7 +51,10 @@ export function AssetGrid({
     const name = content?.theme || content?.headline || content?.prompt_used || ''
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesType = typeFilter === 'all' || asset.type === typeFilter
-    const matchesStatus = statusFilter === 'all' || asset.status === statusFilter
+    const matchesStatus =
+      statusFilter === 'all' ||
+      asset.status === statusFilter ||
+      (statusFilter === 'waiting' && (asset.status === 'submitted' || asset.status === 'brand_review'))
     const matchesSource =
       sourceFilter === 'all' ||
       (sourceFilter === 'ai' && (!asset.source || asset.source === 'ai')) ||
@@ -96,7 +100,20 @@ export function AssetGrid({
   }
 
   const handleBulkSubmit = () => {
-    selectedIds.forEach((id) => onSubmitAsset?.(id))
+    const submittable = [...selectedIds].filter((id) => {
+      const asset = assets.find((a) => a.id === id)
+      if (!asset) return false
+      return getValidTransitions(asset.status as AssetStatus).length > 0
+    })
+    const skipped = selectedIds.size - submittable.length
+    if (submittable.length === 0) {
+      toast.error('None of the selected assets can be submitted in their current status.')
+      return
+    }
+    if (skipped > 0) {
+      toast(`Submitting ${submittable.length} of ${selectedIds.size} selected assets.`)
+    }
+    submittable.forEach((id) => onSubmitAsset?.(id))
     clearSelection()
   }
 
@@ -133,13 +150,12 @@ export function AssetGrid({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="agency_review">Agency Review</SelectItem>
-            <SelectItem value="submitted">Submitted</SelectItem>
-            <SelectItem value="brand_review">Brand Review</SelectItem>
-            <SelectItem value="changes_requested">Changes Requested</SelectItem>
+            <SelectItem value="draft">Working</SelectItem>
+            <SelectItem value="agency_review">Internal check</SelectItem>
+            <SelectItem value="waiting">Waiting on client</SelectItem>
+            <SelectItem value="changes_requested">Fix & resend</SelectItem>
             <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="rejected">Not moving forward</SelectItem>
           </SelectContent>
         </Select>
 

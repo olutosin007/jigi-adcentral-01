@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import type { CampaignContextObject } from '@/lib/cco'
-import { compileBriefToCCO } from '@/lib/brief-compiler'
+import { compileBriefToCCO, hasCompilableBrief } from '@/lib/brief-compiler'
 
 /** Reference asset uploaded to brief (mood boards, competitor examples, etc.) */
 export interface BriefReferenceAsset {
@@ -26,7 +26,7 @@ export interface CampaignBrief {
 
 export interface Campaign {
   id: string
-  brand_id: string
+  brand_id: string | null
   created_by: string
   name: string
   brief: CampaignBrief
@@ -42,6 +42,12 @@ export interface Campaign {
   campaign_context?: CampaignContextObject | null
   /** CCO version; increments on every brief edit. Used for drift detection. */
   cco_version?: number
+  /** Production concept selection for pipeline (P1 Sprint 2). */
+  selected_concept_asset_id?: string | null
+  /** Production copy selection for key art (P1 Sprint 2). */
+  selected_copy_asset_id?: string | null
+  /** When selection columns were last updated. */
+  selection_updated_at?: string | null
 }
 
 export interface CreativeAsset {
@@ -242,11 +248,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
       const newCampaign = campaign as Campaign
 
-      // Compile brief to CCO when campaign is created with brief
-      if (insertPayload.brief && newCampaign.brand_id && Object.keys(insertPayload.brief).length > 0) {
+      // Compile brief to CCO when campaign is created with brief (brand-first or idea-first)
+      if (hasCompilableBrief(insertPayload.brief as CampaignBrief)) {
         compileBriefToCCO({
           campaignId: newCampaign.id,
-          brandId: newCampaign.brand_id,
+          brandId: newCampaign.brand_id ?? null,
           brief: insertPayload.brief as CampaignBrief,
         }).catch((err) => console.warn('Brief compiler failed:', err))
       }
@@ -270,6 +276,9 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
     try {
       const updatePayload: Partial<Campaign> = { ...data }
+      delete updatePayload.selected_concept_asset_id
+      delete updatePayload.selected_copy_asset_id
+      delete updatePayload.selection_updated_at
       if (data.journey_mode && !data.generation_mode) {
         updatePayload.generation_mode =
           data.journey_mode === 'idea_first' ? 'idea_first' : 'brand_grounded'
@@ -303,11 +312,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
       const updatedCampaign = campaign as Campaign
 
-      // Compile brief to CCO when brief is updated
-      if (data.brief && updatedCampaign.brand_id) {
+      // Compile brief to CCO when brief is updated (brand-first or idea-first CCO-lite)
+      if (data.brief && hasCompilableBrief(data.brief)) {
         compileBriefToCCO({
           campaignId: id,
-          brandId: updatedCampaign.brand_id,
+          brandId: updatedCampaign.brand_id ?? null,
           brief: data.brief,
         }).catch((err) => console.warn('Brief compiler failed:', err))
       }

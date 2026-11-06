@@ -68,41 +68,41 @@ export function GenerationMixCard({ stats, isLoading }: GenerationMixCardProps) 
         <div className="flex h-4 rounded-full overflow-hidden bg-muted mb-4">
           {brandPercentage > 0 && (
             <div
-              className="bg-purple-500 transition-all duration-500"
+              className="bg-orchid-9 transition-all duration-500"
               style={{ width: `${brandPercentage}%` }}
             />
           )}
           {ideaPercentage > 0 && (
             <div
-              className="bg-amber-400 transition-all duration-500"
+              className="bg-clay transition-all duration-500"
               style={{ width: `${ideaPercentage}%` }}
             />
           )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg hover:bg-purple-100/80 dark:hover:bg-purple-900/40 transition-colors duration-200">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-              <Palette className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          <div className="flex items-center gap-3 p-3 bg-orchid-2 dark:bg-orchid-3/30 rounded-lg hover:bg-orchid-3/80 dark:hover:bg-orchid-3/40 transition-colors duration-200">
+            <div className="p-2 bg-orchid-3 dark:bg-orchid-3/50 rounded-lg">
+              <Palette className="h-4 w-4 text-orchid-9 dark:text-orchid-11" />
             </div>
             <div>
-              <p className="text-sm font-medium text-purple-900">Brand-Grounded</p>
+              <p className="text-sm font-medium text-orchid-12">Brand-Grounded</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-xl font-bold text-purple-700">{brandGrounded}</span>
-                <span className="text-xs text-purple-600">({brandPercentage}%)</span>
+                <span className="text-xl font-bold text-orchid-10">{brandGrounded}</span>
+                <span className="text-xs text-orchid-9">({brandPercentage}%)</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg hover:bg-amber-100/80 dark:hover:bg-amber-900/40 transition-colors duration-200">
-            <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
-              <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <div className="flex items-center gap-3 p-3 bg-clay-soft dark:bg-clay-soft/30 rounded-lg hover:bg-clay-soft/80 dark:hover:bg-clay-soft/40 transition-colors duration-200">
+            <div className="p-2 bg-clay-soft dark:bg-clay-soft/50 rounded-lg">
+              <Sparkles className="h-4 w-4 text-clay-text" />
             </div>
             <div>
-              <p className="text-sm font-medium text-amber-900">Idea-First</p>
+              <p className="text-sm font-medium text-clay-text">Idea-First</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-xl font-bold text-amber-700">{ideaFirst}</span>
-                <span className="text-xs text-amber-600">({ideaPercentage}%)</span>
+                <span className="text-xl font-bold text-clay-text">{ideaFirst}</span>
+                <span className="text-xs text-clay-text">({ideaPercentage}%)</span>
               </div>
             </div>
           </div>

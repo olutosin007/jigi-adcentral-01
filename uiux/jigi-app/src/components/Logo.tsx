@@ -32,10 +32,10 @@ export function Logo({ size = 'md', showText = true, asLink = true, className }:
           icon
         )}
       >
-        <span className={cn('text-[#030303] font-serif font-bold leading-none', j)}>J</span>
+        <span className={cn('text-plum font-display font-normal leading-none', j)}>J</span>
       </div>
       {showText && (
-        <span className={cn('font-serif font-bold tracking-wide', text)}>Jigi</span>
+        <span className={cn('font-display font-normal tracking-[-0.02em]', text)}>Jigi</span>
       )}
     </>
   )

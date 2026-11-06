@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Download, ExternalLink, Trash2, MoreHorizontal, RefreshCw, Check, ZoomIn } from 'lucide-react'
+import { Download, ExternalLink, Trash2, MoreHorizontal, RefreshCw, Check, ZoomIn, Send, Wand2, Maximize2, Loader2 } from 'lucide-react'
 import { DriftBadge } from './DriftBadge'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { canSubmitAssetForReview } from '@/lib/status'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,17 +24,22 @@ interface ImageCardProps {
   onRegenerate?: () => void
   onDelete?: () => void
   onView?: () => void
+  onSubmit?: () => void
+  /** Loads this image's prompt, tier and aspect back into the composer. */
+  onRemix?: () => void
+  onUpscale?: () => void
+  isUpscaling?: boolean
+  version?: number
   showActions?: boolean
+  /** Soft Brand Guardian cue — feeds existing OnBrandCheckPanel, not a second panel. */
+  brandCheck?: 'ok' | 'warn' | 'fail' | null
 }
 
-const statusStyles: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  agency_review: 'bg-primary/10 text-primary',
-  submitted: 'bg-primary/10 text-primary',
-  brand_review: 'bg-warning/10 text-warning',
-  changes_requested: 'bg-warning/10 text-warning',
-  approved: 'bg-success/10 text-success',
-  rejected: 'bg-destructive/10 text-destructive',
+const ASPECT_CLASS: Record<string, string> = {
+  '1:1': 'aspect-square',
+  '4:5': 'aspect-[4/5]',
+  '9:16': 'aspect-[9/16]',
+  '16:9': 'aspect-video',
 }
 
 export function ImageCard({
@@ -46,8 +52,16 @@ export function ImageCard({
   onRegenerate,
   onDelete,
   onView,
+  onSubmit,
+  onRemix,
+  onUpscale,
+  isUpscaling = false,
+  version,
   showActions = true,
+  brandCheck = null,
 }: ImageCardProps) {
+  const canUpscale = !!onUpscale && !image.upscaled_from
+  const aspectClass = ASPECT_CLASS[image.aspect_ratio ?? '1:1'] ?? 'aspect-square'
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
@@ -78,7 +92,7 @@ export function ImageCard({
       } ${onSelect ? 'cursor-pointer' : ''}`}
       onClick={onSelect}
     >
-      <div className="relative aspect-square bg-muted">
+      <div className={`relative ${aspectClass} bg-muted`}>
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -118,12 +132,29 @@ export function ImageCard({
             <DriftBadge />
           </div>
         )}
-        {status && (
-          <Badge
-            className={`absolute top-2 right-2 text-[10px] ${statusStyles[status] || statusStyles.draft}`}
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+          {status && <StatusBadge status={status} />}
+          {brandCheck && brandCheck !== 'ok' && (
+            <span
+              className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium bg-background/90 ${
+                brandCheck === 'fail'
+                  ? 'text-destructive border-destructive/40'
+                  : 'text-warning border-warning/40'
+              }`}
+              data-testid="brand-check-badge"
+            >
+              Brand check
+            </span>
+          )}
+        </div>
+        {version != null && version > 1 && (
+          <span
+            className="absolute bottom-2 right-2 rounded-md bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground"
+            data-testid="image-version-badge"
           >
-            {status.replace('_', ' ')}
-          </Badge>
+            v{version}
+            {image.upscaled_from ? ` · ${image.upscale_scale ?? 2}×` : ''}
+          </span>
         )}
 
         {onView && (
@@ -145,16 +176,65 @@ export function ImageCard({
             {image.prompt_used?.slice(0, 60)}...
           </p>
           
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground">
-              {image.size || '1024×1024'}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-[10px] text-muted-foreground tabular-nums">
+              {[image.aspect_ratio, image.image_resolution].filter(Boolean).join(' · ') || image.size || '1024×1024'}
             </span>
             
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
+              {onSubmit && canSubmitAssetForReview(status) && (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSubmit()
+                  }}
+                >
+                  <Send className="w-3 h-3 mr-1" aria-hidden />
+                  Submit
+                </Button>
+              )}
+              {onRemix && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  aria-label="Remix"
+                  title="Remix"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRemix()
+                  }}
+                >
+                  <Wand2 className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              {canUpscale && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  aria-label={isUpscaling ? 'Upscaling' : 'Upscale 2×'}
+                  title="Upscale 2×"
+                  disabled={isUpscaling}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onUpscale?.()
+                  }}
+                >
+                  {isUpscaling ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Maximize2 className="w-3.5 h-3.5" />
+                  )}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0"
+                aria-label="Download"
                 onClick={(e) => {
                   e.stopPropagation()
                   handleDownload()
@@ -169,6 +249,7 @@ export function ImageCard({
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
+                    aria-label="More actions"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <MoreHorizontal className="w-4 h-4" />

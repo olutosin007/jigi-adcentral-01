@@ -1,46 +1,98 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
-  Pencil,
   Loader2,
   Building2,
   Lightbulb,
-  Save,
-  Sparkles,
-  X,
   Archive,
   ArchiveRestore,
   Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import { GenerationPanel } from '@/components/generation'
+import { ConceptDetailModal } from '@/components/generation/ConceptDetailModal'
+import { CopyDetailModal } from '@/components/generation/CopyDetailModal'
+import { ImagePreviewModal } from '@/components/generation/ImagePreviewModal'
 import { AssetGrid } from '@/components/generation/AssetGrid'
 import { UploadModal } from '@/components/upload/UploadModal'
-import { useCampaign, useBrand, useCampaignAssets, useDeleteAsset, useSubmitAsset, useValidateAssets } from '@/hooks/useCampaignQueries'
-import { useCampaignStore, CHANNEL_OPTIONS, TONE_OPTIONS } from '@/store/campaignStore'
+import { CampaignWorkspace } from '@/components/campaign/CampaignWorkspace'
+import { BriefSnippetBar } from '@/components/campaign/BriefSnippetBar'
+import { BriefIncompleteBanner } from '@/components/campaign/BriefIncompleteBanner'
+import { CampaignBriefStage, type BriefFormData } from '@/components/campaign/CampaignBriefStage'
+import {
+  useCampaign,
+  useBrand,
+  useCampaignAssets,
+  useDeleteAsset,
+  useSubmitAsset,
+  useValidateAssets,
+} from '@/hooks/useCampaignQueries'
+import { useCampaignStore } from '@/store/campaignStore'
 import { useAuthStore } from '@/store/authStore'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
-import { generateCreativesViaRouter, type CreativeRouterVariant } from '@/lib/api-client'
 import { DeleteCampaignDialog } from '@/components/campaigns/DeleteCampaignDialog'
-import { ReferenceAssetUploadInline } from '@/components/campaigns/ReferenceAssetUploadInline'
 import { SubmitModal } from '@/components/review/SubmitModal'
 import { getValidTransitions, type AssetStatus } from '@/lib/status'
-import type { CreativeAsset } from '@/store/campaignStore'
-
-type MainTab = 'brief' | 'generated' | 'assets'
+import { shouldOpenAssetReview } from '@/lib/roles'
+import {
+  parseLegacyTab,
+  parsePipelineStage,
+  type PipelineStage,
+  isGenerationStage,
+} from '@/lib/campaign-workspace'
+import { buildPipelineGateInput, evaluateBriefReadiness } from '@/lib/pipeline-gates'
+import { parseDirectGenerateState } from '@/lib/direct-generate'
+import {
+  countJobAssets,
+  evaluateJobGates,
+  getJobHeaderAction,
+  type JobGateMap,
+} from '@/lib/handoff'
+import { JobContextRail } from '@/components/campaign/JobContextRail'
+import { JobSendStage, type SendRecipient, type SendTarget } from '@/components/job/JobSendStage'
+import { ShareReviewLinkDialog } from '@/components/job/ShareReviewLinkDialog'
+import { FixAndResendDialog, type FixAndResendPayload } from '@/components/job/FixAndResendDialog'
+import { useReviseAsset } from '@/hooks/useReviseAsset'
+import { useReviewLinks, useRevokeReviewLink } from '@/hooks/useReviewLinks'
+import { createReviewLink } from '@/lib/api-client'
+import { JobDecisionsStage } from '@/components/job/JobDecisionsStage'
+import { useCampaignRounds } from '@/hooks/useAssetRounds'
+import { JobApprovedStage } from '@/components/job/JobApprovedStage'
+import { UploadCanvas, CreativeModeToggle } from '@/components/upload/UploadCanvas'
+import { parseCreativeMode, stageToUploadType, type CreativeMode } from '@/lib/upload-intake'
+import type { ConceptResult, CopyResult, ImageResult } from '@/lib/ai'
+import { deriveBrandEssentials } from '@/lib/brand-profile-status'
+import { trackEvent, trackSubmitted } from '@/lib/analytics'
+import { buildBrandChecklist, latestLinkByAsset, type BrandKitLevel } from '@/lib/handoff'
+import {
+  guardianSeverityFromItems,
+  type GuardianSeverity,
+} from '@/lib/brand-governance'
 
 const statusStyles: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  active: 'bg-success/10 text-success',
-  completed: 'bg-primary/10 text-primary',
-  archived: 'bg-amber-100 text-amber-800',
+  draft: 'bg-muted text-muted-foreground border-border',
+  active: 'bg-success/10 text-success border-success/20',
+  completed: 'bg-primary/10 text-primary border-primary/20',
+  archived: 'bg-muted text-muted-foreground border-border',
 }
+
+const DEFAULT_GATE_MAP: JobGateMap = {
+  brief: 'in_progress',
+  concepts: 'available',
+  copy: 'available',
+  images: 'available',
+  assets: 'available',
+  send: 'available',
+  decisions: 'available',
+  approved: 'available',
+}
+
+import type { CreativeAsset } from '@/store/campaignStore'
+import { PageTitle } from '@/design-system'
 
 function getAssetDisplayName(asset: CreativeAsset): string {
   const content = asset.content as unknown as Record<string, unknown>
@@ -50,46 +102,138 @@ function getAssetDisplayName(asset: CreativeAsset): string {
   return 'Asset'
 }
 
+function resolveStage(searchParams: URLSearchParams): PipelineStage {
+  const legacy = parseLegacyTab(searchParams.get('tab'))
+  if (legacy) return legacy
+  return parsePipelineStage(searchParams.get('stage'))
+}
+
 export function CampaignDetail() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id } = useParams<{ id: string }>()
-  const [mainTab, setMainTab] = useState<MainTab>('generated')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const stage = resolveStage(searchParams)
+  const [directRequest, setDirectRequest] = useState(() => parseDirectGenerateState(location.state))
+  const creativeMode = parseCreativeMode(searchParams.get('mode'))
+
   const [isEditingBrief, setIsEditingBrief] = useState(false)
-  const [briefData, setBriefData] = useState<{
-    objective: string
-    audience: string
-    channels: string[]
-    requirements: string
-    key_message: string
-    tone_override: string[]
-    reference_assets: { file_url: string; filename?: string }[]
-    exclusions: string
-  } | null>(null)
-  const [routerLoading, setRouterLoading] = useState(false)
-  const [routerVariants, setRouterVariants] = useState<CreativeRouterVariant[] | null>(null)
-  const [routerJobId, setRouterJobId] = useState<string | null>(null)
+  const [briefData, setBriefData] = useState<BriefFormData | null>(null)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [viewAsset, setViewAsset] = useState<CreativeAsset | null>(null)
+  const [fixAssetId, setFixAssetId] = useState<string | null>(null)
+  const [shareAsset, setShareAsset] = useState<CreativeAsset | null>(null)
   const [submitModalAsset, setSubmitModalAsset] = useState<{
     id: string
     name: string
     type: string
+    guardianSeverity: GuardianSeverity
   } | null>(null)
-  const [showUploadModal, setShowUploadModal] = useState(false)
 
   const queryClient = useQueryClient()
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const { updateCampaign, deleteCampaign } = useCampaignStore()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
 
   const { data: campaign, isLoading: campaignLoading } = useCampaign(id || '')
-  const { data: brand } = useBrand(campaign?.brand_id)
+  const { data: brand } = useBrand(campaign?.brand_id ?? undefined)
   const { data: allAssets = [] } = useCampaignAssets(id || '')
   const deleteAsset = useDeleteAsset()
   const submitAsset = useSubmitAsset()
   const validateAssetsMutation = useValidateAssets()
+  const { data: reviewLinks = [], refetch: refetchLinks } = useReviewLinks(id)
+  const revokeLink = useRevokeReviewLink(id)
+  const linksByAsset = useMemo(() => latestLinkByAsset(reviewLinks), [reviewLinks])
+  const inFlightAssets = useMemo(
+    () => allAssets.filter((a) => ['changes_requested', 'submitted', 'brand_review'].includes(a.status)),
+    [allAssets]
+  )
+  const { data: roundsByAsset } = useCampaignRounds(inFlightAssets)
+  const reviseAsset = useReviseAsset()
+  const fixAsset = useMemo(
+    () => allAssets.find((a) => a.id === fixAssetId && a.status === 'changes_requested') ?? null,
+    [allAssets, fixAssetId]
+  )
 
-  const goBack = () => navigate('/app/campaigns')
+  const gateInput = useMemo(
+    () => (campaign ? buildPipelineGateInput(campaign, allAssets) : null),
+    [campaign, allAssets]
+  )
+  const jobCounts = useMemo(() => countJobAssets(allAssets), [allAssets])
+  const gateMap = useMemo(
+    () => (gateInput ? evaluateJobGates(gateInput, jobCounts) : DEFAULT_GATE_MAP),
+    [gateInput, jobCounts]
+  )
+  const nextPipelineAction = useMemo(
+    () =>
+      gateInput
+        ? getJobHeaderAction(gateInput, jobCounts, {
+            hasUploaded: allAssets.some((a) => a.source === 'uploaded'),
+          })
+        : null,
+    [gateInput, jobCounts, allAssets]
+  )
+  const brandKit: BrandKitLevel = useMemo(
+    () => (brand ? deriveBrandEssentials(brand.identity, brand.voice).status : 'none'),
+    [brand]
+  )
+  const briefReadiness = useMemo(
+    () =>
+      campaign
+        ? evaluateBriefReadiness(campaign.brief ?? {}, {
+            journey_mode: campaign.journey_mode,
+            seed_idea: campaign.seed_idea ?? null,
+          })
+        : undefined,
+    [campaign]
+  )
+
+  const handlePrimaryCta = () => {
+    if (!nextPipelineAction) return
+    if (nextPipelineAction.stage !== stage) {
+      setStage(nextPipelineAction.stage)
+    }
+    requestAnimationFrame(() => {
+      if (nextPipelineAction.actionType === 'focus_generate') {
+        document.getElementById('generation-prompt')?.focus()
+      }
+      if (nextPipelineAction.actionType === 'scroll_selection') {
+        document.getElementById('production-selection')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        })
+      }
+    })
+  }
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    const legacy = parseLegacyTab(tab)
+    if (legacy && !searchParams.get('stage')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('tab')
+      next.set('stage', legacy)
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  const setStage = (next: PipelineStage) => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('tab')
+    params.set('stage', next)
+    setSearchParams(params, { replace: true })
+  }
+
+  const setCreativeMode = (next: CreativeMode) => {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'upload') params.set('mode', 'upload')
+    else params.delete('mode')
+    setSearchParams(params, { replace: true })
+  }
+
+  const goBack = () => navigate('/app/work')
 
   const handleArchive = async () => {
     if (!campaign) return
@@ -124,11 +268,28 @@ export function CampaignDetail() {
     setIsDeleting(false)
     if (result.success) {
       toast.success('Campaign deleted')
-      navigate('/app/campaigns')
+      navigate('/app/work')
       setShowDeleteDialog(false)
     } else {
       toast.error(result.error ?? 'Failed to delete campaign')
     }
+  }
+
+  const startBriefEdit = () => {
+    if (!campaign) return
+    const b = campaign.brief || {}
+    setBriefData({
+      objective: b.objective || '',
+      audience: b.audience || '',
+      channels: b.channels || [],
+      requirements: b.requirements || '',
+      key_message: b.key_message || '',
+      tone_override: b.tone_override || [],
+      reference_assets: b.reference_assets || [],
+      exclusions: b.exclusions || '',
+    })
+    setIsEditingBrief(true)
+    setStage('brief')
   }
 
   const handleSaveBrief = async () => {
@@ -157,8 +318,68 @@ export function CampaignDetail() {
     }
   }
 
+  useEffect(() => {
+    const fix = searchParams.get('fix')
+    if (!fix) return
+    setFixAssetId(fix)
+    const next = new URLSearchParams(searchParams)
+    next.delete('fix')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  const handleFixResend = async (asset: CreativeAsset, payload: FixAndResendPayload) => {
+    if (!id || !user) return
+    const round = (roundsByAsset?.get(asset.id) ?? 1) + 1
+    const revised = !!payload.fields || !!payload.file
+    try {
+      if (revised) await reviseAsset.mutateAsync({ asset, fields: payload.fields, file: payload.file })
+      await submitAsset.mutateAsync({
+        assetId: asset.id,
+        campaignId: id,
+        userId: user.id,
+        targetStatus: 'submitted',
+        note: payload.note,
+      })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not resend')
+      return
+    }
+
+    const previousLink = reviewLinks.find((l) => l.asset_id === asset.id && l.recipient_email)
+    let emailed = false
+    if (previousLink?.recipient_email) {
+      try {
+        const result = await createReviewLink({
+          asset_id: asset.id,
+          recipient_email: previousLink.recipient_email,
+          recipient_name: previousLink.recipient_name ?? undefined,
+          send_email: true,
+          message: payload.note,
+        })
+        emailed = result.email_sent
+      } catch {
+        // Resent either way; the creator can share a fresh link from Decisions.
+      }
+      void refetchLinks()
+    }
+
+    trackEvent('asset_resent', { round, revised, candidate_source: asset.source ?? 'ai', relinked: emailed })
+    toast.success(
+      emailed ? `Sent as Round ${round} — new link emailed to ${previousLink?.recipient_email}` : `Sent as Round ${round}`
+    )
+    setFixAssetId(null)
+  }
+
   const handleViewAsset = (asset: CreativeAsset) => {
-    navigate(`/app/review/${asset.id}`)
+    if (asset.status === 'changes_requested' && !shouldOpenAssetReview(profile?.role, asset.status as AssetStatus)) {
+      setFixAssetId(asset.id)
+      return
+    }
+    if (shouldOpenAssetReview(profile?.role, asset.status as AssetStatus)) {
+      navigate(`/app/review/${asset.id}`)
+      return
+    }
+    setViewAsset(asset)
   }
 
   const handleSubmitAsset = (assetId: string) => {
@@ -174,6 +395,7 @@ export function CampaignDetail() {
       id: asset.id,
       name: getAssetDisplayName(asset),
       type: asset.type,
+      guardianSeverity: guardianSeverityFromItems(buildBrandChecklist(asset)),
     })
   }
 
@@ -187,27 +409,72 @@ export function CampaignDetail() {
         targetStatus,
         note,
       })
+      trackSubmitted({
+        target: targetStatus,
+        asset_type: submitModalAsset.type,
+      })
       setSubmitModalAsset(null)
-      toast.success('Asset submitted for review')
+      toast.success(targetStatus === 'submitted' ? 'Sent to client' : 'Sent for internal check')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to submit asset')
+      toast.error(e instanceof Error ? e.message : 'Failed to send')
     }
   }
 
-  const handleGenerateCreativesBeta = async () => {
-    if (!id) return
-    setRouterLoading(true)
-    setRouterVariants(null)
-    setRouterJobId(null)
-    try {
-      const result = await generateCreativesViaRouter(id)
-      setRouterJobId(result.jobId)
-      setRouterVariants(result.variants)
-      toast.success(`Generated ${result.variants.length} creative variants`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to generate creatives')
-    } finally {
-      setRouterLoading(false)
+  const handleSendMany = async (
+    assetIds: string[],
+    targetStatus: SendTarget,
+    note?: string,
+    recipient?: SendRecipient
+  ) => {
+    if (!id || !user) return
+    let sent = 0
+    let emailed = 0
+    for (const assetId of assetIds) {
+      try {
+        await submitAsset.mutateAsync({ assetId, campaignId: id, userId: user.id, targetStatus, note })
+        sent += 1
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to send')
+        continue
+      }
+      if (recipient) {
+        try {
+          const result = await createReviewLink({
+            asset_id: assetId,
+            recipient_email: recipient.email,
+            recipient_name: recipient.name,
+            send_email: true,
+            message: note,
+          })
+          if (result.email_sent) emailed += 1
+        } catch {
+          // Asset is sent either way; surfaced below.
+        }
+      }
+    }
+    if (recipient) {
+      void refetchLinks()
+      if (emailed > 0) toast.success(`Review link${emailed === 1 ? '' : 's'} emailed to ${recipient.email}`)
+      else if (sent > 0) toast.warning('Sent, but the review email could not be delivered — share a link from Decisions')
+    }
+    if (sent > 0) {
+      const sentAssets = allAssets.filter((a) => assetIds.includes(a.id))
+      trackEvent('assets_sent', {
+        count: sent,
+        target: targetStatus,
+        candidate_source: sentAssets.every((a) => a.source === 'uploaded')
+          ? 'uploaded'
+          : sentAssets.every((a) => a.source !== 'uploaded')
+            ? 'ai'
+            : 'mixed',
+        send_mixed_sources:
+          sentAssets.some((a) => a.source === 'uploaded') &&
+          sentAssets.some((a) => a.source !== 'uploaded'),
+      })
+      toast.success(
+        `${sent} sent ${targetStatus === 'submitted' ? 'to client' : 'for internal check'}`
+      )
+      setStage('decisions')
     }
   }
 
@@ -234,40 +501,101 @@ export function CampaignDetail() {
       <div className="p-6 md:p-8 max-w-[1400px] mx-auto flex flex-col items-center justify-center min-h-[400px]">
         <p className="text-muted-foreground">Campaign not found</p>
         <Button variant="link" onClick={goBack} className="mt-4">
-          Back to campaigns
+          Back to Work
         </Button>
       </div>
     )
   }
 
   const brief = campaign.brief || {}
-  const approvedCount = allAssets.filter((a) => a.status === 'approved').length
-  const totalCount = allAssets.length
+  const approvedCount = jobCounts.approved
+  const totalCount = jobCounts.total
+
+  const revalidate = async (assetIds: string[]) => {
+    if (!id || assetIds.length === 0) return
+    try {
+      await validateAssetsMutation.mutateAsync({ campaignId: id, assetIds })
+      toast.success('Re-validation complete')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Re-validation failed')
+    }
+  }
+
+  const renderAssetGrid = (assets: CreativeAsset[]) => (
+    <div className="p-6 overflow-y-auto h-full">
+      <AssetGrid
+        assets={assets}
+        campaignId={id}
+        onViewAsset={handleViewAsset}
+        onDeleteAsset={handleDeleteAsset}
+        onSubmitAsset={handleSubmitAsset}
+        onUploadAsset={() => setShowUploadModal(true)}
+        onRevalidateAll={id ? () => revalidate(assets.map((a) => a.id)) : undefined}
+        onRevalidateSelected={id ? revalidate : undefined}
+        isRevalidating={validateAssetsMutation.isPending}
+      />
+    </div>
+  )
+
+  const renderCreative = (generateView: ReactNode) => (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center justify-between gap-3 px-6 py-2.5 border-b border-border flex-shrink-0">
+        <CreativeModeToggle mode={creativeMode} onChange={setCreativeMode} />
+        {creativeMode === 'upload' && (
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            Uploaded work goes through the same approval loop
+          </span>
+        )}
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {creativeMode === 'upload' && id ? (
+          <UploadCanvas
+            campaignId={id}
+            userId={user?.id}
+            defaultType={stageToUploadType(stage)}
+            uploadedAssets={allAssets.filter((a) => a.source === 'uploaded')}
+            onOpenAsset={handleViewAsset}
+            brandKit={brandKit}
+            onCheckBrand={revalidate}
+            isCheckingBrand={validateAssetsMutation.isPending}
+            onGoToSend={() => {
+              const params = new URLSearchParams(searchParams)
+              params.delete('mode')
+              params.set('stage', 'send')
+              setSearchParams(params, { replace: true })
+            }}
+          />
+        ) : (
+          generateView
+        )}
+      </div>
+    </div>
+  )
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)]">
-      {/* Campaign Header */}
-      <div className="bg-background border-b border-border px-6 md:px-8 py-5 flex-shrink-0">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 mb-4" aria-label="Breadcrumb">
+      {/* Campaign Header — page owns chrome (no AppLayout title) */}
+      <div className="bg-background border-b border-border px-6 md:px-8 pt-5 pb-4 flex-shrink-0">
+        <nav className="flex items-center gap-2 mb-2" aria-label="Breadcrumb">
           <button
             onClick={goBack}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Campaigns
+            Work
           </button>
-          <span className="text-muted-foreground/50">/</span>
-          <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
+          <span className="text-muted-foreground/50 text-xs">/</span>
+          <span className="text-xs font-medium text-foreground truncate max-w-[200px]">
             {campaign.name}
           </span>
         </nav>
 
-        {/* Summary Card */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-foreground mb-2">{campaign.name}</h1>
-            <div className="flex items-center gap-4 flex-wrap text-sm">
+            <PageTitle>
+              {campaign.name}
+            </PageTitle>
+            <div className="flex items-center gap-2.5 flex-wrap text-[13px] mt-2">
               <span className="text-muted-foreground">
                 Last updated {formatDistanceToNow(new Date(campaign.updated_at), { addSuffix: true })}
               </span>
@@ -279,10 +607,20 @@ export function CampaignDetail() {
               ) : (
                 <span className="text-muted-foreground italic">No brand attached</span>
               )}
-              {campaign.journey_mode === 'idea_first' && (
-                <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 text-[10px]">
+              {campaign.journey_mode === 'idea_first' ? (
+                <Badge
+                  variant="secondary"
+                  className="bg-clay-soft text-clay-text border-transparent text-[10px] font-semibold"
+                >
                   <Lightbulb className="w-3 h-3 mr-1" />
                   Idea-first
+                </Badge>
+              ) : (
+                <Badge
+                  variant="secondary"
+                  className="bg-primary/10 text-primary border-transparent text-[10px] font-semibold"
+                >
+                  Brand-grounded
                 </Badge>
               )}
               <span className="text-muted-foreground">
@@ -291,462 +629,171 @@ export function CampaignDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateCreativesBeta}
-              disabled={routerLoading}
-            >
-              {routerLoading ? (
-                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-              ) : (
-                <Sparkles className="w-3.5 h-3.5 mr-1" />
-              )}
-              Generate Creatives (Beta)
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setMainTab('brief')}>
-              <Pencil className="w-3.5 h-3.5 mr-1" />
-              Edit Brief
-            </Button>
             {campaign.status === 'archived' ? (
-              <Button variant="outline" size="sm" onClick={handleUnarchive} disabled={isArchiving}>
+              <Button variant="ghost" size="sm" onClick={handleUnarchive} disabled={isArchiving}>
                 {isArchiving ? (
                   <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
                 ) : (
                   <ArchiveRestore className="w-3.5 h-3.5 mr-1" />
                 )}
-                {isArchiving ? 'Unarchiving...' : 'Unarchive'}
+                {isArchiving ? 'Unarchiving…' : 'Unarchive'}
               </Button>
             ) : (
-              <Button variant="outline" size="sm" onClick={handleArchive} disabled={isArchiving}>
+              <Button variant="ghost" size="sm" onClick={handleArchive} disabled={isArchiving}>
                 {isArchiving ? (
                   <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
                 ) : (
                   <Archive className="w-3.5 h-3.5 mr-1" />
                 )}
-                {isArchiving ? 'Archiving...' : 'Archive'}
+                {isArchiving ? 'Archiving…' : 'Archive'}
               </Button>
             )}
             {campaign.status === 'draft' && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setShowDeleteDialog(true)}
-                className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:border-destructive"
+                className="text-destructive hover:bg-destructive/10"
                 aria-label="Delete campaign"
               >
                 <Trash2 className="w-3.5 h-3.5 mr-1" />
                 Delete
               </Button>
             )}
-            <Badge className={statusStyles[campaign.status] || statusStyles.draft}>
+            <Badge
+              variant="outline"
+              className={statusStyles[campaign.status] || statusStyles.draft}
+            >
               {campaign.status}
             </Badge>
+            <Button size="sm" onClick={handlePrimaryCta}>
+              {nextPipelineAction?.label ?? 'Continue'}
+            </Button>
           </div>
-        </div>
-
-        {/* Main Tabs */}
-        <div className="flex items-center gap-1 border-b border-border -mb-px">
-          {(['brief', 'generated', 'assets'] as MainTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setMainTab(tab)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                mainTab === tab
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab === 'generated' ? 'Generated' : tab === 'assets' ? 'All Assets' : 'Brief'}
-            </button>
-          ))}
         </div>
       </div>
 
-      {/* Tab Content */}
-      <div className="flex-1 overflow-hidden">
-        {/* Brief Tab */}
-        {mainTab === 'brief' && (
-          <div className="p-6 md:p-8 overflow-y-auto h-full">
-            <div className="max-w-2xl space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">Campaign Brief</h2>
-                {isEditingBrief ? (
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsEditingBrief(false)}>
-                      Cancel
-                    </Button>
-                    <Button size="sm" onClick={handleSaveBrief}>
-                      <Save className="w-3.5 h-3.5 mr-1" />
-                      Save
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setBriefData({
-                        objective: brief.objective || '',
-                        audience: brief.audience || '',
-                        channels: brief.channels || [],
-                        requirements: brief.requirements || '',
-                        key_message: brief.key_message || '',
-                        tone_override: brief.tone_override || [],
-                        reference_assets: brief.reference_assets || [],
-                        exclusions: brief.exclusions || '',
-                      })
-                      setIsEditingBrief(true)
-                    }}
-                  >
-                    <Pencil className="w-3.5 h-3.5 mr-1" />
-                    Edit
-                  </Button>
-                )}
-              </div>
+      {briefReadiness && stage !== 'brief' && (
+        <div className="px-6 md:px-8 py-3 border-b border-border flex-shrink-0">
+          <BriefIncompleteBanner readiness={briefReadiness} onEditBrief={startBriefEdit} />
+        </div>
+      )}
 
-              {campaign.seed_idea && (
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                    Seed Idea
-                  </label>
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-900 italic">"{campaign.seed_idea}"</p>
-                  </div>
-                </div>
-              )}
+      <div className="xl:hidden">
+        <BriefSnippetBar
+          keyMessage={brief.key_message}
+          objective={brief.objective}
+          audience={brief.audience}
+          channels={brief.channels}
+          exclusions={brief.exclusions}
+          readiness={briefReadiness}
+          onEditBrief={startBriefEdit}
+          hidden={stage === 'brief'}
+        />
+      </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Objective
-                </label>
-                {isEditingBrief ? (
-                  <Textarea
-                    value={briefData?.objective || ''}
-                    onChange={(e) =>
-                      setBriefData((prev) => prev && { ...prev, objective: e.target.value })
-                    }
-                    placeholder="What do you want this campaign to achieve?"
-                    rows={3}
-                  />
-                ) : (
-                  <p className="text-sm text-foreground">
-                    {brief.objective || <span className="text-muted-foreground italic">Not specified</span>}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Target Audience
-                </label>
-                {isEditingBrief ? (
-                  <Textarea
-                    value={briefData?.audience || ''}
-                    onChange={(e) =>
-                      setBriefData((prev) => prev && { ...prev, audience: e.target.value })
-                    }
-                    placeholder="Describe your target audience"
-                    rows={3}
-                  />
-                ) : (
-                  <p className="text-sm text-foreground">
-                    {brief.audience || <span className="text-muted-foreground italic">Not specified</span>}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Key Message
-                </label>
-                {isEditingBrief ? (
-                  <Textarea
-                    value={briefData?.key_message || ''}
-                    onChange={(e) =>
-                      setBriefData((prev) => prev && { ...prev, key_message: e.target.value })
-                    }
-                    placeholder="The single message this campaign must communicate"
-                    rows={2}
-                    maxLength={500}
-                  />
-                ) : (
-                  <p className="text-sm text-foreground">
-                    {brief.key_message || <span className="text-muted-foreground italic">Not specified</span>}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Tone Override
-                </label>
-                {isEditingBrief ? (
-                  <div className="flex flex-wrap gap-3">
-                    {TONE_OPTIONS.map((tone) => (
-                      <label key={tone.value} className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={briefData?.tone_override?.includes(tone.value)}
-                          onCheckedChange={(checked) => {
-                            setBriefData((prev) => {
-                              if (!prev) return prev
-                              const tones = checked
-                                ? [...(prev.tone_override || []), tone.value]
-                                : prev.tone_override?.filter((t) => t !== tone.value) || []
-                              return { ...prev, tone_override: tones }
-                            })
-                          }}
-                        />
-                        <span className="text-sm text-foreground">{tone.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {brief.tone_override?.length ? (
-                      brief.tone_override.map((t) => {
-                        const opt = TONE_OPTIONS.find((o) => o.value === t)
-                        return (
-                          <Badge key={t} variant="secondary">
-                            {opt?.label || t}
-                          </Badge>
-                        )
-                      })
-                    ) : (
-                      <span className="text-sm text-muted-foreground italic">None selected</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Channels
-                </label>
-                {isEditingBrief ? (
-                  <div className="flex flex-wrap gap-3">
-                    {CHANNEL_OPTIONS.map((ch) => (
-                      <label key={ch.value} className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={briefData?.channels?.includes(ch.value)}
-                          onCheckedChange={(checked) => {
-                            setBriefData((prev) => {
-                              if (!prev) return prev
-                              const channels = checked
-                                ? [...(prev.channels || []), ch.value]
-                                : prev.channels?.filter((c) => c !== ch.value) || []
-                              return { ...prev, channels }
-                            })
-                          }}
-                        />
-                        <span className="text-sm text-foreground">{ch.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {brief.channels?.length ? (
-                      brief.channels.map((ch: string) => {
-                        const channel = CHANNEL_OPTIONS.find((c) => c.value === ch)
-                        return (
-                          <Badge key={ch} variant="secondary">
-                            {channel?.label || ch}
-                          </Badge>
-                        )
-                      })
-                    ) : (
-                      <span className="text-sm text-muted-foreground italic">None selected</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Additional Requirements
-                </label>
-                {isEditingBrief ? (
-                  <Textarea
-                    value={briefData?.requirements || ''}
-                    onChange={(e) =>
-                      setBriefData((prev) => prev && { ...prev, requirements: e.target.value })
-                    }
-                    placeholder="Any specific constraints or guidelines"
-                    rows={3}
-                  />
-                ) : (
-                  <p className="text-sm text-foreground">
-                    {brief.requirements || (
-                      <span className="text-muted-foreground italic">None specified</span>
-                    )}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Reference Assets
-                </label>
-                {isEditingBrief ? (
-                  <ReferenceAssetUploadInline
-                    campaignId={id || ''}
-                    value={briefData?.reference_assets || []}
-                    onChange={(assets) =>
-                      setBriefData((prev) => prev && { ...prev, reference_assets: assets })
-                    }
-                  />
-                ) : (
-                  <div className="space-y-2">
-                    {brief.reference_assets?.length ? (
-                      brief.reference_assets.map((a) => (
-                        <a
-                          key={a.file_url}
-                          href={a.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block text-sm text-primary hover:underline truncate"
-                        >
-                          {a.filename || 'Reference'}
-                        </a>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted-foreground italic">None uploaded</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Exclusions
-                </label>
-                {isEditingBrief ? (
-                  <Textarea
-                    value={briefData?.exclusions || ''}
-                    onChange={(e) =>
-                      setBriefData((prev) => prev && { ...prev, exclusions: e.target.value })
-                    }
-                    placeholder="Things to avoid: competitor names, clichés, banned phrases..."
-                    rows={2}
-                    maxLength={1000}
-                  />
-                ) : (
-                  <p className="text-sm text-foreground">
-                    {brief.exclusions || (
-                      <span className="text-muted-foreground italic">None specified</span>
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Generated Tab */}
-        {mainTab === 'generated' && (
-          <div className="flex flex-col h-full overflow-hidden">
-            {routerVariants && routerVariants.length > 0 && (
-              <div className="flex-shrink-0 p-4 bg-primary/10 border-b border-primary/20">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Template creatives (Beta) — Job {routerJobId ?? ''}
-                  </h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setRouterVariants(null)
-                      setRouterJobId(null)
-                    }}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {routerVariants.map((v) => (
-                    <a
-                      key={v.id}
-                      href={v.assetUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg border border-border bg-background overflow-hidden hover:border-primary hover:shadow-md transition-all"
-                    >
-                      {v.assetUrl ? (
-                        <img
-                          src={v.assetUrl}
-                          alt={`Creative ${v.id}`}
-                          className="w-full aspect-square object-cover"
-                        />
-                      ) : (
-                        <div className="w-full aspect-square bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                          No preview
-                        </div>
-                      )}
-                      <div className="p-1.5 text-[10px] text-muted-foreground truncate" title={v.id}>
-                        {v.provider} · {v.placements.join(', ')}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex-1 overflow-hidden">
-              <GenerationPanel
-                campaign={campaign}
-                brandId={campaign.brand_id || undefined}
-                userId={user?.id}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* All Assets Tab */}
-        {mainTab === 'assets' && (
-          <div className="p-6 overflow-y-auto h-full">
-            <AssetGrid
-              assets={allAssets}
-              campaignId={id}
-              onViewAsset={handleViewAsset}
-              onDeleteAsset={handleDeleteAsset}
-              onSubmitAsset={handleSubmitAsset}
-              onUploadAsset={() => setShowUploadModal(true)}
-              onRevalidateAll={
-                id
-                  ? async () => {
-                      try {
-                        const assetIds = allAssets.map((a) => a.id)
-                        if (assetIds.length === 0) return
-                        await validateAssetsMutation.mutateAsync({
-                          campaignId: id,
-                          assetIds,
-                        })
-                        toast.success('Re-validation complete')
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : 'Re-validation failed')
-                      }
-                    }
-                  : undefined
-              }
-              onRevalidateSelected={
-                id
-                  ? async (assetIds) => {
-                      try {
-                        await validateAssetsMutation.mutateAsync({
-                          campaignId: id,
-                          assetIds,
-                        })
-                        toast.success('Re-validation complete')
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : 'Re-validation failed')
-                      }
-                    }
-                  : undefined
-              }
-              isRevalidating={validateAssetsMutation.isPending}
+      <CampaignWorkspace
+        activeStage={stage}
+        gateMap={gateMap}
+        onStageChange={setStage}
+        railBadges={{ decisions: jobCounts.changes + jobCounts.waiting }}
+        contextRail={
+          stage === 'brief' ? null : (
+            <JobContextRail
+              className="hidden xl:block"
+              brand={brand}
+              brief={brief}
+              seedIdea={campaign.seed_idea}
+              journeyMode={campaign.journey_mode}
+              briefReadiness={briefReadiness}
+              onEditBrief={startBriefEdit}
             />
-          </div>
-        )}
-      </div>
+          )
+        }
+        sendStage={
+          <JobSendStage
+            assets={allAssets}
+            onSend={handleSendMany}
+            isSending={submitAsset.isPending}
+            onOpenAsset={handleViewAsset}
+            brandKit={brandKit}
+            onGoToCreative={() => setStage('concepts')}
+          />
+        }
+        decisionsStage={
+          <JobDecisionsStage
+            assets={allAssets}
+            onOpenAsset={handleViewAsset}
+            onResend={(asset) => setFixAssetId(asset.id)}
+            brandKit={brandKit}
+            links={linksByAsset}
+            rounds={roundsByAsset}
+            onShare={setShareAsset}
+            onRevokeLink={async (linkId) => {
+              try {
+                await revokeLink.mutateAsync(linkId)
+                toast.success('Link revoked')
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Could not revoke link')
+              }
+            }}
+            onGoToSend={() => setStage('send')}
+          />
+        }
+        approvedStage={
+          <JobApprovedStage
+            assets={allAssets.filter((a) => a.status === 'approved')}
+            onOpenAsset={handleViewAsset}
+          />
+        }
+        briefStage={
+          <CampaignBriefStage
+            campaign={campaign}
+            campaignId={id || ''}
+            brief={brief}
+            isEditing={isEditingBrief}
+            briefData={briefData}
+            onStartEdit={() => {
+              const b = campaign.brief || {}
+              setBriefData({
+                objective: b.objective || '',
+                audience: b.audience || '',
+                channels: b.channels || [],
+                requirements: b.requirements || '',
+                key_message: b.key_message || '',
+                tone_override: b.tone_override || [],
+                reference_assets: b.reference_assets || [],
+                exclusions: b.exclusions || '',
+              })
+              setIsEditingBrief(true)
+            }}
+            onCancelEdit={() => setIsEditingBrief(false)}
+            onSave={handleSaveBrief}
+            onBriefDataChange={setBriefData}
+          />
+        }
+        generationStage={
+          isGenerationStage(stage)
+            ? renderCreative(
+                <GenerationPanel
+                  campaign={campaign}
+                  brandId={campaign.brand_id || undefined}
+                  userId={user?.id}
+                  onSubmitAsset={handleSubmitAsset}
+                  embeddedInWorkspace
+                  stage={stage}
+                  onStageChange={(s) => setStage(s)}
+                  directRequest={directRequest}
+                  onDirectRequestConsumed={() => {
+                    setDirectRequest(null)
+                    navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+                  }}
+                />
+              )
+            : null
+        }
+        assetsStage={renderCreative(renderAssetGrid(allAssets))}
+      />
 
       <SubmitModal
         open={!!submitModalAsset}
@@ -756,7 +803,16 @@ export function CampaignDetail() {
         onSubmit={handleSubmitModalConfirm}
         isSubmitting={submitAsset.isPending}
         allowAgencyReview={true}
+        guardianSeverity={submitModalAsset?.guardianSeverity ?? 'ok'}
       />
+
+      {id && (
+        <ShareReviewLinkDialog
+          asset={shareAsset}
+          campaignId={id}
+          onOpenChange={(open) => !open && setShareAsset(null)}
+        />
+      )}
 
       {id && (
         <UploadModal
@@ -766,6 +822,54 @@ export function CampaignDetail() {
           userId={user?.id}
         />
       )}
+
+      {viewAsset?.type === 'concept' && (
+        <ConceptDetailModal
+          open
+          onOpenChange={(open) => !open && setViewAsset(null)}
+          concept={viewAsset.content as ConceptResult}
+          status={viewAsset.status}
+          onSubmit={() => {
+            handleSubmitAsset(viewAsset.id)
+            setViewAsset(null)
+          }}
+        />
+      )}
+
+      {viewAsset?.type === 'copy' && (
+        <CopyDetailModal
+          open
+          onOpenChange={(open) => !open && setViewAsset(null)}
+          copy={viewAsset.content as CopyResult}
+          status={viewAsset.status}
+          onSubmit={() => {
+            handleSubmitAsset(viewAsset.id)
+            setViewAsset(null)
+          }}
+        />
+      )}
+
+      {viewAsset?.type === 'image' && (
+        <ImagePreviewModal
+          open
+          onOpenChange={(open) => !open && setViewAsset(null)}
+          image={viewAsset.content as ImageResult}
+          isSaved
+          status={viewAsset.status}
+          onSubmit={() => {
+            handleSubmitAsset(viewAsset.id)
+            setViewAsset(null)
+          }}
+        />
+      )}
+
+      <FixAndResendDialog
+        asset={fixAsset}
+        round={fixAsset ? roundsByAsset?.get(fixAsset.id) ?? 1 : 1}
+        onOpenChange={(open) => !open && setFixAssetId(null)}
+        onResend={handleFixResend}
+        isSending={reviseAsset.isPending || submitAsset.isPending}
+      />
 
       <DeleteCampaignDialog
         open={showDeleteDialog}

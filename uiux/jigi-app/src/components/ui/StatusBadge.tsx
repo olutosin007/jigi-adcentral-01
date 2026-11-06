@@ -1,58 +1,29 @@
-type StatusVariant =
-'draft' |
-'agency-review' |
-'submitted' |
-'in-review' |
-'changes-requested' |
-'approved' |
-'rejected';
+import { cn } from '@/lib/utils'
+import { getStatusConfig } from '@/lib/status'
+import { humanStatusClasses, humanStatusLabel, type HandoffAudience } from '@/lib/handoff'
+
 interface StatusBadgeProps {
-  status: StatusVariant;
-  className?: string;
+  status: string
+  className?: string
+  size?: 'sm' | 'md'
+  audience?: HandoffAudience
 }
-const statusConfig: Record<
-  StatusVariant,
-  {
-    label: string;
-    className: string;
-  }> =
-{
-  draft: {
-    label: 'Draft',
-    className: 'bg-muted text-muted-foreground'
-  },
-  'agency-review': {
-    label: 'Agency Review',
-    className: 'bg-primary/10 text-primary'
-  },
-  submitted: {
-    label: 'Submitted',
-    className: 'bg-primary/10 text-primary'
-  },
-  'in-review': {
-    label: 'In Review',
-    className: 'bg-warning/10 text-warning'
-  },
-  'changes-requested': {
-    label: 'Changes Requested',
-    className: 'bg-warning/10 text-warning'
-  },
-  approved: {
-    label: 'Approved',
-    className: 'bg-success/10 text-success'
-  },
-  rejected: {
-    label: 'Rejected',
-    className: 'bg-destructive/10 text-destructive'
-  }
-};
-export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
-  const config = statusConfig[status];
+
+export function StatusBadge({ status, className, size = 'sm', audience = 'creator' }: StatusBadgeProps) {
+  const Icon = getStatusConfig(status).icon
+  const sizeClasses = size === 'sm' ? 'text-[10px] px-2 py-0.5 gap-1' : 'text-xs px-2.5 py-0.5 gap-1.5'
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${config.className} ${className}`}>
-
-      {config.label}
-    </span>);
-
+      className={cn(
+        'inline-flex items-center rounded-full font-medium whitespace-nowrap border',
+        humanStatusClasses(status),
+        sizeClasses,
+        className
+      )}
+    >
+      <Icon className={size === 'sm' ? 'h-3 w-3 shrink-0' : 'h-3.5 w-3.5 shrink-0'} aria-hidden />
+      <span>{humanStatusLabel(status, audience)}</span>
+    </span>
+  )
 }

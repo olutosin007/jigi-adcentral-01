@@ -11,7 +11,7 @@ interface StatCardProps {
     isPositive: boolean
   }
   className?: string
-  /** Applied to icon wrapper; include both bg and text color e.g. "bg-orange-50 text-orange-600" */
+  /** Applied to icon wrapper; include both bg and text color e.g. "bg-honey-soft text-honey-text" */
   iconClassName?: string
 }
 

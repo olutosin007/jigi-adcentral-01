@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useCampaign, useCampaignAssets, useBrand } from './useCampaignQueries'
+import { useCampaign, useCampaignAssets, useBrand, useReviewQueue, useSelectConcept, useSelectCopy, useUpscaleImage } from './useCampaignQueries'
 import type { ReactNode } from 'react'
 
 const mockCampaign = {
@@ -32,7 +32,7 @@ const mockAssets = [
   },
 ]
 
-const createChain = (resolveData: unknown) => {
+const createChain = (resolveData: unknown, options?: { trackOrder?: ReturnType<typeof vi.fn> }) => {
   const chain: Record<string, unknown> = {
     select: vi.fn(function (this: typeof chain) {
       return this
@@ -40,16 +40,53 @@ const createChain = (resolveData: unknown) => {
     eq: vi.fn(function (this: typeof chain) {
       return this
     }),
-    order: vi.fn(function (this: typeof chain) {
+    in: vi.fn(function (this: typeof chain) {
+      return this
+    }),
+    order: vi.fn(function (this: typeof chain, column: string, opts: { ascending: boolean }) {
+      options?.trackOrder?.(column, opts)
       return this
     }),
     single: vi.fn(() => Promise.resolve({ data: resolveData, error: null })),
   }
   chain.select = vi.fn(() => chain)
   chain.eq = vi.fn(() => chain)
-  chain.order = vi.fn(() => Promise.resolve({ data: resolveData, error: null }))
+  chain.in = vi.fn(() => chain)
+  chain.order = vi.fn((column: string, opts: { ascending: boolean }) => {
+    options?.trackOrder?.(column, opts)
+    return Promise.resolve({ data: resolveData, error: null })
+  })
   return chain
 }
+
+const mockReviewQueueAssets = [
+  {
+    id: 'asset-old',
+    campaign_id: 'camp-old',
+    status: 'submitted',
+    updated_at: '2024-01-01T00:00:00Z',
+    created_at: '2024-01-05T00:00:00Z',
+    campaigns: { id: 'camp-old', name: 'Older Campaign', brand_id: 'brand-1', brands: { id: 'brand-1', name: 'Brand' } },
+  },
+  {
+    id: 'asset-new',
+    campaign_id: 'camp-new',
+    status: 'brand_review',
+    updated_at: '2024-01-10T00:00:00Z',
+    created_at: '2024-01-01T00:00:00Z',
+    campaigns: { id: 'camp-new', name: 'Newer Campaign', brand_id: 'brand-1', brands: { id: 'brand-1', name: 'Brand' } },
+  },
+]
+
+const reviewQueueOrderSpy = vi.fn()
+
+const mockSelectCampaignAsset = vi.fn()
+const mockUpscaleImage = vi.fn()
+
+vi.mock('@/lib/api-client', () => ({
+  selectCampaignAsset: (...args: unknown[]) => mockSelectCampaignAsset(...args),
+  upscaleImage: (...args: unknown[]) => mockUpscaleImage(...args),
+}))
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -58,9 +95,21 @@ vi.mock('@/lib/supabase', () => ({
         return createChain(mockCampaign)
       }
       if (table === 'creative_assets') {
-        const c = createChain(mockAssets)
-        delete c.single
-        return c
+        let reviewQueueQuery = false
+        const chain = createChain(mockAssets)
+        chain.in = vi.fn(() => {
+          reviewQueueQuery = true
+          return chain
+        })
+        chain.order = vi.fn((column: string, opts: { ascending: boolean }) => {
+          if (reviewQueueQuery) {
+            reviewQueueOrderSpy(column, opts)
+            return Promise.resolve({ data: mockReviewQueueAssets, error: null })
+          }
+          return Promise.resolve({ data: mockAssets, error: null })
+        })
+        delete chain.single
+        return chain
       }
       if (table === 'brands') {
         return createChain({ id: 'brand-1', name: 'Test Brand' })
@@ -77,22 +126,26 @@ function createWrapper() {
       mutations: { retry: false },
     },
   })
-  return function Wrapper({ children }: { children: ReactNode }) {
+  return { queryClient, Wrapper: function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
-  }
+  } }
 }
 
 describe('useCampaignQueries', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSelectCampaignAsset.mockResolvedValue({
+      campaign: { ...mockCampaign, selected_concept_asset_id: 'concept-1' },
+    })
   })
 
   describe('useCampaign', () => {
     it('fetches campaign when enabled', async () => {
+      const { Wrapper } = createWrapper()
       const { result } = renderHook(() => useCampaign('camp-1'), {
-        wrapper: createWrapper(),
+        wrapper: Wrapper,
       })
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
       expect(result.current.data).toEqual(mockCampaign)
@@ -100,7 +153,7 @@ describe('useCampaignQueries', () => {
 
     it('does not fetch when campaignId is empty', () => {
       const { result } = renderHook(() => useCampaign(''), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper().Wrapper,
       })
       expect(result.current.isFetching).toBe(false)
       expect(result.current.data).toBeUndefined()
@@ -110,7 +163,7 @@ describe('useCampaignQueries', () => {
   describe('useCampaignAssets', () => {
     it('fetches assets when enabled', async () => {
       const { result } = renderHook(() => useCampaignAssets('camp-1'), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper().Wrapper,
       })
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
       expect(result.current.data).toEqual(mockAssets)
@@ -120,7 +173,7 @@ describe('useCampaignQueries', () => {
   describe('useBrand', () => {
     it('fetches brand when brandId provided', async () => {
       const { result } = renderHook(() => useBrand('brand-1'), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper().Wrapper,
       })
       await waitFor(() => expect(result.current.isSuccess).toBe(true))
       expect(result.current.data).toHaveProperty('name', 'Test Brand')
@@ -128,9 +181,71 @@ describe('useCampaignQueries', () => {
 
     it('does not fetch when brandId is undefined', () => {
       const { result } = renderHook(() => useBrand(undefined), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper().Wrapper,
       })
       expect(result.current.isFetching).toBe(false)
+    })
+  })
+
+  describe('useReviewQueue', () => {
+    it('orders pending assets by updated_at ascending and groups oldest campaigns first', async () => {
+      const { result } = renderHook(() => useReviewQueue(), {
+        wrapper: createWrapper().Wrapper,
+      })
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+      expect(reviewQueueOrderSpy).toHaveBeenCalledWith('updated_at', { ascending: true })
+      expect(result.current.data?.[0]?.campaignName).toBe('Older Campaign')
+      expect(result.current.data?.[1]?.campaignName).toBe('Newer Campaign')
+    })
+  })
+
+  describe('useSelectConcept / useSelectCopy', () => {
+    it('S9: useSelectConcept calls API and invalidates campaign query', async () => {
+      const { queryClient, Wrapper } = createWrapper()
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const { result } = renderHook(() => useSelectConcept('camp-1'), {
+        wrapper: Wrapper,
+      })
+
+      await result.current.mutateAsync('concept-1')
+
+      expect(mockSelectCampaignAsset).toHaveBeenCalledWith({
+        campaign_id: 'camp-1',
+        selection: 'concept',
+        asset_id: 'concept-1',
+      })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['campaign', 'camp-1'] })
+    })
+
+    it('useSelectCopy calls API with copy selection', async () => {
+      const { Wrapper } = createWrapper()
+      const { result } = renderHook(() => useSelectCopy('camp-1'), {
+        wrapper: Wrapper,
+      })
+
+      await result.current.mutateAsync('copy-1')
+
+      expect(mockSelectCampaignAsset).toHaveBeenCalledWith({
+        campaign_id: 'camp-1',
+        selection: 'copy',
+        asset_id: 'copy-1',
+      })
+    })
+  })
+
+  describe('useUpscaleImage', () => {
+    it('calls the upscale API and invalidates the campaign assets query', async () => {
+      mockUpscaleImage.mockResolvedValueOnce({ asset: { id: 'up-1' }, image_url: 'u', model: 'm', estimated_cost_usd: 0.002 })
+      const { queryClient, Wrapper } = createWrapper()
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const { result } = renderHook(() => useUpscaleImage(), { wrapper: Wrapper })
+
+      await result.current.mutateAsync({ assetId: 'asset-1', campaignId: 'camp-1', scale: 2 })
+
+      expect(mockUpscaleImage).toHaveBeenCalledWith({ asset_id: 'asset-1', scale: 2 })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['campaign-assets', 'camp-1'] })
     })
   })
 })

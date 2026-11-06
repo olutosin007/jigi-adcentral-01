@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { useNavigate } from 'react-router-dom'
 import {
   Download,
   X,
@@ -41,6 +42,7 @@ export function AssetDetailModal({
   campaignName,
   brandName,
 }: AssetDetailModalProps) {
+  const navigate = useNavigate()
   if (!asset) return null
 
   const getAssetIcon = () => {
@@ -164,6 +166,18 @@ export function AssetDetailModal({
               <Download className="h-4 w-4" />
               Download Asset
             </Button>
+            {asset.campaign_id && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigate(`/app/campaigns/${asset.campaign_id}?stage=assets`)
+                }}
+              >
+                View campaign
+              </Button>
+            )}
 
             {/* Metadata */}
             <div className="space-y-4">
@@ -237,8 +251,8 @@ export function AssetDetailModal({
                   variant="outline"
                   className={
                     asset.generation_mode === 'brand_grounded'
-                      ? 'border-purple-200 text-purple-700 bg-purple-50'
-                      : 'border-amber-200 text-amber-700 bg-amber-50'
+                      ? 'border-orchid-5 text-orchid-10 bg-orchid-2'
+                      : 'border-honey/40 text-honey-text bg-honey-soft'
                   }
                 >
                   {asset.generation_mode === 'brand_grounded' ? (

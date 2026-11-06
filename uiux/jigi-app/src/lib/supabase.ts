@@ -9,7 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
+/** One browser client for the whole app — never create another inside components. */
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+    },
+  }
 )

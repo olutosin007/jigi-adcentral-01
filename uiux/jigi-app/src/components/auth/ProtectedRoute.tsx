@@ -35,6 +35,10 @@ export function ProtectedRoute({
     return <Navigate to="/setup/organisation" state={{ from: location }} replace />
   }
 
+  if (requireOrganisation && profile?.organisation_id && !profile?.journey_mode) {
+    return <Navigate to="/setup/journey" state={{ from: location }} replace />
+  }
+
   if (requireJourneyMode && !profile?.journey_mode) {
     return <Navigate to="/setup/journey" state={{ from: location }} replace />
   }

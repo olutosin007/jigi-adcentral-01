@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { CreativeAsset } from '@/store/campaignStore'
+import type { CreativeAsset, CampaignBrief } from '@/store/campaignStore'
+import { evaluateBriefReadiness } from '@/lib/brief-readiness'
 
 export interface DashboardStats {
   pendingReview: number
@@ -33,6 +34,7 @@ export interface RecentCampaignItem {
   pendingAssets: number
   updatedAt: string
   generationMode?: 'brand_grounded' | 'idea_first'
+  briefReady?: boolean
 }
 
 interface RecentCampaignRow {
@@ -41,6 +43,8 @@ interface RecentCampaignRow {
   updated_at: string
   generation_mode?: 'brand_grounded' | 'idea_first'
   journey_mode?: 'brand_first' | 'idea_first'
+  seed_idea?: string | null
+  brief?: Record<string, unknown> | null
   brands?: { id: string; name: string } | { id: string; name: string }[] | null
   creative_assets?: { id: string; status: string }[] | null
 }
@@ -127,7 +131,7 @@ async function fetchPendingReviews(): Promise<PendingReviewItem[]> {
       campaigns!inner(id, name, brand_id, brands(id, name))
     `)
     .in('status', ['submitted', 'brand_review'])
-    .order('created_at', { ascending: true })
+    .order('updated_at', { ascending: true })
 
   if (error) throw error
 
@@ -143,7 +147,7 @@ async function fetchPendingReviews(): Promise<PendingReviewItem[]> {
         campaignName: campaign.name,
         brandName: campaign.brands?.name,
         assetCount: 0,
-        oldestPendingAt: asset.created_at,
+        oldestPendingAt: asset.updated_at ?? asset.created_at,
         assets: [],
       }
     }
@@ -151,8 +155,8 @@ async function fetchPendingReviews(): Promise<PendingReviewItem[]> {
     grouped[campaignId].assetCount++
     grouped[campaignId].assets.push(asset as unknown as CreativeAsset)
 
-    if (new Date(asset.created_at) < new Date(grouped[campaignId].oldestPendingAt)) {
-      grouped[campaignId].oldestPendingAt = asset.created_at
+    if (new Date(asset.updated_at ?? asset.created_at) < new Date(grouped[campaignId].oldestPendingAt)) {
+      grouped[campaignId].oldestPendingAt = asset.updated_at ?? asset.created_at
     }
   }
 
@@ -180,6 +184,9 @@ async function fetchRecentCampaigns(limit: number = 5): Promise<RecentCampaignIt
       name,
       updated_at,
       generation_mode,
+      journey_mode,
+      seed_idea,
+      brief,
       brands(id, name),
       creative_assets(id, status)
     `)
@@ -195,6 +202,8 @@ async function fetchRecentCampaigns(limit: number = 5): Promise<RecentCampaignIt
         name,
         updated_at,
         journey_mode,
+        seed_idea,
+        brief,
         brands(id, name),
         creative_assets(id, status)
       `)
@@ -226,6 +235,10 @@ async function fetchRecentCampaigns(limit: number = 5): Promise<RecentCampaignIt
       pendingAssets: assets.filter((a) => ['submitted', 'brand_review'].includes(a.status)).length,
       updatedAt: campaign.updated_at,
       generationMode: campaign.generation_mode as 'brand_grounded' | 'idea_first' | undefined,
+      briefReady: evaluateBriefReadiness((campaign.brief ?? {}) as CampaignBrief, {
+        journey_mode: campaign.journey_mode ?? 'brand_first',
+        seed_idea: campaign.seed_idea ?? null,
+      }).ready,
     }
   })
 }

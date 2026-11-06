@@ -62,11 +62,26 @@ export function isConceptOutputSchema(obj: unknown): obj is ConceptOutputSchema 
  */
 export function normalizeConceptToDisplay(raw: Record<string, unknown>): ConceptDisplayFormat {
   if (isConceptOutputSchema(raw)) {
+    // Prefer richer display fields when the model supplies them (hybrid schema:
+    // full PRD-06 fields + display headlines/visual_direction). Falls back to the
+    // canonical PRD-06 mapping when they're absent (e.g. the CCO template path).
+    const richHeadlines =
+      Array.isArray(raw.headlines) && raw.headlines.length > 0
+        ? (raw.headlines as string[])
+        : [raw.headline_direction]
+    const richVisual =
+      typeof raw.visual_direction === 'string' && raw.visual_direction.trim()
+        ? raw.visual_direction
+        : raw.creative_territory
+    const richRationale =
+      typeof raw.rationale === 'string' && raw.rationale.trim()
+        ? (raw.rationale as string)
+        : `${raw.strategic_insight}\n\nKey message link: ${raw.key_message_link}`
     return {
-      theme: raw.concept_name,
-      headlines: [raw.headline_direction],
-      visual_direction: raw.creative_territory,
-      rationale: `${raw.strategic_insight}\n\nKey message link: ${raw.key_message_link}`,
+      theme: (typeof raw.theme === 'string' && raw.theme.trim() ? (raw.theme as string) : raw.concept_name),
+      headlines: richHeadlines,
+      visual_direction: richVisual,
+      rationale: richRationale,
       concept_name: raw.concept_name,
       strategic_insight: raw.strategic_insight,
       creative_territory: raw.creative_territory,
@@ -77,11 +92,19 @@ export function normalizeConceptToDisplay(raw: Record<string, unknown>): Concept
       brand_alignment_rationale: raw.brand_alignment_rationale,
     }
   }
-  // Legacy format
+  // Legacy / idea-first display schema — derive key_message_link when the model omits it
+  const rationale = (raw.rationale as string) ?? ''
+  const explicitLink =
+    typeof raw.key_message_link === 'string' && raw.key_message_link.trim()
+      ? raw.key_message_link.trim()
+      : undefined
+  const keyMessageLink = explicitLink || (rationale.trim() ? rationale.trim() : undefined)
+
   return {
     theme: (raw.theme as string) ?? '',
     headlines: Array.isArray(raw.headlines) ? (raw.headlines as string[]) : [],
     visual_direction: (raw.visual_direction as string) ?? '',
-    rationale: (raw.rationale as string) ?? '',
+    rationale,
+    key_message_link: keyMessageLink,
   }
 }

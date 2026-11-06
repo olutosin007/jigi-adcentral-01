@@ -13,6 +13,12 @@ export interface BrandIdentity {
     heading?: string
     body?: string
   }
+  /**
+   * Free-text art-direction guidance (photography/illustration mood, lighting,
+   * composition). Drives on-brand image generation; do NOT hardcode a generic
+   * aesthetic when this is set.
+   */
+  visual_style?: string
 }
 
 export interface BrandVoice {
@@ -76,7 +82,11 @@ interface BrandState {
   fetchBrands: (options?: { includeArchived?: boolean }) => Promise<void>
   fetchBrand: (id: string) => Promise<Brand | null>
   createBrand: (data: Partial<Brand>) => Promise<{ success: boolean; brand?: Brand; error?: string }>
-  updateBrand: (id: string, data: Partial<Brand>) => Promise<{ success: boolean; error?: string }>
+  updateBrand: (
+    id: string,
+    data: Partial<Brand>,
+    options?: { quiet?: boolean }
+  ) => Promise<{ success: boolean; error?: string }>
   deleteBrand: (id: string) => Promise<{ success: boolean; error?: string }>
   archiveBrand: (id: string) => Promise<{ success: boolean; error?: string }>
   unarchiveBrand: (id: string) => Promise<{ success: boolean; error?: string }>
@@ -186,9 +196,10 @@ export const useBrandStore = create<BrandState>((set, get) => ({
     }
   },
 
-  updateBrand: async (id, data) => {
-    set({ isLoading: true, error: null })
-    
+  updateBrand: async (id, data, options) => {
+    const quiet = options?.quiet ?? false
+    if (!quiet) set({ isLoading: true, error: null })
+
     try {
       const { data: brand, error } = await supabase
         .from('brands')
@@ -203,13 +214,13 @@ export const useBrandStore = create<BrandState>((set, get) => ({
       set((state) => ({
         brands: state.brands.map((b) => (b.id === id ? updatedBrand : b)),
         currentBrand: state.currentBrand?.id === id ? updatedBrand : state.currentBrand,
-        isLoading: false,
+        ...(quiet ? {} : { isLoading: false }),
       }))
 
       return { success: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update brand'
-      set({ isLoading: false, error: message })
+      if (!quiet) set({ isLoading: false, error: message })
       return { success: false, error: message }
     }
   },

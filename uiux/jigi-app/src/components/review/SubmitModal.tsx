@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { Send, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import {
+  softGateForSubmit,
+  type GuardianSeverity,
+} from '@/lib/brand-governance'
 import {
   Dialog,
   DialogContent,
@@ -28,6 +33,8 @@ interface SubmitModalProps {
   onSubmit: (targetStatus: AssetStatus, note?: string) => void
   isSubmitting: boolean
   allowAgencyReview?: boolean
+  /** Brand Guardian soft-gate — never blocks the API; confirm on fail. */
+  guardianSeverity?: GuardianSeverity
 }
 
 export function SubmitModal({
@@ -38,11 +45,21 @@ export function SubmitModal({
   onSubmit,
   isSubmitting,
   allowAgencyReview = true,
+  guardianSeverity = 'ok',
 }: SubmitModalProps) {
   const [target, setTarget] = useState<AssetStatus>('submitted')
   const [note, setNote] = useState('')
+  const [confirmedFail, setConfirmedFail] = useState(false)
+  const gate = softGateForSubmit(guardianSeverity)
 
   const handleSubmit = () => {
+    if (gate.needsConfirm && !confirmedFail) {
+      setConfirmedFail(true)
+      return
+    }
+    if (gate.toast === 'warn' && gate.message) {
+      toast.message(gate.message)
+    }
     onSubmit(target, note.trim() || undefined)
   }
 
@@ -50,6 +67,7 @@ export function SubmitModal({
     if (!newOpen) {
       setNote('')
       setTarget('submitted')
+      setConfirmedFail(false)
     }
     onOpenChange(newOpen)
   }
@@ -58,9 +76,9 @@ export function SubmitModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Submit for Review</DialogTitle>
+          <DialogTitle>Send for approval</DialogTitle>
           <DialogDescription>
-            Submit this {assetType} for review and approval.
+            Send this {assetType} for a decision.
           </DialogDescription>
         </DialogHeader>
 
@@ -68,7 +86,7 @@ export function SubmitModal({
           <div className="space-y-2">
             <Label className="text-sm font-medium">Asset</Label>
             <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-              <div className="w-2 h-2 rounded-full bg-teal-500" />
+              <div className="w-2 h-2 rounded-full bg-orchid-9" />
               <span className="font-medium text-sm">{assetName}</span>
               <span className="text-xs text-muted-foreground capitalize">
                 ({assetType})
@@ -77,7 +95,7 @@ export function SubmitModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="target">Submit to</Label>
+            <Label htmlFor="target">Send to</Label>
             <Select value={target} onValueChange={(v) => setTarget(v as AssetStatus)}>
               <SelectTrigger id="target">
                 <SelectValue />
@@ -85,18 +103,18 @@ export function SubmitModal({
               <SelectContent>
                 {allowAgencyReview && (
                   <SelectItem value="agency_review">
-                    Agency Review (internal)
+                    Internal check first
                   </SelectItem>
                 )}
                 <SelectItem value="submitted">
-                  Brand Review (external)
+                  Client / brand
                 </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
               {target === 'agency_review'
-                ? 'Asset will be reviewed internally by your team before going to the brand.'
-                : 'Asset will be sent directly to the brand for approval.'}
+                ? 'Your team reviews it before the client sees anything.'
+                : 'The client gets notified and can approve, request changes or decline.'}
             </p>
           </div>
 
@@ -111,6 +129,17 @@ export function SubmitModal({
               className="resize-none"
             />
           </div>
+
+          {gate.needsConfirm && (
+            <p
+              className="text-sm text-coral-text bg-coral-soft border border-coral/40 rounded-md px-3 py-2"
+              role="status"
+              data-testid="brand-guardian-soft-gate"
+            >
+              {gate.message}
+              {confirmedFail ? ' Click Send again to confirm.' : ''}
+            </p>
+          )}
         </div>
 
         <DialogFooter>
@@ -125,16 +154,17 @@ export function SubmitModal({
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="bg-primary hover:bg-primary/90"
+            data-tour="submit-action"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
+                Sending…
               </>
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" />
-                Submit
+                {gate.needsConfirm && !confirmedFail ? 'Review issues' : 'Send'}
               </>
             )}
           </Button>

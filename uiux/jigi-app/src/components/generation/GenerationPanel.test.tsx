@@ -23,12 +23,63 @@ const mockCampaign: Campaign = {
   updated_at: '2024-01-01',
 }
 
+const mockDraftConceptAsset = {
+  id: 'concept-1',
+  campaign_id: 'camp-1',
+  created_by: 'user-1',
+  type: 'concept' as const,
+  generation_mode: 'brand_grounded' as const,
+  content: {
+    theme: 'Summer Launch',
+    headlines: ['Headline A'],
+    visual_direction: 'Bright',
+    rationale: 'Test',
+  },
+  version: 1,
+  status: 'draft' as const,
+  compliance_check: {},
+  created_at: '2024-01-01',
+  updated_at: '2024-01-01',
+}
+
+const {
+  mockCampaignAssetsData,
+  mockSelectConceptMutate,
+  mockSelectCopyMutate,
+  mockBrandData,
+  mockGenerateImageMutate,
+  mockGenerateConceptsMutate,
+} = vi.hoisted(() => ({
+  mockGenerateImageMutate: vi.fn(),
+  mockGenerateConceptsMutate: vi.fn(),
+  mockCampaignAssetsData: { current: [] as typeof mockDraftConceptAsset[] },
+  mockSelectConceptMutate: vi.fn().mockResolvedValue({}),
+  mockSelectCopyMutate: vi.fn().mockResolvedValue({}),
+  mockBrandData: {
+    current: undefined as
+      | {
+          id: string
+          identity: { colours: { primary: string }; fonts: { heading: string; body: string } }
+          voice: { tone: string[]; preferred_words: string[]; avoided_words: string[] }
+        }
+      | undefined,
+  },
+}))
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  }
+})
+
 vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useCampaignQueries')>()
   return {
     ...actual,
     useGenerateConcepts: () => ({
-      mutateAsync: vi.fn().mockResolvedValue({}),
+      mutateAsync: mockGenerateConceptsMutate,
       isPending: false,
       isError: false,
       reset: vi.fn(),
@@ -40,22 +91,38 @@ vi.mock('@/hooks/useCampaignQueries', async (importOriginal) => {
       reset: vi.fn(),
     }),
     useGenerateImage: () => ({
-      mutateAsync: vi.fn().mockResolvedValue({ image: {} }),
+      mutateAsync: mockGenerateImageMutate,
       isPending: false,
       isError: false,
       reset: vi.fn(),
     }),
-    useCampaignAssets: () => ({ data: [] }),
+    useUpscaleImage: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useCampaignAssets: () => ({ data: mockCampaignAssetsData.current }),
     useDeleteAsset: () => ({ mutateAsync: vi.fn() }),
+    useBrand: () => ({ data: mockBrandData.current }),
+    useSelectConcept: () => ({
+      mutateAsync: mockSelectConceptMutate,
+      isPending: false,
+    }),
+    useSelectCopy: () => ({
+      mutateAsync: mockSelectCopyMutate,
+      isPending: false,
+    }),
   }
 })
+
+vi.mock('@/hooks/useBrandPresets', () => ({
+  useBrandPresets: () => ({ data: [] }),
+  useCreateBrandPreset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteBrandPreset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
 
 vi.mock('@/lib/api-client', () => ({
   generateText: vi.fn().mockResolvedValue({ content: { refined_prompt: 'Refined' } }),
 }))
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() },
 }))
 
 function createWrapper() {
@@ -73,6 +140,12 @@ describe('GenerationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    mockCampaignAssetsData.current = []
+    mockBrandData.current = undefined
+    mockSelectConceptMutate.mockClear()
+    mockSelectCopyMutate.mockClear()
+    mockGenerateImageMutate.mockResolvedValue({ image: {} })
+    mockGenerateConceptsMutate.mockResolvedValue({})
   })
 
   it('renders Concepts, Copy, Images tabs', () => {
@@ -90,7 +163,7 @@ describe('GenerationPanel', () => {
       <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
       { wrapper: createWrapper() }
     )
-    const textarea = screen.getByPlaceholderText(/describe your campaign/i)
+    const textarea = screen.getByPlaceholderText(/creative direction \(optional\)/i)
     expect(textarea).toBeInTheDocument()
   })
 
@@ -99,7 +172,73 @@ describe('GenerationPanel', () => {
       <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
       { wrapper: createWrapper() }
     )
-    expect(screen.getByRole('button', { name: /generate concepts/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Generate Concepts' })).toBeInTheDocument()
+  })
+
+  it('calls onSubmitAsset when Submit for Review is clicked on a draft concept', async () => {
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+    const onSubmitAsset = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <GenerationPanel
+        campaign={mockCampaign}
+        brandId="brand-1"
+        userId="user-1"
+        onSubmitAsset={onSubmitAsset}
+      />,
+      { wrapper: createWrapper() }
+    )
+
+    await user.click(screen.getByRole('button', { name: /submit for review/i }))
+    expect(onSubmitAsset).toHaveBeenCalledWith('concept-1')
+  })
+
+  it('U4: calls select concept hook when Use for copy & visuals is clicked', async () => {
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+    const user = userEvent.setup()
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
+      { wrapper: createWrapper() }
+    )
+
+    await user.click(screen.getByRole('button', { name: /use for copy & visuals/i }))
+    expect(mockSelectConceptMutate).toHaveBeenCalledWith('concept-1')
+    expect(screen.getByText('Concept for copy generation')).toBeInTheDocument()
+  })
+
+  it('shows concept selector on copy tab before any copy exists', async () => {
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+    const user = userEvent.setup()
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" stage="copy" />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByText('Concept for copy generation')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Summer Launch' })).toBeInTheDocument()
+    expect(screen.getByText('Generate your first copy')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Summer Launch' }))
+    expect(screen.getByRole('button', { name: 'Generate copy' })).toBeInTheDocument()
+  })
+
+  it('U6: shows explore banner on Images tab when no copy selection', async () => {
+    const user = userEvent.setup()
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" stage="images" />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByTestId('images-explore-banner')).toBeInTheDocument()
+    expect(
+      screen.getByText(/for messaging-aligned key art, select copy first/i)
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByText('Images'))
+    expect(screen.getByTestId('images-explore-banner')).toBeInTheDocument()
   })
 
   it('shows Images tab content when Images tab is selected', async () => {
@@ -110,5 +249,148 @@ describe('GenerationPanel', () => {
     )
     await user.click(screen.getByText('Images'))
     expect(screen.getByRole('button', { name: /generate image/i })).toBeInTheDocument()
+  })
+
+  it('G4: shows brand incomplete banner when brand kit is not on-brand ready', () => {
+    mockBrandData.current = {
+      id: 'brand-1',
+      identity: {
+        colours: { primary: '#1a1a1a' },
+        fonts: { heading: 'Fraunces', body: 'Inter' },
+      },
+      voice: { tone: [], preferred_words: [], avoided_words: [] },
+    }
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByText(/Brand kit incomplete — results may drift/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /complete brand kit/i })).toBeInTheDocument()
+  })
+
+  it('K1: concept generate image opens explore confirm dialog', async () => {
+    const user = userEvent.setup()
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
+      { wrapper: createWrapper() }
+    )
+
+    await user.click(screen.getByRole('button', { name: /more concept actions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /generate image/i }))
+
+    expect(screen.getByTestId('explore-image-confirm')).toBeInTheDocument()
+    expect(screen.getByText(/Skip copy\? Image may not match final line/i)).toBeInTheDocument()
+  })
+
+  it('K2: generate copy from concept persists selection via selectConcept', async () => {
+    const user = userEvent.setup()
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+
+    render(
+      <GenerationPanel campaign={mockCampaign} brandId="brand-1" userId="user-1" />,
+      { wrapper: createWrapper() }
+    )
+
+    await user.click(screen.getByRole('button', { name: /more concept actions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /generate copy/i }))
+
+    expect(mockSelectConceptMutate).toHaveBeenCalledWith('concept-1')
+  })
+
+  it('I8: Images tab shows composite badge and pre-fills from concept', () => {
+    mockCampaignAssetsData.current = [mockDraftConceptAsset]
+
+    render(
+      <GenerationPanel
+        campaign={{ ...mockCampaign, selected_concept_asset_id: 'concept-1' }}
+        brandId="brand-1"
+        userId="user-1"
+        stage="images"
+      />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByTestId('image-composite-badge')).toHaveTextContent(/Built from: Summer Launch/i)
+    const prompt = screen.getByLabelText('Generation prompt') as HTMLTextAreaElement
+    expect(prompt.value).toContain('Bright')
+  })
+
+  describe('direct generate request (/app/generate)', () => {
+    const ideaFirstCampaign: Campaign = {
+      ...mockCampaign,
+      brand_id: null,
+      journey_mode: 'idea_first',
+      generation_mode: 'idea_first',
+      seed_idea: 'Cold brew on linen',
+      brief: { channels: [] },
+    }
+
+    it('auto-runs an image request once with its prompt, tier and aspect', async () => {
+      const onConsumed = vi.fn()
+      const { rerender } = render(
+        <GenerationPanel
+          campaign={ideaFirstCampaign}
+          userId="user-1"
+          stage="images"
+          directRequest={{ kind: 'image', prompt: 'Cold brew on linen', imageTier: 'final', aspectRatio: '4:5' }}
+          onDirectRequestConsumed={onConsumed}
+        />,
+        { wrapper: createWrapper() }
+      )
+      await vi.waitFor(() => expect(mockGenerateImageMutate).toHaveBeenCalledTimes(1))
+      expect(mockGenerateImageMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          campaignId: 'camp-1',
+          visualDirection: 'Cold brew on linen',
+          imageTier: 'final',
+          aspectRatio: '4:5',
+        })
+      )
+      expect(onConsumed).toHaveBeenCalledTimes(1)
+
+      rerender(
+        <GenerationPanel
+          campaign={ideaFirstCampaign}
+          userId="user-1"
+          stage="images"
+          directRequest={{ kind: 'image', prompt: 'Cold brew on linen', imageTier: 'final', aspectRatio: '4:5' }}
+          onDirectRequestConsumed={onConsumed}
+        />
+      )
+      expect(mockGenerateImageMutate).toHaveBeenCalledTimes(1)
+    })
+
+    it('waits for the session before running', () => {
+      render(
+        <GenerationPanel
+          campaign={ideaFirstCampaign}
+          stage="images"
+          directRequest={{ kind: 'image', prompt: 'Cold brew on linen', imageTier: 'draft', aspectRatio: '1:1' }}
+        />,
+        { wrapper: createWrapper() }
+      )
+      expect(mockGenerateImageMutate).not.toHaveBeenCalled()
+    })
+
+    it('runs a concepts request from the seed idea without duplicating it as requirements', async () => {
+      render(
+        <GenerationPanel
+          campaign={ideaFirstCampaign}
+          userId="user-1"
+          stage="concepts"
+          directRequest={{ kind: 'concepts', prompt: 'Cold brew on linen', imageTier: 'draft', aspectRatio: '1:1' }}
+        />,
+        { wrapper: createWrapper() }
+      )
+      await vi.waitFor(() => expect(mockGenerateConceptsMutate).toHaveBeenCalledTimes(1))
+      const call = mockGenerateConceptsMutate.mock.calls[0][0]
+      expect(call.brief.objective).toBe('Cold brew on linen')
+      expect(call.brief.requirements).toBeUndefined()
+      expect(mockGenerateImageMutate).not.toHaveBeenCalled()
+    })
   })
 })

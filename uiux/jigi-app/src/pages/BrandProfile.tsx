@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Palette, Type, MessageSquare, Users, Building2, Settings, Edit, Loader2, AlertCircle, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
+import { ArrowLeft, Palette, Type, MessageSquare, Users, Building2, Settings, Edit, Loader2, AlertCircle, Archive, ArchiveRestore, Trash2, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -9,20 +9,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { DeleteBrandDialog } from '@/components/brands/DeleteBrandDialog'
-import { useBrandStore } from '@/store/brandStore'
+import { BrandColorsEditor } from '@/components/brands/BrandColorsEditor'
+import { BrandTypographyEditor } from '@/components/brands/BrandTypographyEditor'
+import { BrandToneEditor } from '@/components/brands/BrandToneEditor'
+import { BrandWordListsEditor } from '@/components/brands/BrandWordListsEditor'
+import { BrandVisualStyleEditor } from '@/components/brands/BrandVisualStyleEditor'
+import { BrandStrategyEditor } from '@/components/brands/BrandStrategyEditor'
+import { BrandEssentialsChecklist } from '@/components/brands/BrandEssentialsChecklist'
+import { BrandPreviewPanel } from '@/components/brands/BrandPreviewPanel'
+import { useBrandStore, type BrandIdentity, type BrandVoice, type BrandStrategy } from '@/store/brandStore'
+import { deriveBrandEssentials, deriveBrandProfileStatus } from '@/lib/brand-profile-status'
 import { getContrastColor } from '@/lib/colors'
 import { loadGoogleFont } from '@/lib/fonts'
 import { cn } from '@/lib/utils'
 
 const statusLabels = {
-  complete: 'Complete',
+  complete: 'On-brand ready',
   partial: 'Partial',
   starter: 'Starter',
 }
 
 const statusColors = {
   complete: 'bg-success/10 text-success',
-  partial: 'bg-amber-100 text-amber-800',
+  partial: 'bg-honey-soft text-honey-text',
   starter: 'bg-muted text-muted-foreground',
 }
 
@@ -36,6 +45,14 @@ export function BrandProfile() {
   const [editedName, setEditedName] = useState('')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [editingColors, setEditingColors] = useState(false)
+  const [editingTypography, setEditingTypography] = useState(false)
+  const [editingTone, setEditingTone] = useState(false)
+  const [editingWords, setEditingWords] = useState(false)
+  const [editingVisualStyle, setEditingVisualStyle] = useState(false)
+  const [editingStrategy, setEditingStrategy] = useState(false)
+  const [kitSaving, setKitSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState('identity')
 
   useEffect(() => {
     if (id) {
@@ -68,13 +85,38 @@ export function BrandProfile() {
   const handleSaveName = async () => {
     if (!id || !editedName.trim()) return
 
-    const result = await updateBrand(id, { name: editedName.trim() })
+    const result = await updateBrand(id, { name: editedName.trim() }, { quiet: true })
     if (result.success) {
       toast.success('Brand name updated')
       setIsEditing(false)
     } else {
       toast.error(result.error || 'Failed to update brand name')
     }
+  }
+
+  const saveBrandKit = async (patch: {
+    identity?: BrandIdentity
+    voice?: BrandVoice
+    strategy?: BrandStrategy
+  }) => {
+    if (!id || !currentBrand) return false
+    setKitSaving(true)
+    const identity = { ...currentBrand.identity, ...patch.identity }
+    const voice = { ...currentBrand.voice, ...patch.voice }
+    const strategy = { ...currentBrand.strategy, ...patch.strategy }
+    const brand_profile_status = deriveBrandProfileStatus(identity, voice)
+    const result = await updateBrand(
+      id,
+      { identity, voice, strategy, brand_profile_status },
+      { quiet: true }
+    )
+    setKitSaving(false)
+    if (result.success) {
+      toast.success('Brand kit updated')
+      return true
+    }
+    toast.error(result.error || 'Failed to update brand kit')
+    return false
   }
 
   const handleArchive = async () => {
@@ -140,7 +182,8 @@ export function BrandProfile() {
     )
   }
 
-  const { identity, voice, brand_profile_status: status } = currentBrand
+  const { identity, voice, strategy, brand_profile_status: status } = currentBrand
+  const essentials = deriveBrandEssentials(identity, voice)
   const colours = identity?.colours || {}
   const fonts = identity?.fonts || {}
   const tone = voice?.tone || []
@@ -148,9 +191,47 @@ export function BrandProfile() {
   const avoidedWords = voice?.avoided_words || []
 
   const isArchived = currentBrand.status === 'archived'
+  const isKitEditing =
+    isEditing ||
+    editingColors ||
+    editingTypography ||
+    editingTone ||
+    editingWords ||
+    editingVisualStyle ||
+    editingStrategy
+
+  const handleEssentialAction = (essentialId: string) => {
+    switch (essentialId) {
+      case 'primary_colour':
+        setActiveTab('identity')
+        setEditingColors(true)
+        break
+      case 'typography':
+        setActiveTab('identity')
+        setEditingTypography(true)
+        break
+      case 'tone':
+        setActiveTab('voice')
+        setEditingTone(true)
+        break
+      case 'word_lists':
+        setActiveTab('voice')
+        setEditingWords(true)
+        break
+      case 'logo':
+        navigate('/app/onboarding')
+        break
+      case 'visual_style':
+        setActiveTab('identity')
+        setEditingVisualStyle(true)
+        break
+      default:
+        break
+    }
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 md:p-8 max-w-[1400px] mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/app/brands')} className="hover:bg-muted" aria-label="Back to brands">
@@ -196,22 +277,17 @@ export function BrandProfile() {
               )}
               <div className="flex items-center gap-2 mt-1">
                 {isArchived && (
-                  <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600 dark:text-amber-400">
+                  <Badge variant="outline" className="text-xs border-honey/50 text-honey-text">
                     Archived
                   </Badge>
                 )}
                 <Badge className={cn('text-xs', statusColors[status])}>
-                  {statusLabels[status]}
+                  {statusLabels[status]} · {essentials.score}/{essentials.maxScore}
                 </Badge>
                 {status !== 'complete' && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-xs"
-                    onClick={() => navigate('/app/onboarding')}
-                  >
-                    Complete profile
-                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Complete essentials below for on-brand AI
+                  </span>
                 )}
               </div>
             </div>
@@ -250,7 +326,18 @@ export function BrandProfile() {
         isDeleting={isDeleting}
       />
 
-      <Tabs defaultValue="identity" className="space-y-6">
+      {!isArchived && essentials.score < essentials.maxScore && (
+        <BrandEssentialsChecklist
+          items={essentials.items}
+          score={essentials.score}
+          maxScore={essentials.maxScore}
+          onItemAction={handleEssentialAction}
+        />
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="identity">Identity</TabsTrigger>
           <TabsTrigger value="voice">Voice</TabsTrigger>
@@ -260,15 +347,33 @@ export function BrandProfile() {
 
         <TabsContent value="identity" className="space-y-6">
           <Card className="transition-shadow hover:shadow-md">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-primary" />
-                Brand Colors
-              </CardTitle>
-              <CardDescription>Your brand's color palette — primary, secondary, accent</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  Brand Colors
+                </CardTitle>
+                <CardDescription>Your brand&apos;s color palette — primary, secondary, accent</CardDescription>
+              </div>
+              {!editingColors && !isArchived && (
+                <Button variant="outline" size="sm" onClick={() => setEditingColors(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
-              {Object.keys(colours).length > 0 ? (
+              {editingColors ? (
+                <BrandColorsEditor
+                  colours={colours}
+                  isSaving={kitSaving}
+                  onCancel={() => setEditingColors(false)}
+                  onSave={async (nextColours) => {
+                    const ok = await saveBrandKit({ identity: { ...identity, colours: nextColours } })
+                    if (ok) setEditingColors(false)
+                  }}
+                />
+              ) : Object.keys(colours).length > 0 ? (
                 <div className="flex gap-6 flex-wrap">
                   {Object.entries(colours).map(([name, color]) => (
                     <div key={name} className="flex flex-col items-center gap-3 group">
@@ -289,23 +394,46 @@ export function BrandProfile() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No colors defined. Complete your brand profile to add colors.
-                </p>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">No colors defined yet.</p>
+                  {!isArchived && (
+                    <Button variant="outline" size="sm" onClick={() => setEditingColors(true)}>
+                      Add colors
+                    </Button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
 
           <Card className="transition-shadow hover:shadow-md">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Type className="h-5 w-5 text-primary" />
-                Typography
-              </CardTitle>
-              <CardDescription>Your brand's fonts</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Type className="h-5 w-5 text-primary" />
+                  Typography
+                </CardTitle>
+                <CardDescription>Your brand&apos;s fonts</CardDescription>
+              </div>
+              {!editingTypography && !isArchived && (
+                <Button variant="outline" size="sm" onClick={() => setEditingTypography(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
-              {fonts.heading || fonts.body ? (
+              {editingTypography ? (
+                <BrandTypographyEditor
+                  fonts={fonts}
+                  isSaving={kitSaving}
+                  onCancel={() => setEditingTypography(false)}
+                  onSave={async (nextFonts) => {
+                    const ok = await saveBrandKit({ identity: { ...identity, fonts: nextFonts } })
+                    if (ok) setEditingTypography(false)
+                  }}
+                />
+              ) : fonts.heading || fonts.body ? (
                 <div className="space-y-4">
                   {fonts.heading && (
                     <div>
@@ -325,9 +453,126 @@ export function BrandProfile() {
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No fonts defined. Complete your brand profile to add typography.
-                </p>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">No fonts defined yet.</p>
+                  {!isArchived && (
+                    <Button variant="outline" size="sm" onClick={() => setEditingTypography(true)}>
+                      Add typography
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5 text-primary" />
+                  Visual Style
+                </CardTitle>
+                <CardDescription>
+                  Photography and art direction for on-brand image generation
+                </CardDescription>
+              </div>
+              {!editingVisualStyle && !isArchived && (
+                <Button variant="outline" size="sm" onClick={() => setEditingVisualStyle(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {editingVisualStyle ? (
+                <BrandVisualStyleEditor
+                  visualStyle={identity?.visual_style || ''}
+                  isSaving={kitSaving}
+                  onCancel={() => setEditingVisualStyle(false)}
+                  onSave={async (visual_style) => {
+                    const ok = await saveBrandKit({ identity: { ...identity, visual_style } })
+                    if (ok) setEditingVisualStyle(false)
+                  }}
+                />
+              ) : identity?.visual_style ? (
+                <p className="text-sm text-foreground whitespace-pre-wrap">{identity.visual_style}</p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    No visual direction yet — image generation may feel generic.
+                  </p>
+                  {!isArchived && (
+                    <Button variant="outline" size="sm" onClick={() => setEditingVisualStyle(true)}>
+                      Add visual style
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="transition-shadow hover:shadow-md">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  Brand Strategy
+                </CardTitle>
+                <CardDescription>Positioning and differentiators for concept generation</CardDescription>
+              </div>
+              {!editingStrategy && !isArchived && (
+                <Button variant="outline" size="sm" onClick={() => setEditingStrategy(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {editingStrategy ? (
+                <BrandStrategyEditor
+                  positioning={strategy?.positioning || ''}
+                  differentiators={strategy?.differentiators || []}
+                  isSaving={kitSaving}
+                  onCancel={() => setEditingStrategy(false)}
+                  onSave={async (positioning, differentiators) => {
+                    const ok = await saveBrandKit({ strategy: { ...strategy, positioning, differentiators } })
+                    if (ok) setEditingStrategy(false)
+                  }}
+                />
+              ) : strategy?.positioning || (strategy?.differentiators?.length ?? 0) > 0 ? (
+                <div className="space-y-3">
+                  {strategy?.positioning && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                        Positioning
+                      </p>
+                      <p className="text-sm text-foreground">{strategy.positioning}</p>
+                    </div>
+                  )}
+                  {strategy?.differentiators && strategy.differentiators.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                        Differentiators
+                      </p>
+                      <ul className="list-disc list-inside text-sm text-foreground space-y-1">
+                        {strategy.differentiators.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Add positioning and differentiators to strengthen concept alignment.
+                  </p>
+                  {!isArchived && (
+                    <Button variant="outline" size="sm" onClick={() => setEditingStrategy(true)}>
+                      Add strategy
+                    </Button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -335,15 +580,33 @@ export function BrandProfile() {
 
         <TabsContent value="voice" className="space-y-6">
           <Card className="transition-shadow hover:shadow-md">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-primary" />
-                Brand Tone
-              </CardTitle>
-              <CardDescription>Words that describe your brand's voice</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-primary" />
+                  Brand Tone
+                </CardTitle>
+                <CardDescription>Words that describe your brand&apos;s voice</CardDescription>
+              </div>
+              {!editingTone && !isArchived && (
+                <Button variant="outline" size="sm" onClick={() => setEditingTone(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
-              {tone.length > 0 ? (
+              {editingTone ? (
+                <BrandToneEditor
+                  tone={tone}
+                  isSaving={kitSaving}
+                  onCancel={() => setEditingTone(false)}
+                  onSave={async (nextTone) => {
+                    const ok = await saveBrandKit({ voice: { ...voice, tone: nextTone } })
+                    if (ok) setEditingTone(false)
+                  }}
+                />
+              ) : tone.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {tone.map((t) => (
                     <Badge
@@ -356,54 +619,83 @@ export function BrandProfile() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No tone defined. Complete your brand profile to add tone descriptors.
-                </p>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">No tone defined yet.</p>
+                  {!isArchived && (
+                    <Button variant="outline" size="sm" onClick={() => setEditingTone(true)}>
+                      Add tone
+                    </Button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="transition-shadow hover:shadow-md">
-              <CardHeader>
-                <CardTitle className="text-base text-success">Preferred Words</CardTitle>
-                <CardDescription>Words your brand likes to use</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {preferredWords.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {preferredWords.map((word) => (
-                      <Badge key={word} className="bg-green-100 text-green-700">
-                        {word}
-                      </Badge>
-                    ))}
+          <Card className="transition-shadow hover:shadow-md md:col-span-2">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base">Language rules</CardTitle>
+                <CardDescription>Preferred and avoided words for copy generation</CardDescription>
+              </div>
+              {!editingWords && !isArchived && (
+                <Button variant="outline" size="sm" onClick={() => setEditingWords(true)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {editingWords ? (
+                <BrandWordListsEditor
+                  preferredWords={preferredWords}
+                  avoidedWords={avoidedWords}
+                  isSaving={kitSaving}
+                  onCancel={() => setEditingWords(false)}
+                  onSave={async (preferred, avoided) => {
+                    const ok = await saveBrandKit({
+                      voice: {
+                        ...voice,
+                        preferred_words: preferred,
+                        avoided_words: avoided,
+                      },
+                    })
+                    if (ok) setEditingWords(false)
+                  }}
+                />
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <p className="text-sm font-medium text-success mb-2">Preferred words</p>
+                    {preferredWords.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {preferredWords.map((word) => (
+                          <Badge key={word} className="bg-forest-soft text-forest-text">
+                            {word}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">None defined</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">None defined</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="transition-shadow hover:shadow-md">
-              <CardHeader>
-                <CardTitle className="text-base text-destructive">Avoided Words</CardTitle>
-                <CardDescription>Words your brand avoids</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {avoidedWords.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {avoidedWords.map((word) => (
-                      <Badge key={word} className="bg-destructive/10 text-destructive">
-                        {word}
-                      </Badge>
-                    ))}
+                  <div>
+                    <p className="text-sm font-medium text-destructive mb-2">Avoided words</p>
+                    {avoidedWords.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {avoidedWords.map((word) => (
+                          <Badge key={word} className="bg-destructive/10 text-destructive">
+                            {word}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">None defined</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">None defined</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="team" className="space-y-6">
@@ -474,6 +766,17 @@ export function BrandProfile() {
           </Card>
         </TabsContent>
       </Tabs>
+        </div>
+
+        {!isKitEditing && !isArchived && (
+          <BrandPreviewPanel
+            brandName={currentBrand.name}
+            identity={identity}
+            voice={voice}
+            essentials={essentials}
+          />
+        )}
+      </div>
     </div>
   )
 }

@@ -118,7 +118,7 @@ export function RequestChangesModal({
                 if (error) setError('')
               }}
               rows={5}
-              className={`resize-none ${error ? 'border-red-500' : ''}`}
+              className={`resize-none ${error ? 'border-brick' : ''}`}
             />
             {error && (
               <p className="text-sm text-destructive mt-1">{error}</p>

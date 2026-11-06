@@ -1,7 +1,9 @@
-import { Check, Image, Sparkles, FileText, Trash2, MoreHorizontal, AlertTriangle } from 'lucide-react'
+import { Check, Image, Sparkles, FileText, Trash2, MoreHorizontal, AlertTriangle, Send } from 'lucide-react'
 import { DriftBadge } from './DriftBadge'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { canSubmitAssetForReview } from '@/lib/status'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,22 +19,15 @@ interface ConceptCardProps {
   /** PRD 10: Drift status when brief changed after asset generation */
   driftStatus?: 'none' | 'review_required' | null
   selected?: boolean
+  inProduction?: boolean
   onSelect?: () => void
+  onUseForProduction?: () => void
   onView?: () => void
   onGenerateCopy?: () => void
   onGenerateImage?: () => void
   onDelete?: () => void
+  onSubmit?: () => void
   showActions?: boolean
-}
-
-const statusStyles: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  agency_review: 'bg-purple-100 text-purple-800',
-  submitted: 'bg-primary/10 text-primary',
-  brand_review: 'bg-amber-100 text-amber-800',
-  changes_requested: 'bg-warning/10 text-warning',
-  approved: 'bg-success/10 text-success',
-  rejected: 'bg-destructive/10 text-destructive',
 }
 
 export function ConceptCard({
@@ -41,11 +36,14 @@ export function ConceptCard({
   status = 'draft',
   driftStatus,
   selected = false,
+  inProduction = false,
   onSelect,
+  onUseForProduction,
   onView,
   onGenerateCopy,
   onGenerateImage,
   onDelete,
+  onSubmit,
   showActions = true,
 }: ConceptCardProps) {
   const headlines = concept.headlines || []
@@ -56,8 +54,10 @@ export function ConceptCard({
   return (
     <div
       className={`bg-background rounded-xl border-2 p-5 shadow-sm transition-all ${
-        selected
+        inProduction
           ? 'border-primary shadow-md'
+          : selected
+          ? 'border-primary/40 shadow-sm'
           : 'border-border hover:border-primary/60 hover:shadow-md'
       } ${handleCardOpen ? 'cursor-pointer' : ''}`}
       onClick={handleCardOpen}
@@ -74,12 +74,13 @@ export function ConceptCard({
           <h3 className="text-sm font-bold text-foreground mt-0.5 truncate">{concept.theme}</h3>
         </div>
         <div className="flex items-center gap-2">
-          {driftStatus === 'review_required' && <DriftBadge />}
-          {status && (
-            <Badge variant="secondary" className={`text-[10px] ${statusStyles[status] || statusStyles.draft}`}>
-              {status.replace('_', ' ')}
+          {inProduction && (
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-semibold">
+              In production
             </Badge>
           )}
+          {driftStatus === 'review_required' && <DriftBadge />}
+          {status && <StatusBadge status={status} />}
           {onSelect && (
             <div
               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
@@ -117,11 +118,20 @@ export function ConceptCard({
         </p>
       )}
 
+      {concept.key_message_link && (
+        <div className="mb-4 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
+            Key message link
+          </p>
+          <p className="text-xs text-foreground line-clamp-3">{concept.key_message_link}</p>
+        </div>
+      )}
+
       {(concept.validation_warnings?.length ?? 0) > 0 || (typeof concept.brand_alignment_score === 'number' && concept.brand_alignment_score < 60) ? (
-        <div className="mb-4 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+        <div className="mb-4 p-2 rounded-lg bg-honey-soft dark:bg-honey-soft/30 border border-honey/40 dark:border-honey">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-800 dark:text-amber-200">
+            <AlertTriangle className="w-3.5 h-3.5 text-honey-text flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-honey-text">
               {concept.brand_alignment_score != null && concept.brand_alignment_score < 60 && (
                 <p>Brand alignment: {concept.brand_alignment_score}/100</p>
               )}
@@ -134,8 +144,41 @@ export function ConceptCard({
       ) : null}
 
       {showActions && (
-        <div className="flex items-center gap-2">
-          {onSelect && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {onSubmit && canSubmitAssetForReview(status) && (
+            <Button
+              size="sm"
+              className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSubmit()
+              }}
+            >
+              <Send className="w-3.5 h-3.5 mr-1" aria-hidden />
+              Submit for Review
+            </Button>
+          )}
+          {onUseForProduction && (
+            <Button
+              variant={inProduction ? 'default' : 'outline'}
+              size="sm"
+              className="flex-1"
+              onClick={(e) => {
+                e.stopPropagation()
+                onUseForProduction()
+              }}
+            >
+              {inProduction ? (
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                  In production
+                </>
+              ) : (
+                'Use for copy & visuals'
+              )}
+            </Button>
+          )}
+          {onSelect && !onUseForProduction && (
             <Button
               variant={selected ? 'default' : 'outline'}
               size="sm"
@@ -159,21 +202,37 @@ export function ConceptCard({
           {(onGenerateCopy || onGenerateImage || onDelete) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()} aria-label="More concept actions">
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {onGenerateCopy && (
-                  <DropdownMenuItem onClick={onGenerateCopy}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Generate Copy
+                  <DropdownMenuItem
+                    onClick={onGenerateCopy}
+                    className="flex flex-col items-stretch gap-0.5 py-2.5"
+                  >
+                    <span className="flex items-center text-sm">
+                      <FileText className="w-4 h-4 mr-2 shrink-0" />
+                      Generate copy
+                    </span>
+                    <span className="text-[10px] text-muted-foreground pl-6 leading-snug">
+                      Opens Copy tab with this concept selected
+                    </span>
                   </DropdownMenuItem>
                 )}
                 {onGenerateImage && (
-                  <DropdownMenuItem onClick={onGenerateImage}>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Image
+                  <DropdownMenuItem
+                    onClick={onGenerateImage}
+                    className="flex flex-col items-stretch gap-0.5 py-2.5"
+                  >
+                    <span className="flex items-center text-sm">
+                      <Sparkles className="w-4 h-4 mr-2 shrink-0" />
+                      Generate image
+                    </span>
+                    <span className="text-[10px] text-muted-foreground pl-6 leading-snug">
+                      Optional now; often stronger after copy is set
+                    </span>
                   </DropdownMenuItem>
                 )}
                 {onDelete && status === 'draft' && (

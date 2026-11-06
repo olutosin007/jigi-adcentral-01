@@ -1,17 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import { Onborda, OnbordaProvider } from 'onborda-rrd'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { useAppStore } from '@/store'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { buildTourSteps } from '@/lib/tour/steps'
+import { useDemoStore } from '@/store/demoStore'
+import { TourCard } from '@/components/tour/TourCard'
+import { TourAutoStart } from '@/components/tour/TourAutoStart'
 
 const pageTitles: Record<string, string> = {
-  '/app/dashboard': 'Dashboard',
-  '/app/quick-start': 'Quick Start',
+  '/app/work': 'Work',
+  '/app/overview': 'Overview',
+  '/app/generate': 'Generate',
+  '/app/design-system': 'Design system',
   '/app/campaigns': 'Campaigns',
   '/app/brands': 'Brands',
-  '/app/approved': 'Approved Assets',
-  '/app/review': 'Review Queue',
+  '/app/approved': 'Approved',
+  '/app/review': 'Inbox',
   '/app/settings': 'Settings',
 }
 
@@ -20,6 +27,12 @@ export function AppLayout() {
   const isMobile = useIsMobile()
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const demoCampaignId = useDemoStore((s) => s.demoCampaignId)
+  const demoAssetId = useDemoStore((s) => s.demoAssetId)
+  const tourSteps = useMemo(
+    () => buildTourSteps({ campaignId: demoCampaignId, assetId: demoAssetId }),
+    [demoCampaignId, demoAssetId]
+  )
 
   useEffect(() => {
     if (isMobile) {
@@ -27,46 +40,59 @@ export function AppLayout() {
     }
   }, [location.pathname, isMobile])
 
+  const isCampaignDetail = /^\/app\/campaigns\/[^/]+$/.test(location.pathname)
+
   const getPageTitle = () => {
-    if (location.pathname.startsWith('/app/campaigns/')) {
-      return 'Campaign Detail'
+    if (isCampaignDetail) {
+      return ''
     }
     if (location.pathname.startsWith('/app/review/')) {
-      return 'Asset Review'
+      return 'Decide'
     }
-    return pageTitles[location.pathname] || 'Dashboard'
+    return pageTitles[location.pathname] || 'Work'
   }
 
-  const showCTAs = location.pathname === '/app/dashboard'
+  const showCTAs = location.pathname === '/app/overview'
 
   const mainMarginLeft = isMobile ? 0 : sidebarCollapsed ? 64 : 240
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-hidden bg-background">
-      <Sidebar
-        isMobile={isMobile}
-        mobileOpen={sidebarOpen}
-        onMobileOpenChange={setSidebarOpen}
-      />
-      <Header
-        title={getPageTitle()}
-        showCTAs={showCTAs}
-        isMobile={isMobile}
-        onMenuClick={() => setSidebarOpen(true)}
-        sidebarCollapsed={sidebarCollapsed}
-      />
-      <main
-        className="min-w-0 overflow-x-hidden overflow-y-auto scrollbar-thin transition-[margin-left] duration-200 ease-linear"
-        style={{
-          marginLeft: mainMarginLeft,
-          marginTop: '60px',
-          minHeight: 'calc(100vh - 60px)',
-        }}
-        id="main-content"
-        tabIndex={-1}
+    <OnbordaProvider>
+      <Onborda
+        steps={tourSteps}
+        cardComponent={TourCard}
+        shadowRgb="17,17,17"
+        shadowOpacity="0.6"
       >
-        <Outlet />
-      </main>
-    </div>
+        <TourAutoStart />
+        <div className="min-h-screen min-w-0 overflow-x-hidden bg-background">
+          <Sidebar
+            isMobile={isMobile}
+            mobileOpen={sidebarOpen}
+            onMobileOpenChange={setSidebarOpen}
+          />
+          <Header
+            title={getPageTitle()}
+            hideTitle={isCampaignDetail}
+            showCTAs={showCTAs}
+            isMobile={isMobile}
+            onMenuClick={() => setSidebarOpen(true)}
+            sidebarCollapsed={sidebarCollapsed}
+          />
+          <main
+            className="min-w-0 overflow-x-hidden overflow-y-auto scrollbar-thin transition-[margin-left] duration-200 ease-linear"
+            style={{
+              marginLeft: mainMarginLeft,
+              marginTop: '60px',
+              minHeight: 'calc(100vh - 60px)',
+            }}
+            id="main-content"
+            tabIndex={-1}
+          >
+            <Outlet />
+          </main>
+        </div>
+      </Onborda>
+    </OnbordaProvider>
   )
 }
