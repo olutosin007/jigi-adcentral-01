@@ -1,7 +1,7 @@
 # 07 — Product strategy & execution
 
-**Status:** Strategy ready · Implementation plan **APPROVED AS WRITTEN** (2026-10-26) — executing Waves 0–5  
-**Created:** October 2026
+**Status:** Strategy ready · Implementation plan **executed through Wave 5** · shipped on `main` via [PR #1](https://github.com/Neocept-global/jigi-adcentral/pull/1)  
+**Created:** October 2026 · **Closed out:** November 2026
 
 ---
 
@@ -17,9 +17,8 @@
 ## How to use
 
 1. **Share** `PRODUCT_STRATEGY.md` externally (or export to PDF/Notion as needed).  
-2. **Review** `IMPLEMENTATION_PLAN.md` once.  
-3. **Reply** in chat with `APPROVE PLAN AS WRITTEN` (or `APPROVE WITH EDITS:` … / `HOLD`).  
-4. **Kick off** agents with the prompt in Implementation Plan §9.
+2. **Engineering detail / Delivery Log:** `IMPLEMENTATION_PLAN.md` (Waves 0–5 done).  
+3. **Next product work** is outside this plan — see strategy §11 (Next / Later) and north-star pilot asks in §13.
 
 Engineering seed remains [`docs/gstack/PRODUCT_BRIEF.md`](../gstack/PRODUCT_BRIEF.md). Design law: [`DESIGN.md`](../../DESIGN.md).
 
@@ -35,4 +34,5 @@ Engineering seed remains [`docs/gstack/PRODUCT_BRIEF.md`](../gstack/PRODUCT_BRIE
 | Item | Status |
 |------|--------|
 | Product strategy | Ready for external use (post research/evolution audit) |
-| Implementation plan | **Approved as written** — execution in progress |
+| Implementation plan | **Executed through Wave 5** — [PR #1](https://github.com/Neocept-global/jigi-adcentral/pull/1) merged to `main` |
+| fal live smoke | Skipped — `FAL_KEY` not set in `.env.local` (plan W2.8; not a Stop Condition) |

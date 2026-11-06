@@ -1,0 +1,16 @@
+{
+  "networkPolicy": {
+    "default": "deny",
+    "allow": [
+      "api.github.com",
+      "github.com",
+      "uploads.github.com",
+      "codeload.github.com",
+      "*.githubusercontent.com",
+      "registry.npmjs.org",
+      "registry.npmmirror.com",
+      "*.supabase.co",
+      "supabase.com"
+    ]
+  }
+}

@@ -5,7 +5,7 @@
 **One-liner:** Brand-grounded creative generation with approval built in — so agencies deliver faster and brands say yes sooner.
 
 **Commercial strategy (external):** [`docs/07-product-strategy/PRODUCT_STRATEGY.md`](../07-product-strategy/PRODUCT_STRATEGY.md)  
-**Agent execution plan:** [`docs/07-product-strategy/IMPLEMENTATION_PLAN.md`](../07-product-strategy/IMPLEMENTATION_PLAN.md) — approved as written 2026-10-26; executing on `feat/strategy-execution`.
+**Agent execution plan:** [`docs/07-product-strategy/IMPLEMENTATION_PLAN.md`](../07-product-strategy/IMPLEMENTATION_PLAN.md) — approved as written 2026-10-26; **executed through Wave 5** and merged to `main` ([PR #1](https://github.com/Neocept-global/jigi-adcentral/pull/1)).
 
 ---
 
